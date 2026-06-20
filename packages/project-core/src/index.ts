@@ -1,8 +1,19 @@
 import {
+  approveSuggestion,
+  createAssistantSuggestion,
+  markSuggestionApplied,
+  rejectSuggestion,
+  type AssistantSuggestion,
+  type AssistantSuggestionApplyInput,
+  type AssistantSuggestionReviewInput,
+  type CreateAssistantSuggestionInput,
+} from "../../ai-core/src/index";
+import {
   appendReceipt,
   createReceipt,
   fromJsonLine,
   toJsonLine,
+  type ApprovalState,
   type LedgerReceipt,
   type ReceiptSource,
 } from "../../ledger-core/src/index";
@@ -44,6 +55,7 @@ export interface ParaCutProject {
   timeline: TimelineState;
   ledger: LedgerReceipt[];
   render_jobs: RenderJob[];
+  assistant_suggestions: AssistantSuggestion[];
   metadata: Record<string, unknown>;
 }
 
@@ -71,6 +83,7 @@ export interface AddClipInput {
 }
 
 export type QueueRenderJobInput = Omit<CreateRenderJobInput, "project_id">;
+export type ProposeAssistantSuggestionInput = Omit<CreateAssistantSuggestionInput, "project_id">;
 
 export interface PlanRenderJobResult {
   project: ParaCutProject;
@@ -79,6 +92,7 @@ export interface PlanRenderJobResult {
 
 interface RecordProjectEventOptions {
   source?: ReceiptSource;
+  approved_by?: ApprovalState;
   created_at?: string;
 }
 
@@ -97,6 +111,7 @@ export function createProject(input: CreateProjectInput): ParaCutProject {
     timeline: createEmptyTimeline(),
     ledger: [],
     render_jobs: [],
+    assistant_suggestions: [],
     metadata: input.metadata ?? {},
   };
 
@@ -299,8 +314,115 @@ export function planRenderJobForProject(
   return { project: next, plan };
 }
 
+export function proposeAssistantSuggestionForProject(
+  project: ParaCutProject,
+  input: ProposeAssistantSuggestionInput,
+): ParaCutProject {
+  assertSuggestionIdUnique(project, input.suggestion_id);
+
+  const suggestion = createAssistantSuggestion({
+    ...input,
+    project_id: project.project_id,
+  });
+
+  const next: ParaCutProject = {
+    ...project,
+    assistant_suggestions: [...project.assistant_suggestions, suggestion],
+  };
+
+  return recordProjectEvent(
+    next,
+    "ai.suggestion.proposed",
+    suggestionReceiptPayload(suggestion),
+    { source: "ai", approved_by: "pending", created_at: suggestion.created_at },
+  );
+}
+
+export function approveAssistantSuggestionForProject(
+  project: ParaCutProject,
+  suggestionId: string,
+  review: AssistantSuggestionReviewInput = {},
+): ParaCutProject {
+  const suggestion = getAssistantSuggestionOrThrow(project, suggestionId);
+  const approved = approveSuggestion(
+    suggestion,
+    review.reviewed_at ?? new Date().toISOString(),
+    review.reviewed_by ?? "human",
+    review.review_note,
+  );
+  const next = replaceAssistantSuggestion(project, approved);
+
+  return recordProjectEvent(
+    next,
+    "ai.suggestion.approved",
+    {
+      ...suggestionReceiptPayload(approved),
+      reviewed_by: approved.reviewed_by ?? null,
+      review_note: approved.review_note ?? null,
+    },
+    { source: "ai", approved_by: "human", created_at: approved.reviewed_at },
+  );
+}
+
+export function rejectAssistantSuggestionForProject(
+  project: ParaCutProject,
+  suggestionId: string,
+  review: AssistantSuggestionReviewInput = {},
+): ParaCutProject {
+  const suggestion = getAssistantSuggestionOrThrow(project, suggestionId);
+  const rejected = rejectSuggestion(
+    suggestion,
+    review.reviewed_at ?? new Date().toISOString(),
+    review.reviewed_by ?? "human",
+    review.review_note,
+  );
+  const next = replaceAssistantSuggestion(project, rejected);
+
+  return recordProjectEvent(
+    next,
+    "ai.suggestion.rejected",
+    {
+      ...suggestionReceiptPayload(rejected),
+      reviewed_by: rejected.reviewed_by ?? null,
+      review_note: rejected.review_note ?? null,
+    },
+    { source: "ai", approved_by: "rejected", created_at: rejected.reviewed_at },
+  );
+}
+
+export function applyApprovedAssistantSuggestionForProject(
+  project: ParaCutProject,
+  suggestionId: string,
+  apply: AssistantSuggestionApplyInput = {},
+): ParaCutProject {
+  const suggestion = getAssistantSuggestionOrThrow(project, suggestionId);
+  const applied = markSuggestionApplied(
+    suggestion,
+    apply.applied_at ?? new Date().toISOString(),
+    apply.applied_by ?? "human",
+  );
+  const next = replaceAssistantSuggestion(project, applied);
+
+  return recordProjectEvent(
+    next,
+    "ai.suggestion.applied",
+    {
+      ...suggestionReceiptPayload(applied),
+      applied_by: applied.applied_by ?? null,
+    },
+    { source: "ai", approved_by: "human", created_at: applied.applied_at },
+  );
+}
+
 export function getProjectMedia(project: ParaCutProject, assetId: string): MediaAsset | undefined {
   return project.media.assets.find((asset) => asset.asset_id === assetId);
+}
+
+export function getProjectAssistantSuggestion(
+  project: ParaCutProject,
+  suggestionId: string,
+): AssistantSuggestion | undefined {
+  return project.assistant_suggestions.find((candidate) => candidate.suggestion_id === suggestionId);
 }
 
 export function serializeProject(project: ParaCutProject): string {
@@ -309,7 +431,7 @@ export function serializeProject(project: ParaCutProject): string {
 }
 
 export function parseProject(json: string): ParaCutProject {
-  const parsed = JSON.parse(json) as unknown;
+  const parsed = normalizeProject(JSON.parse(json) as unknown);
   assertProject(parsed);
   return parsed;
 }
@@ -343,6 +465,9 @@ export function assertProject(value: unknown): asserts value is ParaCutProject {
   }
   if (!Array.isArray(candidate.ledger)) throw new Error("Project ledger is invalid");
   if (!Array.isArray(candidate.render_jobs)) throw new Error("Project render_jobs is invalid");
+  if (!Array.isArray(candidate.assistant_suggestions)) {
+    throw new Error("Project assistant_suggestions is invalid");
+  }
   validateTimeline(candidate.timeline);
 }
 
@@ -357,7 +482,7 @@ function recordProjectEvent(
     type,
     project_id: project.project_id,
     source: options.source ?? "manual",
-    approved_by: "human",
+    approved_by: options.approved_by ?? "human",
     created_at: createdAt,
     payload,
   });
@@ -379,4 +504,57 @@ function getRenderJobOrThrow(project: ParaCutProject, jobId: string): RenderJob 
   const job = project.render_jobs.find((candidate) => candidate.job_id === jobId);
   if (!job) throw new Error(`Render job not found: ${jobId}`);
   return job;
+}
+
+function getAssistantSuggestionOrThrow(project: ParaCutProject, suggestionId: string): AssistantSuggestion {
+  const suggestion = getProjectAssistantSuggestion(project, suggestionId);
+  if (!suggestion) throw new Error(`Assistant suggestion not found: ${suggestionId}`);
+  return suggestion;
+}
+
+function assertSuggestionIdUnique(project: ParaCutProject, suggestionId: string): void {
+  if (getProjectAssistantSuggestion(project, suggestionId)) {
+    throw new Error(`Assistant suggestion already exists: ${suggestionId}`);
+  }
+}
+
+function replaceAssistantSuggestion(project: ParaCutProject, suggestion: AssistantSuggestion): ParaCutProject {
+  let replaced = false;
+  const assistantSuggestions = project.assistant_suggestions.map((candidate) => {
+    if (candidate.suggestion_id !== suggestion.suggestion_id) return candidate;
+    replaced = true;
+    return suggestion;
+  });
+
+  if (!replaced) {
+    throw new Error(`Assistant suggestion not found: ${suggestion.suggestion_id}`);
+  }
+
+  return {
+    ...project,
+    assistant_suggestions: assistantSuggestions,
+  };
+}
+
+function suggestionReceiptPayload(suggestion: AssistantSuggestion): Record<string, unknown> {
+  return {
+    suggestion_id: suggestion.suggestion_id,
+    kind: suggestion.kind,
+    status: suggestion.status,
+    summary: suggestion.summary,
+    rationale: suggestion.rationale,
+    payload: suggestion.payload,
+  };
+}
+
+function normalizeProject(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+
+  const candidate = value as Partial<ParaCutProject>;
+  return {
+    ...candidate,
+    assistant_suggestions: Array.isArray(candidate.assistant_suggestions)
+      ? candidate.assistant_suggestions
+      : [],
+  };
 }
