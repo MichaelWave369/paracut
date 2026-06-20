@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -16,7 +16,7 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 
 - **Local-first projects**: project folders remain readable and portable.
 - **Timeline as data**: clips, tracks, captions, effects, and exports live in structured project files.
-- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, and exports are logged.
+- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, media probes, and exports are logged.
 - **Human-approved AI**: AI may suggest edits, captions, scenes, or exports, but the creator stays in control.
 - **Auditable render plans**: a queued render becomes an inspectable FFmpeg-style plan before execution.
 - **Portable folder spine**: `project.json`, `receipts.jsonl`, and `manifest.json` form the v0.4 persistence contract.
@@ -25,12 +25,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Desktop runtime bridge**: v0.7 wires open/save/save-as project folder commands over the file adapter for a future Tauri command layer.
 - **Local app settings**: v0.8 adds `settings.json`, default panel/preset preferences, autosave preference, and recent-project memory.
 - **Safe media references**: v0.9 imports media as references, infers kind/name/intent, preserves rights notes, and prepares future proxy/thumbnail/waveform/cache targets without copying large files.
+- **Media probe contracts**: v0.10 defines duration, dimensions, codecs, audio, bitrate, stream, warning, and error metadata without running FFmpeg yet.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.9 media import adapter scaffold
+**Stage:** v0.10 media probe contract scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -57,7 +58,10 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 21. Creating safe media import references with inferred kind/name/intent.
 22. Preparing proxy, thumbnail, waveform, and cache target paths for later adapters.
 23. Applying a media import batch to a project with individual import receipts and a batch receipt.
-24. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, and media import loop.
+24. Creating media probe results for duration, dimensions, codecs, audio properties, bitrate, streams, warnings, and errors.
+25. Applying successful probe metadata to project media assets and recording probe receipts.
+26. Recording failed/skipped probe receipts without corrupting existing asset metadata.
+27. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, and media probe loop.
 
 ## Quick Start
 
@@ -82,6 +86,8 @@ The AI approval smoke test proposes, approves, applies, and rejects assistant su
 
 The media import smoke test creates media import references, applies a batch to a project, validates proxy/thumbnail/waveform/cache targets, and confirms duplicate inferred asset IDs are made unique inside a batch.
 
+The media probe smoke test applies mock probe metadata to a media asset, verifies duration/dimensions/audio enrichment, records a completed probe receipt, then records a failed probe without erasing known metadata.
+
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
 
 ## Repository Layout
@@ -96,6 +102,7 @@ paracut/
     ledger-core/          # Receipt/event model
     media-core/           # Media asset model
     media-import-core/    # Safe media import references and batch application
+    media-probe-core/     # Media probe metadata and project enrichment contract
     project-core/         # Project orchestration layer
     render-core/          # Export/render job and render-plan model
     settings-core/        # Local app settings and recent-project memory
@@ -109,6 +116,7 @@ paracut/
     settings-smoke-test.ts        # Local app settings smoke test
     ai-approval-smoke-test.ts     # AI proposal/review/application smoke test
     media-import-smoke-test.ts    # Media import adapter smoke test
+    media-probe-smoke-test.ts     # Media probe metadata smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -122,6 +130,7 @@ paracut/
     V0_7_DESKTOP_RUNTIME.md
     V0_8_SETTINGS_LAYER.md
     V0_9_MEDIA_IMPORT_ADAPTER.md
+    V0_10_MEDIA_PROBE_CONTRACT.md
   examples/
     sample-project/
 ```
