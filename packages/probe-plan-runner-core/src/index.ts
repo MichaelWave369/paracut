@@ -40,20 +40,20 @@ export interface RunProbePlanWithRunnerInput {
   project: ParaCutProject;
   plan: ProbePlan;
   runner: ProbeExecutor | ProbeRunner;
-  executable_path?: string;
-  timeout_ms?: number;
-  requested_at?: string;
-  include_executor_receipts?: boolean;
-  include_summary_receipt?: boolean;
-  cache_successful_results?: boolean;
-  summary_created_at?: string;
-  include_progress_batch?: boolean;
-  progress_batch_id?: string;
-  progress_created_at?: string;
-  include_queued_progress_events?: boolean;
-  include_running_progress_events?: boolean;
-  include_cached_progress_events?: boolean;
-  on_progress_event?: ProbePlanRunnerProgressHandler;
+  executable_path?: string | undefined;
+  timeout_ms?: number | undefined;
+  requested_at?: string | undefined;
+  include_executor_receipts?: boolean | undefined;
+  include_summary_receipt?: boolean | undefined;
+  cache_successful_results?: boolean | undefined;
+  summary_created_at?: string | undefined;
+  include_progress_batch?: boolean | undefined;
+  progress_batch_id?: string | undefined;
+  progress_created_at?: string | undefined;
+  include_queued_progress_events?: boolean | undefined;
+  include_running_progress_events?: boolean | undefined;
+  include_cached_progress_events?: boolean | undefined;
+  on_progress_event?: ProbePlanRunnerProgressHandler | undefined;
 }
 
 export interface ProbePlanRunnerItemResult {
@@ -117,7 +117,7 @@ export async function runProbePlanWithRunner(
   const includeSummaryReceipt = input.include_summary_receipt ?? true;
   const cacheSuccessfulResults = input.cache_successful_results ?? true;
   const createdAt = input.summary_created_at ?? input.requested_at ?? new Date().toISOString();
-  const progress = createProgressController(input, runnerId, createdAt);
+  const progress = createProgressController(input, createdAt);
 
   let project = input.project;
   const items: ProbePlanRunnerItemResult[] = [];
@@ -211,12 +211,12 @@ interface RunProbePlanItemInput {
   item: ProbePlanItem;
   runner: ProbeExecutor | ProbeRunner;
   runner_id: string;
-  executable_path?: string;
-  timeout_ms?: number;
-  requested_at?: string;
+  executable_path?: string | undefined;
+  timeout_ms?: number | undefined;
+  requested_at?: string | undefined;
   include_executor_receipt: boolean;
   cache_successful_result: boolean;
-  progress?: ProbePlanRunnerProgressController;
+  progress?: ProbePlanRunnerProgressController | undefined;
 }
 
 interface RunProbePlanItemOutput {
@@ -387,20 +387,19 @@ interface ProbePlanRunnerProgressController {
   include_running_events: boolean;
   include_cached_events: boolean;
   events: ProbeProgressEvent[];
-  handler?: ProbePlanRunnerProgressHandler;
+  handler?: ProbePlanRunnerProgressHandler | undefined;
 }
 
 interface CreateProgressEventForPlanItemInput {
   event_type: ProbeProgressEventType;
   message: string;
   created_at: string;
-  request_id?: string;
-  reason?: string;
+  request_id?: string | undefined;
+  reason?: string | undefined;
 }
 
 function createProgressController(
   input: RunProbePlanWithRunnerInput,
-  runnerId: string,
   createdAt: string,
 ): ProbePlanRunnerProgressController | undefined {
   const collectBatch = input.include_progress_batch ?? false;
@@ -416,7 +415,6 @@ function createProgressController(
     events: [],
   };
   if (input.on_progress_event !== undefined) controller.handler = input.on_progress_event;
-  void runnerId;
   return controller;
 }
 
