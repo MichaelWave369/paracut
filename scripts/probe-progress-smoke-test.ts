@@ -43,6 +43,8 @@ async function main(): Promise<void> {
     });
     expectEqual(cachedFingerprint.status, "fingerprinted", "cached asset should fingerprint");
     if (cachedFingerprint.status !== "fingerprinted") throw new Error("Expected cached fingerprint");
+    if (cachedFingerprint.fingerprint === undefined) throw new Error("Expected cached fingerprint value");
+    const cachedSourceFingerprint = cachedFingerprint.fingerprint;
 
     const cachedProbe = createMediaProbeResult({
       asset_id: "asset_cached",
@@ -58,7 +60,7 @@ async function main(): Promise<void> {
     });
     await saveProbeResultToCache(rootDir, {
       result: cachedProbe,
-      source_fingerprint: cachedFingerprint.fingerprint,
+      source_fingerprint: cachedSourceFingerprint,
     });
 
     const plan = await planMediaProbesForProject(project, {
