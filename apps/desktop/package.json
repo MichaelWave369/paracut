@@ -1,9 +1,9 @@
 {
   "name": "@paracut/desktop",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
-  "description": "ParaCut desktop shell scaffold for local-first project workflows.",
+  "description": "ParaCut desktop shell and runtime scaffold for local-first project workflows.",
   "scripts": {
     "dev": "tsx src/dev-preview.ts",
     "typecheck": "tsc -p ../../tsconfig.base.json --noEmit"
