@@ -169,6 +169,7 @@ Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platfor
 - [x] Probe planning bridge
 - [x] Cached probe application bridge
 - [x] Probe plan runner bridge
+- [x] Probe progress model
 - [ ] Real FFprobe execution adapter
 - [ ] Thumbnail extraction adapter
 - [ ] Waveform extraction adapter
@@ -189,6 +190,7 @@ Goal: save and reload probe results so unchanged media can avoid unnecessary re-
 - [x] Probe planning cache-hit/cache-miss bridge
 - [x] Cached probe application bridge
 - [x] Probe plan runner cache write-back
+- [x] Probe progress event model
 - [ ] Probe cache pruning policy
 - [ ] FFprobe execution adapter integration
 
@@ -208,6 +210,7 @@ Goal: derive stable local source fingerprints so probe cache lookup can become a
 - [x] Probe planning cache-hit/cache-miss bridge
 - [x] Cached probe application bridge
 - [x] Probe plan runner bridge
+- [x] Probe progress event model
 - [ ] Strong hash adapter for user-selected deep verification
 
 ## v0.13 — Probe Planning Bridge
@@ -227,6 +230,7 @@ Goal: plan probe work before running FFprobe or mutating media metadata.
 - [x] Cached probe application bridge
 - [x] Probe executor interface boundary
 - [x] Feed `needs-probe` items through injected runner bridge
+- [x] Probe progress event model
 - [ ] Execute needs-probe items through real FFprobe adapter
 - [ ] Probe plan UI panel
 - [ ] Probe plan pruning/refresh policy
@@ -245,6 +249,7 @@ Goal: safely apply cached probe metadata from a probe plan without running FFpro
 - [x] Write cached-application summary receipt
 - [x] Cached probe application smoke test
 - [x] Feed `needs-probe` items into injectable runner bridge
+- [x] Probe progress event model
 - [ ] Feed `needs-probe` items into real FFprobe executor
 - [ ] Probe application UI panel
 - [ ] Cache invalidation refresh policy
@@ -263,6 +268,7 @@ Goal: define the FFprobe execution boundary before spawning external processes.
 - [x] Probe executor smoke test
 - [x] Injectable runner interface and mock harness
 - [x] Feed `needs-probe` plan items through runner bridge
+- [x] Probe progress event model
 - [ ] Real child-process executor
 - [ ] Executable discovery policy
 - [ ] Sandbox/resource-limit policy
@@ -284,6 +290,7 @@ Goal: prove executor orchestration through an injectable runner before enabling 
 - [x] Optional executor receipt output
 - [x] Probe runner smoke test
 - [x] Feed `needs-probe` plan items through runner bridge
+- [x] Probe progress event model
 - [ ] Real child-process runner behind explicit opt-in
 - [ ] Runner timeout enforcement policy
 - [ ] Runner sandbox/resource-limit policy
@@ -302,9 +309,29 @@ Goal: run only planned `needs-probe` items through an injected runner, then appl
 - [x] Save successful probe results back to `.paracut/probes/`
 - [x] Write probe-plan runner summary receipt
 - [x] Probe plan runner smoke test
+- [x] Batch probe progress model
 - [ ] Real FFprobe child-process runner behind explicit opt-in
-- [ ] Batch probe progress model
 - [ ] Probe retry/backoff policy
+
+## v0.18 — Probe Progress Model
+
+Goal: give future UI/orchestration a typed progress stream for batch probe work.
+
+- [x] Probe progress event schema
+- [x] Probe progress batch schema
+- [x] Queued event lane
+- [x] Running event lane
+- [x] Applied event lane
+- [x] Cached event lane
+- [x] Failed event lane
+- [x] Skipped event lane
+- [x] Event-based progress counts
+- [x] Terminal progress count helper
+- [x] Convert probe-plan runner results into progress events
+- [x] Probe progress smoke test
+- [ ] Live progress callback from probe-plan runner bridge
+- [ ] Progress persistence adapter
+- [ ] Probe progress UI panel
 
 ## v1.0 — Creator Workbench
 
