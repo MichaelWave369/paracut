@@ -176,12 +176,12 @@ export function resolveSourceForFingerprint(sourceUri: string, projectRootDir?: 
     };
   }
 
-  if (scheme === "file") {
+  if (source.toLowerCase().startsWith("file://")) {
     const resolvedPath = fileURLToPath(source);
     return {
       source_uri: source,
       normalized_uri: pathToFileURL(resolvedPath).href,
-      scheme,
+      scheme: "file",
       is_local: true,
       resolved_path: resolvedPath,
     };
@@ -191,7 +191,7 @@ export function resolveSourceForFingerprint(sourceUri: string, projectRootDir?: 
   const resolvedPath = isAbsolute(source) ? source : resolve(baseDir, source);
   return {
     source_uri: source,
-    normalized_uri: pathToFileURL(resolvedPath).href,
+    normalized_uri: isAbsolute(source) ? pathToFileURL(resolvedPath).href : source,
     scheme: isAbsolute(source) ? "file" : "relative",
     is_local: true,
     resolved_path: resolvedPath,
@@ -232,8 +232,10 @@ function createNonFingerprintedResult(input: {
 }
 
 function normalizeLocalSourceUri(sourceUri: string, resolvedPath: string): string {
+  if (sourceUri.trim().toLowerCase().startsWith("file://")) {
+    return pathToFileURL(fileURLToPath(sourceUri)).href;
+  }
   const scheme = detectSourceFingerprintScheme(sourceUri);
-  if (scheme === "file") return pathToFileURL(fileURLToPath(sourceUri)).href;
   if (scheme === "relative") return sourceUri.trim();
   return pathToFileURL(resolve(resolvedPath)).href;
 }
