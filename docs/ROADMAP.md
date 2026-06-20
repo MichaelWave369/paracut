@@ -90,10 +90,13 @@ Goal: assistant suggestions enter the same ledger as manual edits.
 
 - [x] Suggestion model
 - [x] Human approve/reject contract
+- [x] Suggestion-to-project bridge
+- [x] Suggestion-to-receipt bridge
+- [x] Proposed/approved/rejected/applied receipt lifecycle
+- [x] AI approval smoke test
 - [ ] Caption generation adapter
 - [ ] Silence detection adapter
 - [ ] Scene detection adapter
-- [ ] Suggestion-to-receipt bridge
 - [ ] AI receipt viewer
 
 ## v0.7 — Desktop Runtime Wiring
