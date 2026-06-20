@@ -1,21 +1,24 @@
 {
   "name": "paracut",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "ParaCut: local-first AI-assisted video editor where the timeline is a ledger.",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
-    "smoke": "tsx scripts/smoke-test.ts",
+    "smoke:core": "tsx scripts/smoke-test.ts",
+    "smoke:file": "tsx scripts/file-adapter-smoke-test.ts",
+    "smoke": "pnpm smoke:core && pnpm smoke:file",
     "test": "pnpm smoke",
-    "dev:desktop": "echo \"Desktop shell scaffold only. Build timeline/ledger core first.\""
+    "dev:desktop": "echo \"Desktop shell scaffold only. Build timeline/ledger/file adapter core first.\""
   },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "devDependencies": {
+    "@types/node": "^22.10.0",
     "tsx": "^4.19.0",
     "typescript": "^5.0.0"
   }
