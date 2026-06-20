@@ -98,26 +98,26 @@ async function main(): Promise<void> {
     expectEqual(result.counts.failed_count, 0, "runner should not fail this plan");
 
     const needsResult = result.items.find((item) => item.asset_id === "asset_needs_probe");
-    expectTrue(needsResult !== undefined, "needs-probe result should exist");
+    if (needsResult === undefined) throw new Error("needs-probe result should exist");
     expectEqual(needsResult.status, "applied", "needs-probe item should be applied");
     expectTrue(needsResult.request !== undefined, "applied item should include request");
     expectTrue(needsResult.probe !== undefined, "applied item should include probe");
     expectTrue(needsResult.cache_write !== undefined, "applied item should include cache write");
 
     const cachedResult = result.items.find((item) => item.asset_id === "asset_cached");
-    expectTrue(cachedResult !== undefined, "cached result should exist");
+    if (cachedResult === undefined) throw new Error("cached result should exist");
     expectEqual(cachedResult.status, "skipped", "cache-hit item should not be re-run");
     expectEqual(cachedResult.skip_reason, "not-needs-probe", "cache-hit skip reason should be not-needs-probe");
 
     const enrichedAsset = getProjectMedia(project, "asset_needs_probe");
-    expectTrue(enrichedAsset !== undefined, "enriched asset should exist");
+    if (enrichedAsset === undefined) throw new Error("enriched asset should exist");
     expectEqual(enrichedAsset.duration_seconds, 12.5, "duration should be applied from probe metadata");
     expectEqual(enrichedAsset.metadata?.width, 1920, "width should be applied from probe metadata");
     expectEqual(enrichedAsset.metadata?.height, 1080, "height should be applied from probe metadata");
     expectEqual(enrichedAsset.metadata?.codec, "h264", "codec should be applied from probe metadata");
 
     const stillUnappliedCachedAsset = getProjectMedia(project, "asset_cached");
-    expectTrue(stillUnappliedCachedAsset !== undefined, "cached asset should exist");
+    if (stillUnappliedCachedAsset === undefined) throw new Error("cached asset should exist");
     expectEqual(stillUnappliedCachedAsset.duration_seconds, undefined, "cache-hit item should remain untouched by runner bridge");
 
     const replan = await planMediaProbesForProject(project, {
