@@ -10,6 +10,13 @@ import {
 } from "../../probe-executor-core/src/index";
 import type { ProbePlan, ProbePlanItem } from "../../probe-planning-core/src/index";
 import {
+  createProbeProgressBatch,
+  createProbeProgressEvent,
+  type ProbeProgressBatch,
+  type ProbeProgressEvent,
+  type ProbeProgressEventType,
+} from "../../probe-progress-core/src/index";
+import {
   executeProbeWithRunner,
   getProbeRunnerId,
   type ExecuteProbeWithRunnerInput,
@@ -27,6 +34,8 @@ export type ProbePlanRunnerSkipReason =
   | "probe-not-successful"
   | "cache-write-failed";
 
+export type ProbePlanRunnerProgressHandler = (event: ProbeProgressEvent) => void | Promise<void>;
+
 export interface RunProbePlanWithRunnerInput {
   project: ParaCutProject;
   plan: ProbePlan;
@@ -38,6 +47,13 @@ export interface RunProbePlanWithRunnerInput {
   include_summary_receipt?: boolean;
   cache_successful_results?: boolean;
   summary_created_at?: string;
+  include_progress_batch?: boolean;
+  progress_batch_id?: string;
+  progress_created_at?: string;
+  include_queued_progress_events?: boolean;
+  include_running_progress_events?: boolean;
+  include_cached_progress_events?: boolean;
+  on_progress_event?: ProbePlanRunnerProgressHandler;
 }
 
 export interface ProbePlanRunnerItemResult {
@@ -75,6 +91,7 @@ export interface ProbePlanRunnerResult {
   items: ProbePlanRunnerItemResult[];
   counts: ProbePlanRunnerCounts;
   summary_receipt?: LedgerReceipt;
+  progress_batch?: ProbeProgressBatch;
 }
 
 interface CreateItemResultInput {
@@ -100,11 +117,20 @@ export async function runProbePlanWithRunner(
   const includeSummaryReceipt = input.include_summary_receipt ?? true;
   const cacheSuccessfulResults = input.cache_successful_results ?? true;
   const createdAt = input.summary_created_at ?? input.requested_at ?? new Date().toISOString();
+  const progress = createProgressController(input, runnerId, createdAt);
 
   let project = input.project;
   const items: ProbePlanRunnerItemResult[] = [];
 
   for (const item of input.plan.items) {
+    if (progress !== undefined && progress.include_queued_events) {
+      await emitPlanItemProgress(progress, input.plan, runnerId, item, {
+        event_type: "queued",
+        message: `Probe work queued for ${item.asset_id}.`,
+        created_at: progress.created_at,
+      });
+    }
+
     const itemInput: RunProbePlanItemInput = {
       project,
       plan: input.plan,
@@ -117,11 +143,16 @@ export async function runProbePlanWithRunner(
     if (input.executable_path !== undefined) itemInput.executable_path = input.executable_path;
     if (input.timeout_ms !== undefined) itemInput.timeout_ms = input.timeout_ms;
     if (input.requested_at !== undefined) itemInput.requested_at = input.requested_at;
+    if (progress !== undefined) itemInput.progress = progress;
 
     const result = await runProbePlanItem(itemInput);
 
     project = result.project;
     items.push(result.item_result);
+
+    if (progress !== undefined) {
+      await emitTerminalProgressForRunnerItem(progress, input.plan, runnerId, result.item_result);
+    }
   }
 
   const counts = summarizeProbePlanRunnerItems(items);
@@ -149,6 +180,17 @@ export async function runProbePlanWithRunner(
   };
 
   if (summaryReceipt !== undefined) result.summary_receipt = summaryReceipt;
+  if (progress !== undefined && progress.collect_batch) {
+    result.progress_batch = createProbeProgressBatch({
+      batch_id: progress.batch_id,
+      project_id: input.project.project_id,
+      plan_id: input.plan.plan_id,
+      runner_id: runnerId,
+      created_at: inferFirstProgressEventTime(progress.events) ?? progress.created_at,
+      updated_at: inferLastProgressEventTime(progress.events) ?? progress.created_at,
+      events: progress.events,
+    });
+  }
   return result;
 }
 
@@ -174,6 +216,7 @@ interface RunProbePlanItemInput {
   requested_at?: string;
   include_executor_receipt: boolean;
   cache_successful_result: boolean;
+  progress?: ProbePlanRunnerProgressController;
 }
 
 interface RunProbePlanItemOutput {
@@ -204,6 +247,15 @@ async function runProbePlanItem(input: RunProbePlanItemInput): Promise<RunProbeP
   if (input.timeout_ms !== undefined) requestInput.timeout_ms = input.timeout_ms;
   if (input.requested_at !== undefined) requestInput.requested_at = input.requested_at;
   const request = createProbeExecutionRequest(requestInput);
+
+  if (input.progress !== undefined && input.progress.include_running_events) {
+    await emitPlanItemProgress(input.progress, input.plan, input.runner_id, input.item, {
+      event_type: "running",
+      message: `Probe runner started for ${input.item.asset_id}.`,
+      created_at: request.requested_at,
+      request_id: request.request_id,
+    });
+  }
 
   const runnerInput: ExecuteProbeWithRunnerInput = {
     request,
@@ -325,6 +377,148 @@ function createItemResult(
   if (input.cache_write !== undefined) result.cache_write = input.cache_write;
 
   return result;
+}
+
+interface ProbePlanRunnerProgressController {
+  batch_id: string;
+  created_at: string;
+  collect_batch: boolean;
+  include_queued_events: boolean;
+  include_running_events: boolean;
+  include_cached_events: boolean;
+  events: ProbeProgressEvent[];
+  handler?: ProbePlanRunnerProgressHandler;
+}
+
+interface CreateProgressEventForPlanItemInput {
+  event_type: ProbeProgressEventType;
+  message: string;
+  created_at: string;
+  request_id?: string;
+  reason?: string;
+}
+
+function createProgressController(
+  input: RunProbePlanWithRunnerInput,
+  runnerId: string,
+  createdAt: string,
+): ProbePlanRunnerProgressController | undefined {
+  const collectBatch = input.include_progress_batch ?? false;
+  if (!collectBatch && input.on_progress_event === undefined) return undefined;
+
+  const controller: ProbePlanRunnerProgressController = {
+    batch_id: input.progress_batch_id ?? `probe_progress_${safeId(input.plan.plan_id)}`,
+    created_at: input.progress_created_at ?? createdAt,
+    collect_batch: collectBatch,
+    include_queued_events: input.include_queued_progress_events ?? true,
+    include_running_events: input.include_running_progress_events ?? true,
+    include_cached_events: input.include_cached_progress_events ?? true,
+    events: [],
+  };
+  if (input.on_progress_event !== undefined) controller.handler = input.on_progress_event;
+  void runnerId;
+  return controller;
+}
+
+async function emitPlanItemProgress(
+  progress: ProbePlanRunnerProgressController,
+  plan: ProbePlan,
+  runnerId: string,
+  item: ProbePlanItem | ProbePlanRunnerItemResult,
+  input: CreateProgressEventForPlanItemInput,
+): Promise<void> {
+  const eventInput = {
+    batch_id: progress.batch_id,
+    project_id: plan.project_id,
+    plan_id: plan.plan_id,
+    runner_id: runnerId,
+    asset_id: item.asset_id,
+    source_uri: item.source_uri,
+    event_type: input.event_type,
+    message: input.message,
+    created_at: input.created_at,
+  };
+  if (input.request_id !== undefined) Object.assign(eventInput, { request_id: input.request_id });
+  if (input.reason !== undefined) Object.assign(eventInput, { reason: input.reason });
+
+  await emitProgressEvent(progress, createProbeProgressEvent(eventInput));
+}
+
+async function emitTerminalProgressForRunnerItem(
+  progress: ProbePlanRunnerProgressController,
+  plan: ProbePlan,
+  runnerId: string,
+  item: ProbePlanRunnerItemResult,
+): Promise<void> {
+  const terminalTime = item.probe?.probed_at ?? item.execution?.ended_at ?? progress.created_at;
+  const requestId = item.request?.request_id;
+
+  if (item.status === "applied") {
+    await emitPlanItemProgress(progress, plan, runnerId, item, {
+      event_type: "applied",
+      message: `Probe metadata applied for ${item.asset_id}.`,
+      created_at: terminalTime,
+      request_id: requestId,
+      reason: item.reason,
+    });
+
+    if (progress.include_cached_events && item.cache_write !== undefined) {
+      await emitPlanItemProgress(progress, plan, runnerId, item, {
+        event_type: "cached",
+        message: `Probe metadata cached for ${item.asset_id}.`,
+        created_at: terminalTime,
+        request_id: requestId,
+        reason: item.cache_write.record.cache_key,
+      });
+    }
+    return;
+  }
+
+  if (item.status === "failed") {
+    await emitPlanItemProgress(progress, plan, runnerId, item, {
+      event_type: "failed",
+      message: `Probe failed for ${item.asset_id}.`,
+      created_at: terminalTime,
+      request_id: requestId,
+      reason: item.reason,
+    });
+    return;
+  }
+
+  if (item.plan_status === "cache-hit" && progress.include_cached_events) {
+    await emitPlanItemProgress(progress, plan, runnerId, item, {
+      event_type: "cached",
+      message: `Probe cache hit available for ${item.asset_id}.`,
+      created_at: terminalTime,
+      request_id: requestId,
+      reason: item.reason,
+    });
+    return;
+  }
+
+  await emitPlanItemProgress(progress, plan, runnerId, item, {
+    event_type: "skipped",
+    message: `Probe skipped for ${item.asset_id}.`,
+    created_at: terminalTime,
+    request_id: requestId,
+    reason: item.reason,
+  });
+}
+
+async function emitProgressEvent(
+  progress: ProbePlanRunnerProgressController,
+  event: ProbeProgressEvent,
+): Promise<void> {
+  if (progress.collect_batch) progress.events.push(event);
+  if (progress.handler !== undefined) await progress.handler(event);
+}
+
+function inferFirstProgressEventTime(events: ProbeProgressEvent[]): string | undefined {
+  return events[0]?.created_at;
+}
+
+function inferLastProgressEventTime(events: ProbeProgressEvent[]): string | undefined {
+  return events.at(-1)?.created_at;
 }
 
 export function createProbePlanRunnerReceipt(
