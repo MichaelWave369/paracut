@@ -111,7 +111,24 @@ Goal: move from shell contract to a local app runtime command bridge.
 - [ ] Project open/save native dialog interface
 - [ ] Render static shell layout through app window
 - [ ] Add native app menu draft
-- [ ] Add local settings file
+
+## v0.8 — Local Settings Layer
+
+Goal: add creator memory without introducing cloud accounts or databases.
+
+- [x] App settings schema
+- [x] Default panel preference
+- [x] Default export preset preference
+- [x] Autosave preference flag
+- [x] Recent project folder list
+- [x] Settings JSON read/write adapter
+- [x] Load-or-create settings helper
+- [x] Desktop runtime settings load/save bridge
+- [x] Runtime recent-project updates on open/save-as
+- [x] Settings smoke test
+- [ ] Native app config directory resolver
+- [ ] Settings panel UI
+- [ ] Settings migration framework
 
 ## v1.0 — Creator Workbench
 
