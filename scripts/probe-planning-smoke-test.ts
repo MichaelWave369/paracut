@@ -88,6 +88,12 @@ const cachedFingerprint = await fingerprintSource({
 });
 expectEqual(cachedFingerprint.status, "fingerprinted", "Cached source should fingerprint");
 expectTrue(cachedFingerprint.fingerprint !== undefined, "Cached source should include fingerprint string");
+expectTrue(cachedFingerprint.size_bytes !== undefined, "Cached source should include file size");
+const cachedSourceFingerprint = cachedFingerprint.fingerprint;
+const cachedSizeBytes = cachedFingerprint.size_bytes;
+if (cachedSourceFingerprint === undefined || cachedSizeBytes === undefined) {
+  throw new Error("Cached source fingerprint was not narrowed");
+}
 
 const cachedProbe = createMediaProbeResult({
   asset_id: "asset_cached_video",
@@ -96,14 +102,14 @@ const cachedProbe = createMediaProbeResult({
   source: "mock",
   status: "probed",
   probed_at: "2026-06-19T00:06:00.000Z",
-  container: { duration_seconds: 12, size_bytes: cachedFingerprint.size_bytes },
+  container: { duration_seconds: 12, size_bytes: cachedSizeBytes },
   video: { codec: "h264", width: 1920, height: 1080, fps: 30 },
 });
 
 const cacheInput = sourceFingerprintToProbeCacheInput(cachedFingerprint, "asset_cached_video");
 await saveProbeResultToCache(rootDir, {
   result: cachedProbe,
-  source_fingerprint: cacheInput.source_fingerprint,
+  source_fingerprint: cachedSourceFingerprint,
   cached_at: "2026-06-19T00:07:00.000Z",
 });
 
@@ -125,6 +131,8 @@ expectEqual(cacheHit.asset_id, "asset_cached_video", "Cache-hit item should be t
 expectTrue(cacheHit.cached_probe !== undefined, "Cache-hit item should include cached probe result");
 expectEqual(cacheHit.cached_probe?.metadata?.video?.codec, "h264", "Cached probe metadata should be available on plan item");
 expectTrue(cacheHit.cache_key !== undefined, "Cache-hit item should include cache key");
+expectEqual(cacheHit.cache_key_input?.source_fingerprint, cachedSourceFingerprint, "Cache-hit item should use the source fingerprint for lookup");
+expectEqual(cacheInput.source_fingerprint, cachedSourceFingerprint, "Explicit cache input should use the narrowed fingerprint");
 
 const needsProbe = findItem(plan.items, "needs-probe");
 expectEqual(needsProbe.asset_id, "asset_needs_probe_audio", "Needs-probe item should be the uncached local audio");
