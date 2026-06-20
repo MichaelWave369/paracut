@@ -1,4 +1,4 @@
-# ParaCut Ledger Events v0.1
+# ParaCut Ledger Events v0.6
 
 ParaCut uses receipts to record meaningful project actions.
 
@@ -26,7 +26,7 @@ The ledger is append-only by default. State can be derived from the project file
 | `type` | Namespaced event type. |
 | `project_id` | Project the event belongs to. |
 | `source` | Manual, automation, AI, import, render, system. |
-| `approved_by` | Human, policy, system, or pending. |
+| `approved_by` | Human, policy, system, pending, or rejected. |
 | `created_at` | ISO timestamp. |
 | `payload` | Event-specific data. |
 
@@ -76,6 +76,7 @@ rejected    Proposed and rejected
 - `clip.added`
 - `clip.moved`
 - `clip.trimmed`
+- `clip.split`
 - `clip.cut`
 - `clip.deleted`
 - `clip.enabled`
@@ -98,55 +99,57 @@ rejected    Proposed and rejected
 
 ### AI
 
-- `ai.suggestion.created`
-- `ai.suggestion.accepted`
+- `ai.suggestion.proposed`
+- `ai.suggestion.approved`
 - `ai.suggestion.rejected`
+- `ai.suggestion.applied`
 - `ai.caption.generated`
 - `ai.scene.detected`
 - `ai.silence.detected`
 
 ### Render
 
-- `render.job.created`
+- `render.queued`
+- `render.plan.created`
 - `render.started`
 - `render.completed`
 - `render.failed`
 
-## Example: Clip Cut
+## Example: Clip Split
 
 ```json
 {
   "event_id": "evt_000042",
-  "type": "clip.cut",
+  "type": "clip.split",
   "project_id": "project_001",
   "source": "manual",
   "approved_by": "human",
   "created_at": "2026-06-19T12:00:00-07:00",
   "payload": {
     "clip_id": "clip_001",
-    "track_id": "track_video_001",
-    "timecode_seconds": 12.482,
-    "created_clip_ids": ["clip_001a", "clip_001b"]
+    "at": 12.482,
+    "left_clip_id": "clip_001a",
+    "right_clip_id": "clip_001b"
   }
 }
 ```
 
-## Example: AI Suggestion
+## Example: AI Suggestion Proposed
 
 ```json
 {
   "event_id": "evt_000087",
-  "type": "ai.suggestion.created",
+  "type": "ai.suggestion.proposed",
   "project_id": "project_001",
   "source": "ai",
   "approved_by": "pending",
   "created_at": "2026-06-19T12:00:00-07:00",
   "payload": {
     "suggestion_id": "sug_001",
-    "kind": "remove_silence",
-    "confidence": 0.82,
-    "model": "local-or-cloud-provider",
-    "summary": "Detected 4.2 seconds of silence near the start."
+    "kind": "caption",
+    "status": "draft",
+    "summary": "Add an intro caption card.",
+    "rationale": "The opening beat needs context."
   }
 }
 ```
