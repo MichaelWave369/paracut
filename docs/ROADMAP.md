@@ -164,10 +164,11 @@ Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platfor
 - [x] Probe-to-project application bridge
 - [x] Completed/failed/skipped probe receipt lifecycle
 - [x] Media probe smoke test
-- [ ] Real FFprobe execution adapter
+- [x] Probe executor interface boundary
 - [x] Probe cache file adapter
 - [x] Probe planning bridge
 - [x] Cached probe application bridge
+- [ ] Real FFprobe execution adapter
 - [ ] Thumbnail extraction adapter
 - [ ] Waveform extraction adapter
 
@@ -221,6 +222,7 @@ Goal: plan probe work before running FFprobe or mutating media metadata.
 - [x] Probe-plan receipt lifecycle
 - [x] Probe planning smoke test
 - [x] Cached probe application bridge
+- [x] Probe executor interface boundary
 - [ ] Execute needs-probe items through real FFprobe adapter
 - [ ] Probe plan UI panel
 - [ ] Probe plan pruning/refresh policy
@@ -241,6 +243,23 @@ Goal: safely apply cached probe metadata from a probe plan without running FFpro
 - [ ] Feed `needs-probe` items into real FFprobe executor
 - [ ] Probe application UI panel
 - [ ] Cache invalidation refresh policy
+
+## v0.15 — Probe Executor Interface
+
+Goal: define the FFprobe execution boundary before spawning external processes.
+
+- [x] Probe execution request schema
+- [x] Canonical FFprobe args helper
+- [x] Timeout/executable path contract
+- [x] Stdout/stderr/exit-code result schema
+- [x] FFprobe JSON parser into media probe metadata
+- [x] Execution-to-probe-result conversion
+- [x] Completed/failed/timed-out/skipped executor receipt lifecycle
+- [x] Probe executor smoke test
+- [ ] Real child-process executor
+- [ ] Executable discovery policy
+- [ ] Sandbox/resource-limit policy
+- [ ] Feed `needs-probe` plan items through executor
 
 ## v1.0 — Creator Workbench
 
