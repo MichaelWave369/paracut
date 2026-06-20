@@ -30,7 +30,7 @@ export interface DesktopProjectSummary {
 
 export interface DesktopShellState {
   app_name: "ParaCut";
-  shell_version: "0.7.0";
+  shell_version: "0.8.0";
   active_panel: DesktopPanel;
   project: ParaCutProject | null;
   folder: ProjectFolderSnapshot | null;
@@ -51,7 +51,7 @@ export const DESKTOP_SHELL_PANELS: DesktopPanel[] = [
 export function createDesktopShellState(): DesktopShellState {
   return {
     app_name: "ParaCut",
-    shell_version: "0.7.0",
+    shell_version: "0.8.0",
     active_panel: "timeline",
     project: null,
     folder: null,
