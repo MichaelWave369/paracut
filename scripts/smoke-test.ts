@@ -64,6 +64,8 @@ project = addClipToProject(project, {
   source: { start: 0, end: 10 },
 });
 
+// Trim source 2-10 onto timeline 0-8, then split at timeline 4.
+// Moving the right half to timeline start 5 produces a final render span of 0-9.
 project = trimClipInProject(
   project,
   "clip_intro",
@@ -101,7 +103,7 @@ expectEqual(project.render_jobs.length, 1, "Render job count should match");
 expectEqual(project.ledger.length, 10, "Receipt count should match");
 expectEqual(plan.inputs.length, 1, "Render plan input count should match");
 expectEqual(plan.clips.length, 2, "Render plan clip count should match");
-expectEqual(plan.duration_seconds, 13, "Render plan duration should match");
+expectEqual(plan.duration_seconds, 9, "Render plan duration should match");
 expectTrue(commandPreview.includes("ffmpeg"), "Command preview should include ffmpeg");
 expectTrue(
   commandPreview.includes("exports/paracut-smoke.mp4"),
