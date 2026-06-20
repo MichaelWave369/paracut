@@ -166,7 +166,7 @@ export function resolveSourceForFingerprint(sourceUri: string, projectRootDir?: 
 
   const scheme = detectSourceFingerprintScheme(source);
 
-  if (scheme === "http" || scheme === "https" || scheme === "data") {
+  if (scheme === "http" || scheme === "https" || scheme === "data" || scheme === "unknown") {
     return {
       source_uri: source,
       normalized_uri: source,
