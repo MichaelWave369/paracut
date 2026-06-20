@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -16,14 +16,15 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 
 - **Local-first projects**: project folders remain readable and portable.
 - **Timeline as data**: clips, tracks, captions, effects, and exports live in structured project files.
-- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, and exports are logged.
+- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, and exports are logged.
 - **Human-approved AI**: AI may suggest edits, captions, scenes, or exports, but the creator stays in control.
+- **Auditable render plans**: a queued render becomes an inspectable FFmpeg-style plan before execution.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.2 core loop scaffold
+**Stage:** v0.3 render planner scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -32,8 +33,9 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 3. Creating timeline tracks.
 4. Adding, trimming, splitting, moving, and deleting clips.
 5. Queueing render jobs.
-6. Recording each meaningful action as a receipt.
-7. Running a smoke test against the first project/timeline/ledger loop.
+6. Converting timeline + media + export preset into an auditable render plan.
+7. Recording each meaningful action, including render-plan creation, as a receipt.
+8. Running a smoke test against the first project/timeline/ledger/render-plan loop.
 
 ## Quick Start
 
@@ -43,7 +45,7 @@ pnpm typecheck
 pnpm smoke
 ```
 
-The smoke test creates a sample project in memory, performs timeline edits, queues a vertical export job, and verifies the receipt count.
+The smoke test creates a sample project in memory, performs timeline edits, queues a vertical export job, creates an FFmpeg-style render plan, and verifies the receipt count.
 
 ## Repository Layout
 
@@ -56,7 +58,7 @@ paracut/
     ledger-core/      # Receipt/event model
     media-core/       # Media asset model
     project-core/     # Project orchestration layer
-    render-core/      # Export/render job model
+    render-core/      # Export/render job and render-plan model
     timeline-core/    # Timeline state and reducer logic
     ui-kit/           # Shared UI primitives later
   scripts/
@@ -66,6 +68,8 @@ paracut/
     PROJECT_FORMAT.md
     LEDGER_EVENTS.md
     ROADMAP.md
+    V0_2_BUILD_NOTES.md
+    V0_3_RENDER_PLANNER.md
   examples/
     sample-project/
 ```
@@ -78,7 +82,7 @@ The first real version should do six things well:
 2. Place clips on a timeline.
 3. Cut, trim, move, and delete clips.
 4. Save/load a readable project file.
-5. Export through a render job definition.
+5. Export through an auditable render job and render plan.
 6. Append every action to a receipt log.
 
 ## License
