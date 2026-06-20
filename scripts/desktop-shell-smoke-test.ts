@@ -23,7 +23,7 @@ const summary = getDesktopShellProjectSummary(state);
 if (!summary) throw new Error("Desktop shell should expose a project summary");
 
 expectEqual(state.app_name, "ParaCut", "Desktop app name should match");
-expectEqual(state.shell_version, "0.5.0", "Desktop shell version should match");
+expectEqual(state.shell_version, "0.7.0", "Desktop shell version should match");
 expectEqual(state.active_panel, "timeline", "Desktop shell should start on timeline panel");
 expectEqual(state.dirty, false, "Loaded sample shell should be clean");
 expectEqual(canSaveDesktopProject(state), false, "In-memory sample project should not be save-ready without a folder");
