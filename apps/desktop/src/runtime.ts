@@ -4,6 +4,13 @@ import {
   type ProjectFolderSnapshot,
 } from "../../../packages/file-adapter-core/src/index";
 import type { ParaCutProject } from "../../../packages/project-core/src/index";
+import {
+  addRecentProjectFolder,
+  createDefaultAppSettings,
+  loadOrCreateAppSettings,
+  writeAppSettingsFile,
+  type AppSettings,
+} from "../../../packages/settings-core/src/index";
 
 import {
   attachProjectToDesktopShell,
@@ -15,7 +22,8 @@ import {
 
 export interface DesktopRuntimeState {
   shell: DesktopShellState;
-  runtime_version: "0.7.0";
+  settings: AppSettings;
+  runtime_version: "0.8.0";
   last_command_id: DesktopRuntimeCommandId | null;
 }
 
@@ -24,17 +32,29 @@ export type DesktopRuntimeCommandId =
   | "project.open_folder"
   | "project.save"
   | "project.save_as"
-  | "project.replace_in_memory";
+  | "project.replace_in_memory"
+  | "settings.load"
+  | "settings.save"
+  | "settings.replace_in_memory";
 
 export interface DesktopRuntimeResult {
   runtime: DesktopRuntimeState;
   folder: ProjectFolderSnapshot | null;
 }
 
-export function createDesktopRuntimeState(shell = createDesktopShellState()): DesktopRuntimeState {
+export interface DesktopSettingsResult {
+  runtime: DesktopRuntimeState;
+  settings_path: string | null;
+}
+
+export function createDesktopRuntimeState(
+  shell = createDesktopShellState(),
+  settings = createDefaultAppSettings(),
+): DesktopRuntimeState {
   return {
     shell,
-    runtime_version: "0.7.0",
+    settings,
+    runtime_version: "0.8.0",
     last_command_id: "runtime.create",
   };
 }
@@ -45,10 +65,21 @@ export async function openProjectFolderInDesktopRuntime(
   openedAt = new Date().toISOString(),
 ): Promise<DesktopRuntimeResult> {
   const folder = await loadProjectFolder(rootDir);
+  const settings = addRecentProjectFolder(
+    runtime.settings,
+    {
+      project_id: folder.project.project_id,
+      name: folder.project.name,
+      root_dir: folder.paths.root_dir,
+      opened_at: openedAt,
+    },
+    openedAt,
+  );
 
   return {
     runtime: {
       ...runtime,
+      settings,
       shell: attachProjectToDesktopShell(runtime.shell, folder.project, folder, openedAt),
       last_command_id: "project.open_folder",
     },
@@ -93,10 +124,21 @@ export async function saveDesktopRuntimeProjectAs(
   }
 
   const savedFolder = await saveProjectFolder(project, rootDir);
+  const settings = addRecentProjectFolder(
+    runtime.settings,
+    {
+      project_id: savedFolder.project.project_id,
+      name: savedFolder.project.name,
+      root_dir: savedFolder.paths.root_dir,
+      opened_at: savedAt,
+    },
+    savedAt,
+  );
 
   return {
     runtime: {
       ...runtime,
+      settings,
       shell: markDesktopShellSaved(runtime.shell, savedFolder, savedAt),
       last_command_id: "project.save_as",
     },
@@ -119,6 +161,46 @@ export function replaceDesktopRuntimeProject(
       statusMessage,
     ),
     last_command_id: "project.replace_in_memory",
+  };
+}
+
+export async function loadDesktopRuntimeSettings(
+  runtime: DesktopRuntimeState,
+  settingsRootDir: string,
+): Promise<DesktopSettingsResult> {
+  const settings = await loadOrCreateAppSettings(settingsRootDir);
+  return {
+    runtime: {
+      ...runtime,
+      settings,
+      last_command_id: "settings.load",
+    },
+    settings_path: null,
+  };
+}
+
+export async function saveDesktopRuntimeSettings(
+  runtime: DesktopRuntimeState,
+  settingsRootDir: string,
+): Promise<DesktopSettingsResult> {
+  const settingsPath = await writeAppSettingsFile(runtime.settings, settingsRootDir);
+  return {
+    runtime: {
+      ...runtime,
+      last_command_id: "settings.save",
+    },
+    settings_path: settingsPath,
+  };
+}
+
+export function replaceDesktopRuntimeSettings(
+  runtime: DesktopRuntimeState,
+  settings: AppSettings,
+): DesktopRuntimeState {
+  return {
+    ...runtime,
+    settings,
+    last_command_id: "settings.replace_in_memory",
   };
 }
 
