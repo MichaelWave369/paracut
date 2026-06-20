@@ -20,6 +20,10 @@ export interface AssistantSuggestion {
   payload: Record<string, unknown>;
   created_at: string;
   reviewed_at?: string;
+  reviewed_by?: string;
+  review_note?: string;
+  applied_at?: string;
+  applied_by?: string;
 }
 
 export interface CreateAssistantSuggestionInput {
@@ -30,6 +34,17 @@ export interface CreateAssistantSuggestionInput {
   rationale?: string;
   payload?: Record<string, unknown>;
   created_at?: string;
+}
+
+export interface AssistantSuggestionReviewInput {
+  reviewed_at?: string;
+  reviewed_by?: string;
+  review_note?: string;
+}
+
+export interface AssistantSuggestionApplyInput {
+  applied_at?: string;
+  applied_by?: string;
 }
 
 export function createAssistantSuggestion(input: CreateAssistantSuggestionInput): AssistantSuggestion {
@@ -52,28 +67,45 @@ export function createAssistantSuggestion(input: CreateAssistantSuggestionInput)
 export function approveSuggestion(
   suggestion: AssistantSuggestion,
   reviewedAt = new Date().toISOString(),
+  reviewedBy = "human",
+  reviewNote?: string,
 ): AssistantSuggestion {
+  if (suggestion.status !== "draft") {
+    throw new Error(`Only draft suggestions can be approved. Current status: ${suggestion.status}`);
+  }
+
   return {
     ...suggestion,
     status: "approved",
     reviewed_at: reviewedAt,
+    reviewed_by: reviewedBy,
+    ...(reviewNote ? { review_note: reviewNote } : {}),
   };
 }
 
 export function rejectSuggestion(
   suggestion: AssistantSuggestion,
   reviewedAt = new Date().toISOString(),
+  reviewedBy = "human",
+  reviewNote?: string,
 ): AssistantSuggestion {
+  if (suggestion.status !== "draft") {
+    throw new Error(`Only draft suggestions can be rejected. Current status: ${suggestion.status}`);
+  }
+
   return {
     ...suggestion,
     status: "rejected",
     reviewed_at: reviewedAt,
+    reviewed_by: reviewedBy,
+    ...(reviewNote ? { review_note: reviewNote } : {}),
   };
 }
 
 export function markSuggestionApplied(
   suggestion: AssistantSuggestion,
-  reviewedAt = suggestion.reviewed_at ?? new Date().toISOString(),
+  appliedAt = new Date().toISOString(),
+  appliedBy = "human",
 ): AssistantSuggestion {
   if (suggestion.status !== "approved") {
     throw new Error("Only approved suggestions can be marked applied");
@@ -82,6 +114,7 @@ export function markSuggestionApplied(
   return {
     ...suggestion,
     status: "applied",
-    reviewed_at: reviewedAt,
+    applied_at: appliedAt,
+    applied_by: appliedBy,
   };
 }
