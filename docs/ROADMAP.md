@@ -66,10 +66,19 @@ Goal: make project state portable before the desktop UI exists.
 
 ## v0.5 — Desktop App Shell
 
-Goal: create a usable local desktop workspace.
+Goal: create a tested desktop shell state before native runtime complexity.
 
-- [ ] Tauri or Electron decision
-- [ ] Project open/save interface
+- [x] Tauri-first decision boundary documented
+- [x] Desktop shell package
+- [x] Project-loaded shell state
+- [x] Active panel state
+- [x] Project summary model
+- [x] Command readiness model
+- [x] Static workspace mock
+- [x] Desktop preview script
+- [x] Desktop shell smoke test
+- [ ] Real Tauri runtime wiring
+- [ ] Project open/save native dialog interface
 - [ ] Media shelf interface
 - [ ] Basic timeline interface
 - [ ] Inspector panel
@@ -86,6 +95,17 @@ Goal: assistant suggestions enter the same ledger as manual edits.
 - [ ] Scene detection adapter
 - [ ] Suggestion-to-receipt bridge
 - [ ] AI receipt viewer
+
+## v0.7 — Desktop Runtime Wiring
+
+Goal: move from shell contract to a local app runtime.
+
+- [ ] Add Tauri app runtime
+- [ ] Wire open project command to file adapter
+- [ ] Wire save project command to file adapter
+- [ ] Render static shell layout through app window
+- [ ] Add native app menu draft
+- [ ] Add local settings file
 
 ## v1.0 — Creator Workbench
 
