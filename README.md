@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, safe probe runner stubs, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -31,12 +31,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Probe planning bridge**: v0.13 plans each media asset as `cache-hit`, `needs-probe`, `missing-source`, or `unsupported-source` before any real probing runs.
 - **Cached probe application**: v0.14 applies only valid `cache-hit` probe metadata to project media assets and records a summary receipt.
 - **Probe executor interface**: v0.15 defines the FFprobe request/result/receipt boundary before spawning any external process.
+- **Probe runner stub**: v0.16 adds an injectable runner harness and deterministic mock runner without spawning FFprobe.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.15 probe executor interface scaffold
+**Stage:** v0.16 probe executor runner stub
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -78,7 +79,9 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 36. Normalizing executor stdout/stderr/exit/timeout results.
 37. Parsing FFprobe JSON into ParaCut probe metadata.
 38. Recording probe executor completed/failed/timed-out/skipped receipts.
-39. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, cached probe application loop, and probe executor loop.
+39. Running probe executor requests through an injectable runner interface.
+40. Using a deterministic mock probe runner for success, failure, timeout, skipped, and thrown-runner cases.
+41. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, cached probe application loop, probe executor loop, and probe runner loop.
 
 ## Quick Start
 
@@ -115,6 +118,8 @@ The cached probe application smoke test consumes a probe plan, applies only the 
 
 The probe executor smoke test builds a canonical FFprobe request, parses realistic FFprobe JSON, converts execution output into a media probe result, and records completed/failed/timed-out executor receipts without launching FFprobe.
 
+The probe runner smoke test runs executor requests through an injectable mock runner, covering success, non-zero exit, timeout, skipped, and thrown-runner normalization without launching FFprobe.
+
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
 
 ## Repository Layout
@@ -134,6 +139,7 @@ paracut/
     probe-cache-core/     # Local probe result cache adapter
     probe-executor-core/  # FFprobe executor request/result/receipt boundary
     probe-planning-core/  # Probe planning bridge across fingerprint/cache/probe lanes
+    probe-runner-core/    # Injectable probe runner and mock harness
     project-core/         # Project orchestration layer
     render-core/          # Export/render job and render-plan model
     settings-core/        # Local app settings and recent-project memory
@@ -154,6 +160,7 @@ paracut/
     probe-planning-smoke-test.ts   # Probe planning bridge smoke test
     cached-probe-application-smoke-test.ts # Cached probe application smoke test
     probe-executor-smoke-test.ts   # Probe executor boundary smoke test
+    probe-runner-smoke-test.ts     # Probe runner harness smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -173,6 +180,7 @@ paracut/
     V0_13_PROBE_PLANNING_BRIDGE.md
     V0_14_CACHED_PROBE_APPLICATION.md
     V0_15_PROBE_EXECUTOR_INTERFACE.md
+    V0_16_PROBE_RUNNER_STUB.md
   examples/
     sample-project/
 ```
