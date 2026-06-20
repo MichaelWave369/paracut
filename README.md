@@ -21,6 +21,55 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
+## Current Status
+
+**Stage:** v0.2 core loop scaffold
+
+ParaCut is not a working editor yet, but it now has a typed foundation for:
+
+1. Creating a project.
+2. Importing media.
+3. Creating timeline tracks.
+4. Adding, trimming, splitting, moving, and deleting clips.
+5. Queueing render jobs.
+6. Recording each meaningful action as a receipt.
+7. Running a smoke test against the first project/timeline/ledger loop.
+
+## Quick Start
+
+```bash
+pnpm install
+pnpm typecheck
+pnpm smoke
+```
+
+The smoke test creates a sample project in memory, performs timeline edits, queues a vertical export job, and verifies the receipt count.
+
+## Repository Layout
+
+```txt
+paracut/
+  apps/
+    desktop/          # Future desktop app
+  packages/
+    ai-core/          # AI suggestion and approval contracts
+    ledger-core/      # Receipt/event model
+    media-core/       # Media asset model
+    project-core/     # Project orchestration layer
+    render-core/      # Export/render job model
+    timeline-core/    # Timeline state and reducer logic
+    ui-kit/           # Shared UI primitives later
+  scripts/
+    smoke-test.ts     # First living core-loop test
+  docs/
+    MASTER_SPEC.md
+    PROJECT_FORMAT.md
+    LEDGER_EVENTS.md
+    ROADMAP.md
+  examples/
+    sample-project/
+```
+
 ## Initial Build Target
 
 The first real version should do six things well:
@@ -31,34 +80,6 @@ The first real version should do six things well:
 4. Save/load a readable project file.
 5. Export through a render job definition.
 6. Append every action to a receipt log.
-
-## Repository Layout
-
-```txt
-paracut/
-  apps/
-    desktop/          # Future desktop shell
-  packages/
-    ai-core/          # AI suggestion and approval contracts
-    ledger-core/      # Receipt/event model
-    media-core/       # Media asset model
-    render-core/      # Export/render job model
-    timeline-core/    # Timeline state and reducer logic
-    ui-kit/           # Shared UI primitives later
-  docs/
-    MASTER_SPEC.md
-    PROJECT_FORMAT.md
-    LEDGER_EVENTS.md
-    ROADMAP.md
-  examples/
-    sample-project/
-```
-
-## Status
-
-**Stage:** v0.1 scaffold
-
-This repo is not yet a working editor. The first milestone is a clean project/timeline/ledger core that can support a real desktop editor without becoming a tangled UI-first codebase.
 
 ## License
 
