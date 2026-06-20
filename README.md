@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -27,12 +27,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Safe media references**: v0.9 imports media as references, infers kind/name/intent, preserves rights notes, and prepares future proxy/thumbnail/waveform/cache targets without copying large files.
 - **Media probe contracts**: v0.10 defines duration, dimensions, codecs, audio, bitrate, stream, warning, and error metadata without running FFmpeg yet.
 - **Probe cache adapter**: v0.11 saves and reloads probe results under `.paracut/probes/` so unchanged media can avoid re-probing later.
+- **Source fingerprints**: v0.12 derives local file fingerprints from filesystem stats so probe cache lookup can be automatic.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.11 probe cache adapter scaffold
+**Stage:** v0.12 source fingerprint adapter scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -63,7 +64,9 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 25. Applying successful probe metadata to project media assets and recording probe receipts.
 26. Recording failed/skipped probe receipts without corrupting existing asset metadata.
 27. Saving and loading media probe cache records from `.paracut/probes/`.
-28. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, and probe cache loop.
+28. Deriving local source fingerprints from file size and modified time.
+29. Using source fingerprints to hit or miss probe cache records.
+30. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, and source fingerprint loop.
 
 ## Quick Start
 
@@ -92,6 +95,8 @@ The media probe smoke test applies mock probe metadata to a media asset, verifie
 
 The probe cache smoke test writes a probe record to `.paracut/probes/`, reloads it, verifies metadata survives, and confirms changed fingerprints miss the cache.
 
+The source fingerprint smoke test fingerprints a local file, uses that fingerprint for a probe cache hit, changes the file, verifies a cache miss, then checks relative, remote, and missing-source behavior.
+
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
 
 ## Repository Layout
@@ -111,18 +116,20 @@ paracut/
     project-core/         # Project orchestration layer
     render-core/          # Export/render job and render-plan model
     settings-core/        # Local app settings and recent-project memory
+    source-fingerprint-core/ # Local filesystem source fingerprint adapter
     timeline-core/        # Timeline state and reducer logic
     ui-kit/               # Shared UI primitives later
   scripts/
-    smoke-test.ts                 # Core project/timeline/render smoke test
-    file-adapter-smoke-test.ts    # Project folder persistence smoke test
-    desktop-shell-smoke-test.ts   # Desktop shell smoke test
-    desktop-runtime-smoke-test.ts # Desktop runtime open/save smoke test
-    settings-smoke-test.ts        # Local app settings smoke test
-    ai-approval-smoke-test.ts     # AI proposal/review/application smoke test
-    media-import-smoke-test.ts    # Media import adapter smoke test
-    media-probe-smoke-test.ts     # Media probe metadata smoke test
-    probe-cache-smoke-test.ts     # Probe cache adapter smoke test
+    smoke-test.ts                  # Core project/timeline/render smoke test
+    file-adapter-smoke-test.ts     # Project folder persistence smoke test
+    desktop-shell-smoke-test.ts    # Desktop shell smoke test
+    desktop-runtime-smoke-test.ts  # Desktop runtime open/save smoke test
+    settings-smoke-test.ts         # Local app settings smoke test
+    ai-approval-smoke-test.ts      # AI proposal/review/application smoke test
+    media-import-smoke-test.ts     # Media import adapter smoke test
+    media-probe-smoke-test.ts      # Media probe metadata smoke test
+    probe-cache-smoke-test.ts      # Probe cache adapter smoke test
+    source-fingerprint-smoke-test.ts # Local source fingerprint smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -138,6 +145,7 @@ paracut/
     V0_9_MEDIA_IMPORT_ADAPTER.md
     V0_10_MEDIA_PROBE_CONTRACT.md
     V0_11_PROBE_CACHE_ADAPTER.md
+    V0_12_SOURCE_FINGERPRINT_ADAPTER.md
   examples/
     sample-project/
 ```
