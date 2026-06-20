@@ -32,8 +32,6 @@ Goal: prove timeline state can be mutated through pure operations and logged as 
 - [x] Receipt JSONL serialize/parse helpers
 - [x] Smoke test script
 - [x] Basic CI workflow
-- [ ] Save/load project JSON from disk
-- [ ] Receipt JSONL disk adapter
 
 ## v0.3 — Render Contract Prototype
 
@@ -52,7 +50,21 @@ Goal: create auditable render plans before integrating a full render engine.
 - [ ] Error receipt capture
 - [ ] Real FFmpeg execution adapter
 
-## v0.4 — Desktop App
+## v0.4 — File Adapter Layer
+
+Goal: make project state portable before the desktop UI exists.
+
+- [x] Save/load project JSON from disk
+- [x] Receipt JSONL disk adapter
+- [x] Project folder manifest
+- [x] Manifest/project/receipt consistency checks
+- [x] File adapter smoke test
+- [ ] Media copy/import adapter
+- [ ] Proxy folder adapter
+- [ ] Thumbnail folder adapter
+- [ ] Render output folder adapter
+
+## v0.5 — Desktop App Shell
 
 Goal: create a usable local desktop workspace.
 
@@ -63,7 +75,7 @@ Goal: create a usable local desktop workspace.
 - [ ] Inspector panel
 - [ ] Receipt viewer
 
-## v0.5 — AI Approval Loop
+## v0.6 — AI Approval Loop
 
 Goal: assistant suggestions enter the same ledger as manual edits.
 
