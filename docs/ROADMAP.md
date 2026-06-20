@@ -182,10 +182,27 @@ Goal: save and reload probe results so unchanged media can avoid unnecessary re-
 - [x] Cache lookup helper with miss handling
 - [x] Runtime cache/probe consistency validation
 - [x] Probe cache smoke test
-- [ ] Source fingerprint adapter from real filesystem stats
+- [x] Source fingerprint adapter from real filesystem stats
 - [ ] Probe cache pruning policy
 - [ ] Probe-from-import batch bridge
 - [ ] FFprobe execution adapter integration
+
+## v0.12 — Source Fingerprint Adapter
+
+Goal: derive stable local source fingerprints so probe cache lookup can become automatic.
+
+- [x] Source fingerprint result schema
+- [x] Stat-based fingerprint algorithm
+- [x] Local `file://` source support
+- [x] Absolute path support
+- [x] Relative path support against project root
+- [x] Missing source status
+- [x] Unsupported remote/data/unknown scheme status
+- [x] Probe-cache key input bridge
+- [x] Source fingerprint smoke test
+- [ ] Fingerprint-from-media-import bridge
+- [ ] Probe planning cache-hit/cache-miss bridge
+- [ ] Strong hash adapter for user-selected deep verification
 
 ## v1.0 — Creator Workbench
 
