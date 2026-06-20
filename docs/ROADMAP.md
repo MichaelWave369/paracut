@@ -59,6 +59,7 @@ Goal: make project state portable before the desktop UI exists.
 - [x] Project folder manifest
 - [x] Manifest/project/receipt consistency checks
 - [x] File adapter smoke test
+- [x] Media reference/import adapter
 - [ ] Media copy/import adapter
 - [ ] Proxy folder adapter
 - [ ] Thumbnail folder adapter
@@ -129,6 +130,27 @@ Goal: add creator memory without introducing cloud accounts or databases.
 - [ ] Native app config directory resolver
 - [ ] Settings panel UI
 - [ ] Settings migration framework
+
+## v0.9 — Media Import Adapter
+
+Goal: make media import explicit, portable, and receipt-aware before copying or probing large files.
+
+- [x] Safe source URI normalization
+- [x] Media kind inference from URI/data MIME/extension
+- [x] Name and asset ID inference
+- [x] Rights note preservation and default warning
+- [x] Local/remote/data scheme detection
+- [x] Reference-only import policy
+- [x] Future proxy/thumbnail/waveform/cache target paths
+- [x] Batch import model
+- [x] Duplicate inferred asset ID handling within a batch
+- [x] Batch import receipt after individual media receipts
+- [x] Media import smoke test
+- [ ] Real file picker adapter
+- [ ] Media probing adapter for duration/codec/size
+- [ ] Copy-to-project-media adapter
+- [ ] Proxy generation adapter
+- [ ] Thumbnail generation adapter
 
 ## v1.0 — Creator Workbench
 
