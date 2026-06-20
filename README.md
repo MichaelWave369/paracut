@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -28,12 +28,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Media probe contracts**: v0.10 defines duration, dimensions, codecs, audio, bitrate, stream, warning, and error metadata without running FFmpeg yet.
 - **Probe cache adapter**: v0.11 saves and reloads probe results under `.paracut/probes/` so unchanged media can avoid re-probing later.
 - **Source fingerprints**: v0.12 derives local file fingerprints from filesystem stats so probe cache lookup can be automatic.
+- **Probe planning bridge**: v0.13 plans each media asset as `cache-hit`, `needs-probe`, `missing-source`, or `unsupported-source` before any real probing runs.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.12 source fingerprint adapter scaffold
+**Stage:** v0.13 probe planning bridge scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -66,7 +67,9 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 27. Saving and loading media probe cache records from `.paracut/probes/`.
 28. Deriving local source fingerprints from file size and modified time.
 29. Using source fingerprints to hit or miss probe cache records.
-30. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, and source fingerprint loop.
+30. Planning media probe work as cache hits, probe-needed assets, missing sources, or unsupported sources.
+31. Recording a probe-plan receipt without running FFprobe or mutating media metadata.
+32. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, and probe planning loop.
 
 ## Quick Start
 
@@ -97,6 +100,8 @@ The probe cache smoke test writes a probe record to `.paracut/probes/`, reloads 
 
 The source fingerprint smoke test fingerprints a local file, uses that fingerprint for a probe cache hit, changes the file, verifies a cache miss, then checks relative, remote, and missing-source behavior.
 
+The probe planning smoke test builds a mixed media project, checks `cache-hit`, `needs-probe`, `missing-source`, and `unsupported-source` lanes, then records the plan as a receipt.
+
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
 
 ## Repository Layout
@@ -113,6 +118,7 @@ paracut/
     media-import-core/    # Safe media import references and batch application
     media-probe-core/     # Media probe metadata and project enrichment contract
     probe-cache-core/     # Local probe result cache adapter
+    probe-planning-core/  # Probe planning bridge across fingerprint/cache/probe lanes
     project-core/         # Project orchestration layer
     render-core/          # Export/render job and render-plan model
     settings-core/        # Local app settings and recent-project memory
@@ -130,6 +136,7 @@ paracut/
     media-probe-smoke-test.ts      # Media probe metadata smoke test
     probe-cache-smoke-test.ts      # Probe cache adapter smoke test
     source-fingerprint-smoke-test.ts # Local source fingerprint smoke test
+    probe-planning-smoke-test.ts   # Probe planning bridge smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -146,6 +153,7 @@ paracut/
     V0_10_MEDIA_PROBE_CONTRACT.md
     V0_11_PROBE_CACHE_ADAPTER.md
     V0_12_SOURCE_FINGERPRINT_ADAPTER.md
+    V0_13_PROBE_PLANNING_BRIDGE.md
   examples/
     sample-project/
 ```
