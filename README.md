@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -21,13 +21,14 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Auditable render plans**: a queued render becomes an inspectable FFmpeg-style plan before execution.
 - **Portable folder spine**: `project.json`, `receipts.jsonl`, and `manifest.json` form the v0.4 persistence contract.
 - **Desktop shell first**: v0.5 proves project summary, active panel state, command readiness, and static workspace layout before a heavy GUI runtime.
+- **Desktop runtime bridge**: v0.7 wires open/save/save-as project folder commands over the file adapter for a future Tauri command layer.
 - **Assistant suggestion inbox**: v0.6 stores AI proposals in project state and logs proposal, approval, rejection, and application receipts.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.6 AI approval loop scaffold
+**Stage:** v0.7 desktop runtime wiring scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -43,9 +44,13 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 10. Holding desktop shell state for a loaded project.
 11. Summarizing project counts for UI panels.
 12. Building command readiness states for open/save/import/render/receipts.
-13. Storing assistant suggestions on the project.
-14. Logging AI proposal, approval, rejection, and application receipts.
-15. Running smoke tests against the core loop, file adapter loop, desktop shell loop, and AI approval loop.
+13. Opening a project folder through the desktop runtime.
+14. Saving the loaded runtime project back to its attached folder.
+15. Saving the loaded runtime project as a new folder.
+16. Replacing the in-memory runtime project after command mutations.
+17. Storing assistant suggestions on the project.
+18. Logging AI proposal, approval, rejection, and application receipts.
+19. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, and AI approval loop.
 
 ## Quick Start
 
@@ -62,6 +67,8 @@ The file smoke test creates a temp project folder, saves `project.json`, `receip
 
 The desktop shell smoke test loads a sample project into shell state, checks panel switching, checks command readiness, and verifies the sample project summary.
 
+The desktop runtime smoke test creates a temp project folder, opens it through the runtime, mutates the loaded project, saves it, saves it as a second folder, and validates manifest counts.
+
 The AI approval smoke test proposes, approves, applies, and rejects assistant suggestions while confirming every state transition is receipt-tracked.
 
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
@@ -71,7 +78,7 @@ The AI approval smoke test proposes, approves, applies, and rejects assistant su
 ```txt
 paracut/
   apps/
-    desktop/              # Desktop shell scaffold and static mock
+    desktop/              # Desktop shell, runtime wiring, and static mock
   packages/
     ai-core/              # AI suggestion and approval contracts
     file-adapter-core/    # Project folder save/load adapter
@@ -82,10 +89,11 @@ paracut/
     timeline-core/        # Timeline state and reducer logic
     ui-kit/               # Shared UI primitives later
   scripts/
-    smoke-test.ts               # Core project/timeline/render smoke test
-    file-adapter-smoke-test.ts  # Project folder persistence smoke test
-    desktop-shell-smoke-test.ts # Desktop shell smoke test
-    ai-approval-smoke-test.ts   # AI proposal/review/application smoke test
+    smoke-test.ts                 # Core project/timeline/render smoke test
+    file-adapter-smoke-test.ts    # Project folder persistence smoke test
+    desktop-shell-smoke-test.ts   # Desktop shell smoke test
+    desktop-runtime-smoke-test.ts # Desktop runtime open/save smoke test
+    ai-approval-smoke-test.ts     # AI proposal/review/application smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -96,6 +104,7 @@ paracut/
     V0_4_FILE_ADAPTER.md
     V0_5_DESKTOP_SHELL.md
     V0_6_AI_APPROVAL_LOOP.md
+    V0_7_DESKTOP_RUNTIME.md
   examples/
     sample-project/
 ```
