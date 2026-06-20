@@ -165,10 +165,27 @@ Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platfor
 - [x] Completed/failed/skipped probe receipt lifecycle
 - [x] Media probe smoke test
 - [ ] Real FFprobe execution adapter
-- [ ] Probe cache file adapter
+- [x] Probe cache file adapter
 - [ ] Probe-from-import batch bridge
 - [ ] Thumbnail extraction adapter
 - [ ] Waveform extraction adapter
+
+## v0.11 — Probe Cache Adapter
+
+Goal: save and reload probe results so unchanged media can avoid unnecessary re-probing later.
+
+- [x] Probe cache record schema
+- [x] Deterministic cache key helper
+- [x] `.paracut/probes/` folder convention
+- [x] Save probe cache record helper
+- [x] Load probe cache record helper
+- [x] Cache lookup helper with miss handling
+- [x] Runtime cache/probe consistency validation
+- [x] Probe cache smoke test
+- [ ] Source fingerprint adapter from real filesystem stats
+- [ ] Probe cache pruning policy
+- [ ] Probe-from-import batch bridge
+- [ ] FFprobe execution adapter integration
 
 ## v1.0 — Creator Workbench
 
