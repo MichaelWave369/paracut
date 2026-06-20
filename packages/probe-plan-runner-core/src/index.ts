@@ -3,12 +3,18 @@ import { applyMediaProbeResultToProject, type MediaProbeResult } from "../../med
 import { saveProbeResultToCache, type ProbeCacheWriteResult } from "../../probe-cache-core/src/index";
 import {
   createProbeExecutionRequest,
+  type CreateProbeExecutionRequestInput,
   type ProbeExecutionRequest,
   type ProbeExecutionResult,
   type ProbeExecutor,
 } from "../../probe-executor-core/src/index";
 import type { ProbePlan, ProbePlanItem } from "../../probe-planning-core/src/index";
-import { executeProbeWithRunner, getProbeRunnerId, type ProbeRunner } from "../../probe-runner-core/src/index";
+import {
+  executeProbeWithRunner,
+  getProbeRunnerId,
+  type ExecuteProbeWithRunnerInput,
+  type ProbeRunner,
+} from "../../probe-runner-core/src/index";
 import { getProjectMedia, type ParaCutProject } from "../../project-core/src/index";
 
 export const PROBE_PLAN_RUNNER_SCHEMA_VERSION = "paracut.probe-plan-runner.v0" as const;
@@ -71,6 +77,17 @@ export interface ProbePlanRunnerResult {
   summary_receipt?: LedgerReceipt;
 }
 
+interface CreateItemResultInput {
+  status: ProbePlanRunnerItemStatus;
+  reason: string;
+  skip_reason?: ProbePlanRunnerSkipReason;
+  request?: ProbeExecutionRequest;
+  execution?: ProbeExecutionResult;
+  probe?: MediaProbeResult;
+  executor_receipt?: LedgerReceipt;
+  cache_write?: ProbeCacheWriteResult;
+}
+
 export async function runProbePlanWithRunner(
   input: RunProbePlanWithRunnerInput,
 ): Promise<ProbePlanRunnerResult> {
@@ -88,18 +105,20 @@ export async function runProbePlanWithRunner(
   const items: ProbePlanRunnerItemResult[] = [];
 
   for (const item of input.plan.items) {
-    const result = await runProbePlanItem({
+    const itemInput: RunProbePlanItemInput = {
       project,
       plan: input.plan,
       item,
       runner: input.runner,
       runner_id: runnerId,
-      executable_path: input.executable_path,
-      timeout_ms: input.timeout_ms,
-      requested_at: input.requested_at,
       include_executor_receipt: includeExecutorReceipts,
       cache_successful_result: cacheSuccessfulResults,
-    });
+    };
+    if (input.executable_path !== undefined) itemInput.executable_path = input.executable_path;
+    if (input.timeout_ms !== undefined) itemInput.timeout_ms = input.timeout_ms;
+    if (input.requested_at !== undefined) itemInput.requested_at = input.requested_at;
+
+    const result = await runProbePlanItem(itemInput);
 
     project = result.project;
     items.push(result.item_result);
@@ -176,23 +195,25 @@ async function runProbePlanItem(input: RunProbePlanItemInput): Promise<RunProbeP
     return skippedItem(input.item, "missing-cache-key-input", "Needs-probe item did not include cache key input.", input.project);
   }
 
-  const request = createProbeExecutionRequest({
+  const requestInput: CreateProbeExecutionRequestInput = {
     asset,
     project_id: input.project.project_id,
-    executable_path: input.executable_path,
-    timeout_ms: input.timeout_ms,
-    requested_at: input.requested_at,
     request_id: createPlanRunnerRequestId(input.plan.plan_id, asset.asset_id),
-  });
+  };
+  if (input.executable_path !== undefined) requestInput.executable_path = input.executable_path;
+  if (input.timeout_ms !== undefined) requestInput.timeout_ms = input.timeout_ms;
+  if (input.requested_at !== undefined) requestInput.requested_at = input.requested_at;
+  const request = createProbeExecutionRequest(requestInput);
 
-  const runnerOutput = await executeProbeWithRunner({
+  const runnerInput: ExecuteProbeWithRunnerInput = {
     request,
     runner: input.runner,
     runner_id: input.runner_id,
     project_id: input.project.project_id,
     include_receipt: input.include_executor_receipt,
-    failed_at: input.requested_at,
-  });
+  };
+  if (input.requested_at !== undefined) runnerInput.failed_at = input.requested_at;
+  const runnerOutput = await executeProbeWithRunner(runnerInput);
 
   let project = input.project;
   if (runnerOutput.receipt !== undefined) {
@@ -204,17 +225,18 @@ async function runProbePlanItem(input: RunProbePlanItemInput): Promise<RunProbeP
   }
 
   if (runnerOutput.probe.status !== "probed" || runnerOutput.probe.metadata === undefined) {
+    const failedInput: CreateItemResultInput = {
+      status: "failed",
+      reason: runnerOutput.probe.errors[0] ?? runnerOutput.probe.warnings[0] ?? "Probe runner did not produce successful metadata.",
+      skip_reason: "probe-not-successful",
+      request,
+      execution: runnerOutput.execution,
+      probe: runnerOutput.probe,
+    };
+    if (runnerOutput.receipt !== undefined) failedInput.executor_receipt = runnerOutput.receipt;
     return {
       project,
-      item_result: createItemResult(input.item, {
-        status: "failed",
-        reason: runnerOutput.probe.errors[0] ?? runnerOutput.probe.warnings[0] ?? "Probe runner did not produce successful metadata.",
-        skip_reason: "probe-not-successful",
-        request,
-        execution: runnerOutput.execution,
-        probe: runnerOutput.probe,
-        executor_receipt: runnerOutput.receipt,
-      }),
+      item_result: createItemResult(input.item, failedInput),
     };
   }
 
@@ -224,39 +246,45 @@ async function runProbePlanItem(input: RunProbePlanItemInput): Promise<RunProbeP
   let cacheWrite: ProbeCacheWriteResult | undefined;
   if (input.cache_successful_result) {
     try {
-      cacheWrite = await saveProbeResultToCache(input.plan.project_root_dir, {
+      const cacheInput = {
         result: runnerOutput.probe,
-        source_fingerprint: input.item.cache_key_input.source_fingerprint,
-      });
+      };
+      if (input.item.cache_key_input.source_fingerprint !== undefined) {
+        Object.assign(cacheInput, { source_fingerprint: input.item.cache_key_input.source_fingerprint });
+      }
+      cacheWrite = await saveProbeResultToCache(input.plan.project_root_dir, cacheInput);
     } catch (error) {
+      const cacheFailureInput: CreateItemResultInput = {
+        status: "failed",
+        reason: `Probe metadata was applied but cache write failed: ${error instanceof Error ? error.message : String(error)}`,
+        skip_reason: "cache-write-failed",
+        request,
+        execution: runnerOutput.execution,
+        probe: runnerOutput.probe,
+      };
+      if (runnerOutput.receipt !== undefined) cacheFailureInput.executor_receipt = runnerOutput.receipt;
       return {
         project,
-        item_result: createItemResult(input.item, {
-          status: "failed",
-          reason: `Probe metadata was applied but cache write failed: ${error instanceof Error ? error.message : String(error)}`,
-          skip_reason: "cache-write-failed",
-          request,
-          execution: runnerOutput.execution,
-          probe: runnerOutput.probe,
-          executor_receipt: runnerOutput.receipt,
-        }),
+        item_result: createItemResult(input.item, cacheFailureInput),
       };
     }
   }
 
+  const appliedInput: CreateItemResultInput = {
+    status: "applied",
+    reason: cacheWrite === undefined
+      ? "Probe runner produced metadata and it was applied to the project."
+      : "Probe runner produced metadata, it was applied to the project, and it was cached.",
+    request,
+    execution: runnerOutput.execution,
+    probe: runnerOutput.probe,
+  };
+  if (runnerOutput.receipt !== undefined) appliedInput.executor_receipt = runnerOutput.receipt;
+  if (cacheWrite !== undefined) appliedInput.cache_write = cacheWrite;
+
   return {
     project,
-    item_result: createItemResult(input.item, {
-      status: "applied",
-      reason: cacheWrite === undefined
-        ? "Probe runner produced metadata and it was applied to the project."
-        : "Probe runner produced metadata, it was applied to the project, and it was cached.",
-      request,
-      execution: runnerOutput.execution,
-      probe: runnerOutput.probe,
-      executor_receipt: runnerOutput.receipt,
-      cache_write: cacheWrite,
-    }),
+    item_result: createItemResult(input.item, appliedInput),
   };
 }
 
@@ -278,16 +306,7 @@ function skippedItem(
 
 function createItemResult(
   item: ProbePlanItem,
-  input: {
-    status: ProbePlanRunnerItemStatus;
-    reason: string;
-    skip_reason?: ProbePlanRunnerSkipReason;
-    request?: ProbeExecutionRequest;
-    execution?: ProbeExecutionResult;
-    probe?: MediaProbeResult;
-    executor_receipt?: LedgerReceipt;
-    cache_write?: ProbeCacheWriteResult;
-  },
+  input: CreateItemResultInput,
 ): ProbePlanRunnerItemResult {
   const result: ProbePlanRunnerItemResult = {
     schema_version: PROBE_PLAN_RUNNER_SCHEMA_VERSION,
@@ -312,9 +331,9 @@ export function createProbePlanRunnerReceipt(
   plan: ProbePlan,
   runnerId: string,
   items: ProbePlanRunnerItemResult[],
+  counts: ProbePlanRunnerCounts,
   createdAt = new Date().toISOString(),
 ): LedgerReceipt {
-  const counts = summarizeProbePlanRunnerItems(items);
   return createReceipt({
     type: "media.probe.plan.runner.created",
     project_id: plan.project_id,
