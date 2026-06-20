@@ -256,10 +256,32 @@ Goal: define the FFprobe execution boundary before spawning external processes.
 - [x] Execution-to-probe-result conversion
 - [x] Completed/failed/timed-out/skipped executor receipt lifecycle
 - [x] Probe executor smoke test
+- [x] Injectable runner interface and mock harness
 - [ ] Real child-process executor
 - [ ] Executable discovery policy
 - [ ] Sandbox/resource-limit policy
 - [ ] Feed `needs-probe` plan items through executor
+
+## v0.16 — Probe Executor Runner Stub
+
+Goal: prove executor orchestration through an injectable runner before enabling real process spawning.
+
+- [x] Probe runner schema
+- [x] `ProbeRunner` interface with `runner_id`
+- [x] `executeProbeWithRunner()` orchestration helper
+- [x] Deterministic mock runner fixtures
+- [x] Success fixture path
+- [x] Non-zero exit fixture path
+- [x] Timed-out fixture path
+- [x] Unmatched fixture skipped path
+- [x] Thrown-runner exception normalization
+- [x] Request-id mismatch normalization
+- [x] Optional executor receipt output
+- [x] Probe runner smoke test
+- [ ] Real child-process runner behind explicit opt-in
+- [ ] Runner timeout enforcement policy
+- [ ] Runner sandbox/resource-limit policy
+- [ ] Feed `needs-probe` plan items through runner
 
 ## v1.0 — Creator Workbench
 
