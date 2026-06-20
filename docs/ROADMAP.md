@@ -28,10 +28,12 @@ Goal: prove timeline state can be mutated through pure operations and logged as 
 - [x] Delete clip helper
 - [x] Append receipt helper
 - [x] Queue render job helper
+- [x] Project JSON serialize/parse helpers
+- [x] Receipt JSONL serialize/parse helpers
 - [x] Smoke test script
 - [x] Basic CI workflow
 - [ ] Save/load project JSON from disk
-- [ ] Receipt JSONL file adapter
+- [ ] Receipt JSONL disk adapter
 
 ## v0.3 — Render Contract Prototype
 
