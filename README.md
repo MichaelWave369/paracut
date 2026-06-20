@@ -21,12 +21,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Auditable render plans**: a queued render becomes an inspectable FFmpeg-style plan before execution.
 - **Portable folder spine**: `project.json`, `receipts.jsonl`, and `manifest.json` form the v0.4 persistence contract.
 - **Desktop shell first**: v0.5 proves project summary, active panel state, command readiness, and static workspace layout before a heavy GUI runtime.
+- **Assistant suggestion inbox**: v0.6 stores AI proposals in project state and logs proposal, approval, rejection, and application receipts.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.5 desktop shell scaffold
+**Stage:** v0.6 AI approval loop scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -42,7 +43,9 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 10. Holding desktop shell state for a loaded project.
 11. Summarizing project counts for UI panels.
 12. Building command readiness states for open/save/import/render/receipts.
-13. Running smoke tests against the core loop, file adapter loop, and desktop shell loop.
+13. Storing assistant suggestions on the project.
+14. Logging AI proposal, approval, rejection, and application receipts.
+15. Running smoke tests against the core loop, file adapter loop, desktop shell loop, and AI approval loop.
 
 ## Quick Start
 
@@ -58,6 +61,8 @@ The core smoke test creates a sample project in memory, performs timeline edits,
 The file smoke test creates a temp project folder, saves `project.json`, `receipts.jsonl`, and `manifest.json`, reloads them, validates counts, and removes the temp folder.
 
 The desktop shell smoke test loads a sample project into shell state, checks panel switching, checks command readiness, and verifies the sample project summary.
+
+The AI approval smoke test proposes, approves, applies, and rejects assistant suggestions while confirming every state transition is receipt-tracked.
 
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
 
@@ -80,6 +85,7 @@ paracut/
     smoke-test.ts               # Core project/timeline/render smoke test
     file-adapter-smoke-test.ts  # Project folder persistence smoke test
     desktop-shell-smoke-test.ts # Desktop shell smoke test
+    ai-approval-smoke-test.ts   # AI proposal/review/application smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -89,6 +95,7 @@ paracut/
     V0_3_RENDER_PLANNER.md
     V0_4_FILE_ADAPTER.md
     V0_5_DESKTOP_SHELL.md
+    V0_6_AI_APPROVAL_LOOP.md
   examples/
     sample-project/
 ```
