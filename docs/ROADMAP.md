@@ -170,6 +170,7 @@ Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platfor
 - [x] Cached probe application bridge
 - [x] Probe plan runner bridge
 - [x] Probe progress model
+- [x] Probe runner progress bridge
 - [ ] Real FFprobe execution adapter
 - [ ] Thumbnail extraction adapter
 - [ ] Waveform extraction adapter
@@ -191,6 +192,7 @@ Goal: save and reload probe results so unchanged media can avoid unnecessary re-
 - [x] Cached probe application bridge
 - [x] Probe plan runner cache write-back
 - [x] Probe progress event model
+- [x] Probe runner progress bridge
 - [ ] Probe cache pruning policy
 - [ ] FFprobe execution adapter integration
 
@@ -211,6 +213,7 @@ Goal: derive stable local source fingerprints so probe cache lookup can become a
 - [x] Cached probe application bridge
 - [x] Probe plan runner bridge
 - [x] Probe progress event model
+- [x] Probe runner progress bridge
 - [ ] Strong hash adapter for user-selected deep verification
 
 ## v0.13 — Probe Planning Bridge
@@ -231,6 +234,7 @@ Goal: plan probe work before running FFprobe or mutating media metadata.
 - [x] Probe executor interface boundary
 - [x] Feed `needs-probe` items through injected runner bridge
 - [x] Probe progress event model
+- [x] Probe runner progress bridge
 - [ ] Execute needs-probe items through real FFprobe adapter
 - [ ] Probe plan UI panel
 - [ ] Probe plan pruning/refresh policy
@@ -250,6 +254,7 @@ Goal: safely apply cached probe metadata from a probe plan without running FFpro
 - [x] Cached probe application smoke test
 - [x] Feed `needs-probe` items into injectable runner bridge
 - [x] Probe progress event model
+- [x] Probe runner progress bridge
 - [ ] Feed `needs-probe` items into real FFprobe executor
 - [ ] Probe application UI panel
 - [ ] Cache invalidation refresh policy
@@ -269,6 +274,7 @@ Goal: define the FFprobe execution boundary before spawning external processes.
 - [x] Injectable runner interface and mock harness
 - [x] Feed `needs-probe` plan items through runner bridge
 - [x] Probe progress event model
+- [x] Probe runner progress bridge
 - [ ] Real child-process executor
 - [ ] Executable discovery policy
 - [ ] Sandbox/resource-limit policy
@@ -291,6 +297,7 @@ Goal: prove executor orchestration through an injectable runner before enabling 
 - [x] Probe runner smoke test
 - [x] Feed `needs-probe` plan items through runner bridge
 - [x] Probe progress event model
+- [x] Probe runner progress bridge
 - [ ] Real child-process runner behind explicit opt-in
 - [ ] Runner timeout enforcement policy
 - [ ] Runner sandbox/resource-limit policy
@@ -310,6 +317,7 @@ Goal: run only planned `needs-probe` items through an injected runner, then appl
 - [x] Write probe-plan runner summary receipt
 - [x] Probe plan runner smoke test
 - [x] Batch probe progress model
+- [x] Live probe progress callback bridge
 - [ ] Real FFprobe child-process runner behind explicit opt-in
 - [ ] Probe retry/backoff policy
 
@@ -329,9 +337,27 @@ Goal: give future UI/orchestration a typed progress stream for batch probe work.
 - [x] Terminal progress count helper
 - [x] Convert probe-plan runner results into progress events
 - [x] Probe progress smoke test
-- [ ] Live progress callback from probe-plan runner bridge
+- [x] Live progress callback from probe-plan runner bridge
+- [x] Optional progress batch returned by probe-plan runner bridge
 - [ ] Progress persistence adapter
 - [ ] Probe progress UI panel
+
+## v0.19 — Probe Runner Progress Bridge
+
+Goal: wire probe progress directly into the probe plan runner bridge so future UI can subscribe during execution.
+
+- [x] Optional progress batch output on `runProbePlanWithRunner()`
+- [x] Optional `on_progress_event` callback on `runProbePlanWithRunner()`
+- [x] Queued events emitted before each plan item is handled
+- [x] Running events emitted before each injected runner call
+- [x] Applied events emitted after successful probe metadata application
+- [x] Cached events emitted for existing cache hits and new cache writes
+- [x] Failed events emitted for unsuccessful runner results
+- [x] Skipped events emitted for non-cache skipped lanes
+- [x] Probe runner progress bridge smoke test
+- [ ] Progress persistence adapter
+- [ ] Probe progress UI panel
+- [ ] Cancellation/retry progress events
 
 ## v1.0 — Creator Workbench
 
