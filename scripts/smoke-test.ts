@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import {
   addClipToProject,
   addTrackToProject,
@@ -12,6 +11,18 @@ import {
   trimClipInProject,
 } from "../packages/project-core/src/index";
 import { DEFAULT_EXPORT_PRESETS, renderPlanToCommandPreview } from "../packages/render-core/src/index";
+
+const assert = (condition: unknown, message: string): asserts condition => {
+  if (!condition) {
+    throw new Error(message);
+  }
+};
+
+const assertEqual = <T>(actual: T, expected: T, message: string): void => {
+  if (actual !== expected) {
+    throw new Error(`${message}. Expected ${String(expected)}, received ${String(actual)}.`);
+  }
+};
 
 const now = "2026-06-19T12:00:00.000-07:00";
 
@@ -64,7 +75,7 @@ project = splitClipInProject(project, "clip_intro", 4, "clip_intro_left", "clip_
 project = moveClipInProject(project, "clip_intro_right", "track_video_2", 5);
 
 const preset = DEFAULT_EXPORT_PRESETS.find((candidate) => candidate.preset_id === "preset_vertical_1080x1920");
-assert.ok(preset, "Vertical export preset should exist");
+assert(preset, "Vertical export preset should exist");
 
 project = queueRenderJobForProject(project, {
   job_id: "render_vertical_test",
@@ -77,17 +88,17 @@ project = planned.project;
 const plan = planned.plan;
 const commandPreview = renderPlanToCommandPreview(plan);
 
-assert.equal(project.media.assets.length, 1);
-assert.equal(project.timeline.tracks.length, 2);
-assert.equal(project.timeline.tracks[0]?.clips.length, 1);
-assert.equal(project.timeline.tracks[1]?.clips.length, 1);
-assert.equal(project.render_jobs.length, 1);
-assert.equal(project.ledger.length, 10);
-assert.equal(plan.inputs.length, 1);
-assert.equal(plan.clips.length, 2);
-assert.equal(plan.duration_seconds, 13);
-assert.ok(commandPreview.includes("ffmpeg"));
-assert.ok(commandPreview.includes("exports/paracut-smoke.mp4"));
+assertEqual(project.media.assets.length, 1, "Media asset count should match");
+assertEqual(project.timeline.tracks.length, 2, "Timeline track count should match");
+assertEqual(project.timeline.tracks[0]?.clips.length, 1, "Track 1 clip count should match");
+assertEqual(project.timeline.tracks[1]?.clips.length, 1, "Track 2 clip count should match");
+assertEqual(project.render_jobs.length, 1, "Render job count should match");
+assertEqual(project.ledger.length, 10, "Receipt count should match");
+assertEqual(plan.inputs.length, 1, "Render plan input count should match");
+assertEqual(plan.clips.length, 2, "Render plan clip count should match");
+assertEqual(plan.duration_seconds, 13, "Render plan duration should match");
+assert(commandPreview.includes("ffmpeg"), "Command preview should include ffmpeg");
+assert(commandPreview.includes("exports/paracut-smoke.mp4"), "Command preview should include output path");
 
 console.log("ParaCut smoke test passed.");
 console.log(`Receipts: ${project.ledger.length}`);
