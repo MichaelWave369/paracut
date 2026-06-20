@@ -10,7 +10,7 @@ import {
   splitClipInProject,
   trimClipInProject,
 } from "../packages/project-core/src/index";
-import { DEFAULT_EXPORT_PRESETS } from "../packages/render-core/src/index";
+import { createRenderPlan, DEFAULT_EXPORT_PRESETS, renderPlanToCommandPreview } from "../packages/render-core/src/index";
 
 const now = "2026-06-19T12:00:00.000-07:00";
 
@@ -67,10 +67,15 @@ assert.ok(preset, "Vertical export preset should exist");
 
 project = queueRenderJobForProject(project, {
   job_id: "render_vertical_test",
-  project_id: project.project_id,
   preset,
   output_uri: "file://exports/paracut-smoke.mp4",
 });
+
+const renderJob = project.render_jobs[0];
+assert.ok(renderJob, "Render job should exist");
+
+const plan = createRenderPlan(renderJob, project.timeline, project.media, now);
+const commandPreview = renderPlanToCommandPreview(plan);
 
 assert.equal(project.media.assets.length, 1);
 assert.equal(project.timeline.tracks.length, 2);
@@ -78,7 +83,15 @@ assert.equal(project.timeline.tracks[0]?.clips.length, 1);
 assert.equal(project.timeline.tracks[1]?.clips.length, 1);
 assert.equal(project.render_jobs.length, 1);
 assert.equal(project.ledger.length, 9);
+assert.equal(plan.inputs.length, 1);
+assert.equal(plan.clips.length, 2);
+assert.equal(plan.duration_seconds, 13);
+assert.ok(commandPreview.includes("ffmpeg"));
+assert.ok(commandPreview.includes("exports/paracut-smoke.mp4"));
 
 console.log("ParaCut smoke test passed.");
 console.log(`Receipts: ${project.ledger.length}`);
+console.log(`Render plan inputs: ${plan.inputs.length}`);
+console.log(`Render plan clips: ${plan.clips.length}`);
+console.log(`Command preview: ${commandPreview}`);
 console.log(`Project JSON bytes: ${serializeProject(project).length}`);
