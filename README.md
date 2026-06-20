@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -16,7 +16,7 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 
 - **Local-first projects**: project folders remain readable and portable.
 - **Timeline as data**: clips, tracks, captions, effects, and exports live in structured project files.
-- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, media probes, and exports are logged.
+- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, media probes, probe cache applications, and exports are logged.
 - **Human-approved AI**: AI may suggest edits, captions, scenes, or exports, but the creator stays in control.
 - **Auditable render plans**: a queued render becomes an inspectable FFmpeg-style plan before execution.
 - **Portable folder spine**: `project.json`, `receipts.jsonl`, and `manifest.json` form the v0.4 persistence contract.
@@ -29,12 +29,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Probe cache adapter**: v0.11 saves and reloads probe results under `.paracut/probes/` so unchanged media can avoid re-probing later.
 - **Source fingerprints**: v0.12 derives local file fingerprints from filesystem stats so probe cache lookup can be automatic.
 - **Probe planning bridge**: v0.13 plans each media asset as `cache-hit`, `needs-probe`, `missing-source`, or `unsupported-source` before any real probing runs.
+- **Cached probe application**: v0.14 applies only valid `cache-hit` probe metadata to project media assets and records a summary receipt.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.13 probe planning bridge scaffold
+**Stage:** v0.14 cached probe application bridge scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -69,7 +70,10 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 29. Using source fingerprints to hit or miss probe cache records.
 30. Planning media probe work as cache hits, probe-needed assets, missing sources, or unsupported sources.
 31. Recording a probe-plan receipt without running FFprobe or mutating media metadata.
-32. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, and probe planning loop.
+32. Applying cached probe metadata for cache-hit plan items only.
+33. Skipping needs-probe, missing-source, and unsupported-source plan items without mutating media.
+34. Recording a cached-probe application summary receipt.
+35. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, and cached probe application loop.
 
 ## Quick Start
 
@@ -102,6 +106,8 @@ The source fingerprint smoke test fingerprints a local file, uses that fingerpri
 
 The probe planning smoke test builds a mixed media project, checks `cache-hit`, `needs-probe`, `missing-source`, and `unsupported-source` lanes, then records the plan as a receipt.
 
+The cached probe application smoke test consumes a probe plan, applies only the cache-hit item, skips every other lane, verifies metadata enrichment, and checks both the normal probe receipt and summary receipt.
+
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
 
 ## Repository Layout
@@ -112,6 +118,7 @@ paracut/
     desktop/              # Desktop shell, runtime wiring, and static mock
   packages/
     ai-core/              # AI suggestion and approval contracts
+    cached-probe-application-core/ # Cached probe metadata application bridge
     file-adapter-core/    # Project folder save/load adapter
     ledger-core/          # Receipt/event model
     media-core/           # Media asset model
@@ -137,6 +144,7 @@ paracut/
     probe-cache-smoke-test.ts      # Probe cache adapter smoke test
     source-fingerprint-smoke-test.ts # Local source fingerprint smoke test
     probe-planning-smoke-test.ts   # Probe planning bridge smoke test
+    cached-probe-application-smoke-test.ts # Cached probe application smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -154,6 +162,7 @@ paracut/
     V0_11_PROBE_CACHE_ADAPTER.md
     V0_12_SOURCE_FINGERPRINT_ADAPTER.md
     V0_13_PROBE_PLANNING_BRIDGE.md
+    V0_14_CACHED_PROBE_APPLICATION.md
   examples/
     sample-project/
 ```
