@@ -35,8 +35,10 @@ try {
   await saveProjectFolder(sampleProject, sourceProjectFolder);
 
   let runtime = createDesktopRuntimeState();
-  expectEqual(runtime.runtime_version, "0.7.0", "Runtime version should match");
-  expectEqual(runtime.shell.shell_version, "0.7.0", "Shell version should match runtime scaffold");
+  expectEqual(runtime.runtime_version, "0.8.0", "Runtime version should match");
+  expectEqual(runtime.shell.shell_version, "0.8.0", "Shell version should match runtime scaffold");
+  expectEqual(runtime.settings.settings_version, "0.8.0", "Settings version should match runtime scaffold");
+  expectEqual(runtime.settings.recent_projects.length, 0, "Fresh runtime should not have recent projects");
   expectEqual(runtime.shell.project, null, "Fresh runtime should not have a project loaded");
 
   const opened = await openProjectFolderInDesktopRuntime(
@@ -51,6 +53,8 @@ try {
   expectTrue(Boolean(runtime.shell.folder), "Open command should attach a folder snapshot");
   expectEqual(runtime.shell.dirty, false, "Opened project should be clean");
   expectEqual(runtime.shell.last_loaded_at, "2026-06-19T13:00:00.000Z", "Open timestamp should be preserved");
+  expectEqual(runtime.settings.recent_projects.length, 1, "Open should add a recent project");
+  expectEqual(runtime.settings.recent_projects[0]?.root_dir, sourceProjectFolder, "Recent project should point at opened folder");
 
   const openSummary = getDesktopShellProjectSummary(runtime.shell);
   if (!openSummary) throw new Error("Runtime-opened project should expose a summary");
@@ -94,6 +98,8 @@ try {
   expectEqual(runtime.last_command_id, "project.save_as", "Save-as command should be tracked");
   expectEqual(runtime.shell.folder?.paths.root_dir, savedAs.folder?.paths.root_dir, "Save-as should attach the new folder");
   expectEqual(savedAs.folder?.manifest.counts.media_assets, 2, "Save-as manifest should preserve imported media");
+  expectEqual(runtime.settings.recent_projects.length, 2, "Save-as should add the new folder to recents");
+  expectEqual(runtime.settings.recent_projects[0]?.root_dir, saveAsProjectFolder, "Save-as folder should be most recent");
 
   console.log("ParaCut desktop runtime smoke test passed.");
 } finally {
