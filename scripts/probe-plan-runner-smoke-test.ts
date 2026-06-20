@@ -35,6 +35,7 @@ async function main(): Promise<void> {
     expectEqual(cachedFingerprint.status, "fingerprinted", "cached asset should fingerprint");
     if (cachedFingerprint.status !== "fingerprinted") throw new Error("Expected cached fingerprint");
     const cachedSourceFingerprint = cachedFingerprint.fingerprint;
+    if (cachedSourceFingerprint === undefined) throw new Error("Expected cached fingerprint value");
 
     const cachedProbe = createMediaProbeResult({
       asset_id: "asset_cached",
