@@ -147,10 +147,28 @@ Goal: make media import explicit, portable, and receipt-aware before copying or 
 - [x] Batch import receipt after individual media receipts
 - [x] Media import smoke test
 - [ ] Real file picker adapter
-- [ ] Media probing adapter for duration/codec/size
+- [x] Media probing contract for duration/codec/size
 - [ ] Copy-to-project-media adapter
 - [ ] Proxy generation adapter
 - [ ] Thumbnail generation adapter
+
+## v0.10 — Media Probe Contract
+
+Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platform-native media metadata readers.
+
+- [x] Media probe result schema
+- [x] Container/video/audio/stream metadata contracts
+- [x] Probe status model for completed, failed, and skipped probes
+- [x] Probe warning/error capture
+- [x] Probe-to-media metadata enrichment helper
+- [x] Probe-to-project application bridge
+- [x] Completed/failed/skipped probe receipt lifecycle
+- [x] Media probe smoke test
+- [ ] Real FFprobe execution adapter
+- [ ] Probe cache file adapter
+- [ ] Probe-from-import batch bridge
+- [ ] Thumbnail extraction adapter
+- [ ] Waveform extraction adapter
 
 ## v1.0 — Creator Workbench
 
