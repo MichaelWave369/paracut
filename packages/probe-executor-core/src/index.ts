@@ -252,9 +252,7 @@ export function createProbeExecutionReceipt(
 ): LedgerReceipt {
   const createdAt = execution.ended_at ?? new Date().toISOString();
   return createReceipt({
-    type: execution.status === "completed" && probe?.status === "probed"
-      ? "media.probe.executor.completed"
-      : `media.probe.executor.${execution.status.replace("-", "_")}`,
+    type: toProbeExecutionReceiptType(execution, probe),
     project_id: projectId,
     source: "system",
     approved_by: "system",
@@ -292,6 +290,16 @@ export function appendProbeExecutionReceiptToProject(
     updated_at: receipt.created_at,
     ledger: appendReceipt(project.ledger, receipt),
   };
+}
+
+function toProbeExecutionReceiptType(
+  execution: ProbeExecutionResult,
+  probe: MediaProbeResult | undefined,
+): string {
+  if (execution.status === "timed-out") return "media.probe.executor.timed_out";
+  if (execution.status === "skipped") return "media.probe.executor.skipped";
+  if (probe?.status === "probed") return "media.probe.executor.completed";
+  return "media.probe.executor.failed";
 }
 
 function toContainerMetadata(format: FfprobeJsonFormat | undefined): ContainerProbeMetadata | undefined {
