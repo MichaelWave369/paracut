@@ -1,6 +1,6 @@
 {
   "name": "paracut",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "ParaCut: local-first AI-assisted video editor where the timeline is a ledger.",
   "license": "MIT",
@@ -11,8 +11,9 @@
     "smoke:file": "tsx scripts/file-adapter-smoke-test.ts",
     "smoke:desktop": "tsx scripts/desktop-shell-smoke-test.ts",
     "smoke:runtime": "tsx scripts/desktop-runtime-smoke-test.ts",
+    "smoke:settings": "tsx scripts/settings-smoke-test.ts",
     "smoke:ai": "tsx scripts/ai-approval-smoke-test.ts",
-    "smoke": "pnpm smoke:core && pnpm smoke:file && pnpm smoke:desktop && pnpm smoke:runtime && pnpm smoke:ai",
+    "smoke": "pnpm smoke:core && pnpm smoke:file && pnpm smoke:desktop && pnpm smoke:runtime && pnpm smoke:settings && pnpm smoke:ai",
     "test": "pnpm smoke",
     "dev:desktop": "pnpm --filter @paracut/desktop dev"
   },
