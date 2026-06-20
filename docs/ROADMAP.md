@@ -167,6 +167,7 @@ Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platfor
 - [ ] Real FFprobe execution adapter
 - [x] Probe cache file adapter
 - [x] Probe planning bridge
+- [x] Cached probe application bridge
 - [ ] Thumbnail extraction adapter
 - [ ] Waveform extraction adapter
 
@@ -184,6 +185,7 @@ Goal: save and reload probe results so unchanged media can avoid unnecessary re-
 - [x] Probe cache smoke test
 - [x] Source fingerprint adapter from real filesystem stats
 - [x] Probe planning cache-hit/cache-miss bridge
+- [x] Cached probe application bridge
 - [ ] Probe cache pruning policy
 - [ ] FFprobe execution adapter integration
 
@@ -201,6 +203,7 @@ Goal: derive stable local source fingerprints so probe cache lookup can become a
 - [x] Probe-cache key input bridge
 - [x] Source fingerprint smoke test
 - [x] Probe planning cache-hit/cache-miss bridge
+- [x] Cached probe application bridge
 - [ ] Strong hash adapter for user-selected deep verification
 
 ## v0.13 — Probe Planning Bridge
@@ -217,10 +220,27 @@ Goal: plan probe work before running FFprobe or mutating media metadata.
 - [x] Probe-plan summary counts
 - [x] Probe-plan receipt lifecycle
 - [x] Probe planning smoke test
+- [x] Cached probe application bridge
 - [ ] Execute needs-probe items through real FFprobe adapter
-- [ ] Apply cached probe metadata to project media assets
 - [ ] Probe plan UI panel
 - [ ] Probe plan pruning/refresh policy
+
+## v0.14 — Cached Probe Application Bridge
+
+Goal: safely apply cached probe metadata from a probe plan without running FFprobe.
+
+- [x] Cached probe application schema
+- [x] Apply only `cache-hit` plan items
+- [x] Skip `needs-probe`, `missing-source`, and `unsupported-source` items
+- [x] Guard against missing cached probe payloads
+- [x] Guard against mismatched asset/project IDs
+- [x] Guard against failed/skipped/no-metadata cached probes
+- [x] Reuse normal media probe application receipts
+- [x] Write cached-application summary receipt
+- [x] Cached probe application smoke test
+- [ ] Feed `needs-probe` items into real FFprobe executor
+- [ ] Probe application UI panel
+- [ ] Cache invalidation refresh policy
 
 ## v1.0 — Creator Workbench
 
