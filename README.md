@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, safe probe runner stubs, probe plan runner bridges, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, safe probe runner stubs, probe plan runner bridges, probe progress events, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -16,7 +16,7 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 
 - **Local-first projects**: project folders remain readable and portable.
 - **Timeline as data**: clips, tracks, captions, effects, and exports live in structured project files.
-- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, media probes, probe cache applications, probe executor outcomes, probe plan runner passes, and exports are logged.
+- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, media probes, probe cache applications, probe executor outcomes, probe plan runner passes, progress summaries, and exports are logged.
 - **Human-approved AI**: AI may suggest edits, captions, scenes, or exports, but the creator stays in control.
 - **Auditable render plans**: a queued render becomes an inspectable FFmpeg-style plan before execution.
 - **Portable folder spine**: `project.json`, `receipts.jsonl`, and `manifest.json` form the v0.4 persistence contract.
@@ -33,12 +33,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Probe executor interface**: v0.15 defines the FFprobe request/result/receipt boundary before spawning any external process.
 - **Probe runner stub**: v0.16 adds an injectable runner harness and deterministic mock runner without spawning FFprobe.
 - **Probe plan runner bridge**: v0.17 feeds only `needs-probe` plan items through an injected runner, applies successful metadata, caches successful probe results, and records a summary receipt.
+- **Probe progress model**: v0.18 turns probe runner output into queued/running/applied/cached/failed/skipped progress events and batch counts for a future UI.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.17 probe plan runner bridge
+**Stage:** v0.18 probe progress model
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -86,19 +87,6 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 42. Applying successful runner probe metadata to project media assets.
 43. Caching successful runner probe results for future cache-hit planning.
 44. Recording a probe-plan runner summary receipt.
-45. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, cached probe application loop, probe executor loop, probe runner loop, and probe plan runner loop.
-
-## Quick Start
-
-```bash
-pnpm install
-pnpm typecheck
-pnpm smoke
-pnpm dev:desktop
-```
-
-The core smoke test creates a sample project in memory, performs timeline edits, queues a vertical export job, creates an FFmpeg-style render plan, and verifies the receipt count.
-
-The file smoke test creates a temp project folder, saves `project.json`, `receipts.jsonl`, and `manifest.json`, reloads them, validates counts, and removes the temp folder.
-
-The desktop shell smoke test loads a sample project into shell state, checks panel switching, checks command readiness, and verifies the sample project summary.
+45. Translating probe-plan runner output into UI-ready progress events.
+46. Summarizing probe progress batches by queued, running, applied, cached, failed, skipped, and terminal event counts.
+47. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, cached probe application loop, probe executor loop, probe runner loop, probe plan runner loop, and probe progress loop.
