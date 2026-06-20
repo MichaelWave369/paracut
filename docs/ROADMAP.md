@@ -1,369 +1,202 @@
 # ParaCut Roadmap
 
-## v0.1 — Foundation
+## Current lane
 
-Goal: establish the project spine before UI complexity.
+**Active stage:** v0.20 Probe Progress Persistence Adapter
 
-- [x] Public repo
-- [x] README
-- [x] License
-- [x] Master spec
-- [x] Project format spec
-- [x] Ledger event spec
+ParaCut is moving in small, CI-safe layers: data contracts first, then persistence, then bounded execution, then UI/runtime wiring.
+
+## Completed spine
+
+### v0.1 — Foundation
+
+- [x] Public repository
+- [x] README, license, master spec, project format spec, ledger event spec
 - [x] TypeScript workspace scaffold
 - [x] Core package folders
 - [x] Example project
 
-## v0.2 — Timeline Core Prototype
+### v0.2 — Timeline Core Prototype
 
-Goal: prove timeline state can be mutated through pure operations and logged as receipts.
+- [x] Create/import media/project helpers
+- [x] Track, clip, trim, split, move, delete helpers
+- [x] Receipt append helpers
+- [x] Render job queue helper
+- [x] Project JSON and receipt JSONL helpers
+- [x] Core smoke test and CI workflow
 
-- [x] Create project helper
-- [x] Import media helper
-- [x] Create track helper
-- [x] Add clip helper
-- [x] Move clip helper
-- [x] Trim clip helper
-- [x] Split clip helper
-- [x] Delete clip helper
-- [x] Append receipt helper
-- [x] Queue render job helper
-- [x] Project JSON serialize/parse helpers
-- [x] Receipt JSONL serialize/parse helpers
-- [x] Smoke test script
-- [x] Basic CI workflow
-
-## v0.3 — Render Contract Prototype
-
-Goal: create auditable render plans before integrating a full render engine.
+### v0.3 — Render Contract Prototype
 
 - [x] Export preset schema
 - [x] Render job schema
-- [x] Render status helpers
-- [x] FFmpeg-style command planner
-- [x] Render plan input inventory
-- [x] Render plan clip normalization
-- [x] Render plan warning collection
+- [x] FFmpeg-style render plan contract
+- [x] Render plan input inventory and clip normalization
 - [x] Render-plan receipt lifecycle
-- [x] Smoke test covers render planning
-- [ ] Output metadata capture
-- [ ] Error receipt capture
-- [ ] Real FFmpeg execution adapter
+- [x] Render planner smoke test
 
-## v0.4 — File Adapter Layer
+### v0.4 — File Adapter Layer
 
-Goal: make project state portable before the desktop UI exists.
-
-- [x] Save/load project JSON from disk
-- [x] Receipt JSONL disk adapter
-- [x] Project folder manifest
+- [x] Save/load project folder
+- [x] `project.json`, `receipts.jsonl`, and `manifest.json`
 - [x] Manifest/project/receipt consistency checks
 - [x] File adapter smoke test
-- [x] Media reference/import adapter
-- [ ] Media copy/import adapter
-- [ ] Proxy folder adapter
-- [ ] Thumbnail folder adapter
-- [ ] Render output folder adapter
 
-## v0.5 — Desktop App Shell
+### v0.5 — Desktop App Shell
 
-Goal: create a tested desktop shell state before native runtime complexity.
-
-- [x] Tauri-first decision boundary documented
 - [x] Desktop shell package
 - [x] Project-loaded shell state
 - [x] Active panel state
 - [x] Project summary model
 - [x] Command readiness model
 - [x] Static workspace mock
-- [x] Desktop preview script
 - [x] Desktop shell smoke test
+
+### v0.6 — AI Approval Loop
+
+- [x] Assistant suggestion model
+- [x] Human approve/reject/apply contract
+- [x] Suggestion-to-project bridge
+- [x] AI proposal/approval/rejection/application receipts
+- [x] AI approval smoke test
+
+### v0.7 — Desktop Runtime Wiring
+
+- [x] Desktop runtime state model
+- [x] Open/save/save-as project folder commands
+- [x] Runtime project replacement helper
+- [x] Desktop runtime smoke test
+
+### v0.8 — Local Settings Layer
+
+- [x] App settings schema
+- [x] Default panel and export preset preferences
+- [x] Autosave flag
+- [x] Recent project folder list
+- [x] Settings JSON read/write adapter
+- [x] Desktop runtime settings bridge
+- [x] Settings smoke test
+
+### v0.9 — Media Import Adapter
+
+- [x] Safe source URI normalization
+- [x] Media kind/name/intent inference
+- [x] Rights note preservation
+- [x] Reference-only import policy
+- [x] Future proxy/thumbnail/waveform/cache target paths
+- [x] Batch import receipts
+- [x] Media import smoke test
+
+### v0.10 — Media Probe Contract
+
+- [x] Media probe result schema
+- [x] Container/video/audio/stream metadata contracts
+- [x] Probe status, warning, and error capture
+- [x] Probe-to-media metadata enrichment helper
+- [x] Probe receipt lifecycle
+- [x] Media probe smoke test
+
+### v0.11 — Probe Cache Adapter
+
+- [x] Probe cache record schema
+- [x] `.paracut/probes/` folder convention
+- [x] Save/load probe cache helpers
+- [x] Cache lookup helper with miss handling
+- [x] Probe cache smoke test
+
+### v0.12 — Source Fingerprint Adapter
+
+- [x] Source fingerprint result schema
+- [x] Stat-based fingerprint algorithm
+- [x] Local `file://`, absolute path, and relative path support
+- [x] Missing/unsupported source statuses
+- [x] Probe-cache key input bridge
+- [x] Source fingerprint smoke test
+
+### v0.13 — Probe Planning Bridge
+
+- [x] Probe plan schema
+- [x] Per-asset and project-level planning helpers
+- [x] `cache-hit`, `needs-probe`, `missing-source`, and `unsupported-source` lanes
+- [x] Probe-plan receipt lifecycle
+- [x] Probe planning smoke test
+
+### v0.14 — Cached Probe Application Bridge
+
+- [x] Cached probe application schema
+- [x] Apply only valid `cache-hit` items
+- [x] Skip uncached/missing/unsupported lanes without mutation
+- [x] Guard against stale or mismatched cache payloads
+- [x] Cached-probe application summary receipt
+- [x] Cached probe application smoke test
+
+### v0.15 — Probe Executor Interface
+
+- [x] FFprobe request/result contract
+- [x] Canonical FFprobe args builder
+- [x] Stdout/stderr/exit/timeout capture model
+- [x] FFprobe JSON parser into ParaCut probe metadata
+- [x] Executor receipt lifecycle
+- [x] Probe executor smoke test
+
+### v0.16 — Probe Executor Runner Stub
+
+- [x] Injectable `ProbeRunner` interface
+- [x] Safe mock runner harness
+- [x] Runner exception normalization
+- [x] Request-ID mismatch guard
+- [x] Probe runner smoke test
+
+### v0.17 — Probe Plan Runner Bridge
+
+- [x] Run only `needs-probe` plan items through injected runner
+- [x] Apply successful probe metadata to project assets
+- [x] Cache successful probe results
+- [x] Executor/media-probe/summary receipts
+- [x] Probe plan runner smoke test
+
+### v0.18 — Probe Progress Model
+
+- [x] Progress event schema
+- [x] Queued/running/applied/cached/failed/skipped event types
+- [x] Batch count model
+- [x] Convert runner output into progress batches
+- [x] Probe progress smoke test
+
+### v0.19 — Probe Runner Progress Bridge
+
+- [x] Optional progress batch output from `runProbePlanWithRunner()`
+- [x] Optional live progress callback support
+- [x] Queued/running/terminal event emission during runner bridge flow
+- [x] Probe runner progress bridge smoke test
+
+### v0.20 — Probe Progress Persistence Adapter
+
+- [x] Probe progress persistence schema
+- [x] `.paracut/progress/` folder convention
+- [x] Save/load named progress batches
+- [x] Save/load `latest.json` recovery record
+- [x] Validate persisted counts against event list
+- [x] Probe progress persistence smoke test
+
+## Next likely lanes
+
+### v0.21 — Probe Progress Receipt Bridge
+
+- [ ] Optional receipt for persisted progress batch writes
+- [ ] Receipt payload with batch ID, event count, terminal count, and latest pointer status
+- [ ] Smoke test for progress persistence receipt emission
+
+### Later execution/UI lanes
+
+- [ ] Real FFprobe child-process adapter behind explicit safety gate
+- [ ] Probe worker queue and cancellation model
+- [ ] Retry/backoff model for failed probes
+- [ ] Probe plan/progress UI panel
+- [ ] Thumbnail extraction adapter
+- [ ] Waveform extraction adapter
+- [ ] Proxy generation adapter
+- [ ] Real Tauri desktop runtime
 - [ ] Media shelf interface
 - [ ] Basic timeline interface
 - [ ] Inspector panel
 - [ ] Receipt viewer
-
-## v0.6 — AI Approval Loop
-
-Goal: assistant suggestions enter the same ledger as manual edits.
-
-- [x] Suggestion model
-- [x] Human approve/reject contract
-- [x] Suggestion-to-project bridge
-- [x] Suggestion-to-receipt bridge
-- [x] Proposed/approved/rejected/applied receipt lifecycle
-- [x] AI approval smoke test
-- [ ] Caption generation adapter
-- [ ] Silence detection adapter
-- [ ] Scene detection adapter
-- [ ] AI receipt viewer
-
-## v0.7 — Desktop Runtime Wiring
-
-Goal: move from shell contract to a local app runtime command bridge.
-
-- [x] Desktop runtime state model
-- [x] Wire open project command to file adapter
-- [x] Wire save project command to file adapter
-- [x] Wire save-as project command to file adapter
-- [x] Add runtime project replacement helper for command mutations
-- [x] Desktop runtime smoke test
-- [ ] Real Tauri app runtime
-- [ ] Project open/save native dialog interface
-- [ ] Render static shell layout through app window
-- [ ] Add native app menu draft
-
-## v0.8 — Local Settings Layer
-
-Goal: add creator memory without introducing cloud accounts or databases.
-
-- [x] App settings schema
-- [x] Default panel preference
-- [x] Default export preset preference
-- [x] Autosave preference flag
-- [x] Recent project folder list
-- [x] Settings JSON read/write adapter
-- [x] Load-or-create settings helper
-- [x] Desktop runtime settings load/save bridge
-- [x] Runtime recent-project updates on open/save-as
-- [x] Settings smoke test
-- [ ] Native app config directory resolver
-- [ ] Settings panel UI
-- [ ] Settings migration framework
-
-## v0.9 — Media Import Adapter
-
-Goal: make media import explicit, portable, and receipt-aware before copying or probing large files.
-
-- [x] Safe source URI normalization
-- [x] Media kind inference from URI/data MIME/extension
-- [x] Name and asset ID inference
-- [x] Rights note preservation and default warning
-- [x] Local/remote/data scheme detection
-- [x] Reference-only import policy
-- [x] Future proxy/thumbnail/waveform/cache target paths
-- [x] Batch import model
-- [x] Duplicate inferred asset ID handling within a batch
-- [x] Batch import receipt after individual media receipts
-- [x] Media import smoke test
-- [ ] Real file picker adapter
-- [x] Media probing contract for duration/codec/size
-- [ ] Copy-to-project-media adapter
-- [ ] Proxy generation adapter
-- [ ] Thumbnail generation adapter
-
-## v0.10 — Media Probe Contract
-
-Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platform-native media metadata readers.
-
-- [x] Media probe result schema
-- [x] Container/video/audio/stream metadata contracts
-- [x] Probe status model for completed, failed, and skipped probes
-- [x] Probe warning/error capture
-- [x] Probe-to-media metadata enrichment helper
-- [x] Probe-to-project application bridge
-- [x] Completed/failed/skipped probe receipt lifecycle
-- [x] Media probe smoke test
-- [x] Probe executor interface boundary
-- [x] Probe cache file adapter
-- [x] Probe planning bridge
-- [x] Cached probe application bridge
-- [x] Probe plan runner bridge
-- [x] Probe progress model
-- [x] Probe runner progress bridge
-- [ ] Real FFprobe execution adapter
-- [ ] Thumbnail extraction adapter
-- [ ] Waveform extraction adapter
-
-## v0.11 — Probe Cache Adapter
-
-Goal: save and reload probe results so unchanged media can avoid unnecessary re-probing later.
-
-- [x] Probe cache record schema
-- [x] Deterministic cache key helper
-- [x] `.paracut/probes/` folder convention
-- [x] Save probe cache record helper
-- [x] Load probe cache record helper
-- [x] Cache lookup helper with miss handling
-- [x] Runtime cache/probe consistency validation
-- [x] Probe cache smoke test
-- [x] Source fingerprint adapter from real filesystem stats
-- [x] Probe planning cache-hit/cache-miss bridge
-- [x] Cached probe application bridge
-- [x] Probe plan runner cache write-back
-- [x] Probe progress event model
-- [x] Probe runner progress bridge
-- [ ] Probe cache pruning policy
-- [ ] FFprobe execution adapter integration
-
-## v0.12 — Source Fingerprint Adapter
-
-Goal: derive stable local source fingerprints so probe cache lookup can become automatic.
-
-- [x] Source fingerprint result schema
-- [x] Stat-based fingerprint algorithm
-- [x] Local `file://` source support
-- [x] Absolute path support
-- [x] Relative path support against project root
-- [x] Missing source status
-- [x] Unsupported remote/data/unknown scheme status
-- [x] Probe-cache key input bridge
-- [x] Source fingerprint smoke test
-- [x] Probe planning cache-hit/cache-miss bridge
-- [x] Cached probe application bridge
-- [x] Probe plan runner bridge
-- [x] Probe progress event model
-- [x] Probe runner progress bridge
-- [ ] Strong hash adapter for user-selected deep verification
-
-## v0.13 — Probe Planning Bridge
-
-Goal: plan probe work before running FFprobe or mutating media metadata.
-
-- [x] Probe plan schema
-- [x] Per-asset planning helper
-- [x] Project-level planning helper
-- [x] Cache-hit lane
-- [x] Needs-probe lane
-- [x] Missing-source lane
-- [x] Unsupported-source lane
-- [x] Probe-plan summary counts
-- [x] Probe-plan receipt lifecycle
-- [x] Probe planning smoke test
-- [x] Cached probe application bridge
-- [x] Probe executor interface boundary
-- [x] Feed `needs-probe` items through injected runner bridge
-- [x] Probe progress event model
-- [x] Probe runner progress bridge
-- [ ] Execute needs-probe items through real FFprobe adapter
-- [ ] Probe plan UI panel
-- [ ] Probe plan pruning/refresh policy
-
-## v0.14 — Cached Probe Application Bridge
-
-Goal: safely apply cached probe metadata from a probe plan without running FFprobe.
-
-- [x] Cached probe application schema
-- [x] Apply only `cache-hit` plan items
-- [x] Skip `needs-probe`, `missing-source`, and `unsupported-source` items
-- [x] Guard against missing cached probe payloads
-- [x] Guard against mismatched asset/project IDs
-- [x] Guard against failed/skipped/no-metadata cached probes
-- [x] Reuse normal media probe application receipts
-- [x] Write cached-application summary receipt
-- [x] Cached probe application smoke test
-- [x] Feed `needs-probe` items into injectable runner bridge
-- [x] Probe progress event model
-- [x] Probe runner progress bridge
-- [ ] Feed `needs-probe` items into real FFprobe executor
-- [ ] Probe application UI panel
-- [ ] Cache invalidation refresh policy
-
-## v0.15 — Probe Executor Interface
-
-Goal: define the FFprobe execution boundary before spawning external processes.
-
-- [x] Probe execution request schema
-- [x] Canonical FFprobe args helper
-- [x] Timeout/executable path contract
-- [x] Stdout/stderr/exit-code result schema
-- [x] FFprobe JSON parser into media probe metadata
-- [x] Execution-to-probe-result conversion
-- [x] Completed/failed/timed-out/skipped executor receipt lifecycle
-- [x] Probe executor smoke test
-- [x] Injectable runner interface and mock harness
-- [x] Feed `needs-probe` plan items through runner bridge
-- [x] Probe progress event model
-- [x] Probe runner progress bridge
-- [ ] Real child-process executor
-- [ ] Executable discovery policy
-- [ ] Sandbox/resource-limit policy
-
-## v0.16 — Probe Executor Runner Stub
-
-Goal: prove executor orchestration through an injectable runner before enabling real process spawning.
-
-- [x] Probe runner schema
-- [x] `ProbeRunner` interface with `runner_id`
-- [x] `executeProbeWithRunner()` orchestration helper
-- [x] Deterministic mock runner fixtures
-- [x] Success fixture path
-- [x] Non-zero exit fixture path
-- [x] Timed-out fixture path
-- [x] Unmatched fixture skipped path
-- [x] Thrown-runner exception normalization
-- [x] Request-id mismatch normalization
-- [x] Optional executor receipt output
-- [x] Probe runner smoke test
-- [x] Feed `needs-probe` plan items through runner bridge
-- [x] Probe progress event model
-- [x] Probe runner progress bridge
-- [ ] Real child-process runner behind explicit opt-in
-- [ ] Runner timeout enforcement policy
-- [ ] Runner sandbox/resource-limit policy
-
-## v0.17 — Probe Plan Runner Bridge
-
-Goal: run only planned `needs-probe` items through an injected runner, then apply and cache successful probe metadata.
-
-- [x] Probe plan runner schema
-- [x] Run only `needs-probe` plan items
-- [x] Skip `cache-hit`, `missing-source`, and `unsupported-source` plan items
-- [x] Build canonical probe execution requests from plan items
-- [x] Execute requests through injected runner
-- [x] Record executor receipts for attempted runs
-- [x] Apply successful probe metadata through normal media probe bridge
-- [x] Save successful probe results back to `.paracut/probes/`
-- [x] Write probe-plan runner summary receipt
-- [x] Probe plan runner smoke test
-- [x] Batch probe progress model
-- [x] Live probe progress callback bridge
-- [ ] Real FFprobe child-process runner behind explicit opt-in
-- [ ] Probe retry/backoff policy
-
-## v0.18 — Probe Progress Model
-
-Goal: give future UI/orchestration a typed progress stream for batch probe work.
-
-- [x] Probe progress event schema
-- [x] Probe progress batch schema
-- [x] Queued event lane
-- [x] Running event lane
-- [x] Applied event lane
-- [x] Cached event lane
-- [x] Failed event lane
-- [x] Skipped event lane
-- [x] Event-based progress counts
-- [x] Terminal progress count helper
-- [x] Convert probe-plan runner results into progress events
-- [x] Probe progress smoke test
-- [x] Live progress callback from probe-plan runner bridge
-- [x] Optional progress batch returned by probe-plan runner bridge
-- [ ] Progress persistence adapter
-- [ ] Probe progress UI panel
-
-## v0.19 — Probe Runner Progress Bridge
-
-Goal: wire probe progress directly into the probe plan runner bridge so future UI can subscribe during execution.
-
-- [x] Optional progress batch output on `runProbePlanWithRunner()`
-- [x] Optional `on_progress_event` callback on `runProbePlanWithRunner()`
-- [x] Queued events emitted before each plan item is handled
-- [x] Running events emitted before each injected runner call
-- [x] Applied events emitted after successful probe metadata application
-- [x] Cached events emitted for existing cache hits and new cache writes
-- [x] Failed events emitted for unsuccessful runner results
-- [x] Skipped events emitted for non-cache skipped lanes
-- [x] Probe runner progress bridge smoke test
-- [ ] Progress persistence adapter
-- [ ] Probe progress UI panel
-- [ ] Cancellation/retry progress events
-
-## v1.0 — Creator Workbench
-
-Goal: make ParaCut useful for daily creator workflows.
-
-- [ ] Basic preview
-- [ ] Basic export
-- [ ] Captions
-- [ ] Templates
