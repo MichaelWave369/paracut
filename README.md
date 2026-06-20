@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -16,7 +16,7 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 
 - **Local-first projects**: project folders remain readable and portable.
 - **Timeline as data**: clips, tracks, captions, effects, and exports live in structured project files.
-- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, media probes, probe cache applications, and exports are logged.
+- **Receipts for every edit**: cuts, trims, moves, AI suggestions, approvals, render plans, media imports, media probes, probe cache applications, probe executor outcomes, and exports are logged.
 - **Human-approved AI**: AI may suggest edits, captions, scenes, or exports, but the creator stays in control.
 - **Auditable render plans**: a queued render becomes an inspectable FFmpeg-style plan before execution.
 - **Portable folder spine**: `project.json`, `receipts.jsonl`, and `manifest.json` form the v0.4 persistence contract.
@@ -30,12 +30,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Source fingerprints**: v0.12 derives local file fingerprints from filesystem stats so probe cache lookup can be automatic.
 - **Probe planning bridge**: v0.13 plans each media asset as `cache-hit`, `needs-probe`, `missing-source`, or `unsupported-source` before any real probing runs.
 - **Cached probe application**: v0.14 applies only valid `cache-hit` probe metadata to project media assets and records a summary receipt.
+- **Probe executor interface**: v0.15 defines the FFprobe request/result/receipt boundary before spawning any external process.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.14 cached probe application bridge scaffold
+**Stage:** v0.15 probe executor interface scaffold
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -73,7 +74,11 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 32. Applying cached probe metadata for cache-hit plan items only.
 33. Skipping needs-probe, missing-source, and unsupported-source plan items without mutating media.
 34. Recording a cached-probe application summary receipt.
-35. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, and cached probe application loop.
+35. Building canonical FFprobe request args without spawning FFprobe.
+36. Normalizing executor stdout/stderr/exit/timeout results.
+37. Parsing FFprobe JSON into ParaCut probe metadata.
+38. Recording probe executor completed/failed/timed-out/skipped receipts.
+39. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, cached probe application loop, and probe executor loop.
 
 ## Quick Start
 
@@ -108,6 +113,8 @@ The probe planning smoke test builds a mixed media project, checks `cache-hit`, 
 
 The cached probe application smoke test consumes a probe plan, applies only the cache-hit item, skips every other lane, verifies metadata enrichment, and checks both the normal probe receipt and summary receipt.
 
+The probe executor smoke test builds a canonical FFprobe request, parses realistic FFprobe JSON, converts execution output into a media probe result, and records completed/failed/timed-out executor receipts without launching FFprobe.
+
 `pnpm dev:desktop` runs a console preview of the desktop shell state. The static desktop mock lives at `apps/desktop/public/index.html`.
 
 ## Repository Layout
@@ -125,6 +132,7 @@ paracut/
     media-import-core/    # Safe media import references and batch application
     media-probe-core/     # Media probe metadata and project enrichment contract
     probe-cache-core/     # Local probe result cache adapter
+    probe-executor-core/  # FFprobe executor request/result/receipt boundary
     probe-planning-core/  # Probe planning bridge across fingerprint/cache/probe lanes
     project-core/         # Project orchestration layer
     render-core/          # Export/render job and render-plan model
@@ -145,6 +153,7 @@ paracut/
     source-fingerprint-smoke-test.ts # Local source fingerprint smoke test
     probe-planning-smoke-test.ts   # Probe planning bridge smoke test
     cached-probe-application-smoke-test.ts # Cached probe application smoke test
+    probe-executor-smoke-test.ts   # Probe executor boundary smoke test
   docs/
     MASTER_SPEC.md
     PROJECT_FORMAT.md
@@ -163,6 +172,7 @@ paracut/
     V0_12_SOURCE_FINGERPRINT_ADAPTER.md
     V0_13_PROBE_PLANNING_BRIDGE.md
     V0_14_CACHED_PROBE_APPLICATION.md
+    V0_15_PROBE_EXECUTOR_INTERFACE.md
   examples/
     sample-project/
 ```
@@ -170,3 +180,10 @@ paracut/
 ## Initial Build Target
 
 The first real version should do six things well:
+
+1. Import video/audio/image files.
+2. Place clips on a timeline.
+3. Cut, trim, move, and delete clips.
+4. Save/load project state as readable JSON.
+5. Export through an auditable render pipeline.
+6. Log every important action as a receipt.
