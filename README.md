@@ -2,7 +2,7 @@
 
 **The timeline is a ledger.**
 
-ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, safe probe runner stubs, probe plan runner bridges, probe progress events, and human-approved automation.
+ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, safe probe runner stubs, probe plan runner bridges, probe progress events, live probe progress callbacks, and human-approved automation.
 
 This repository starts ParaCut as a ground-up build inspired by the open-source creator-editor space, but designed around a Parallax-style ledger spine from day one.
 
@@ -34,12 +34,13 @@ It is not only a timeline UI. It is a creator workbench where every meaningful a
 - **Probe runner stub**: v0.16 adds an injectable runner harness and deterministic mock runner without spawning FFprobe.
 - **Probe plan runner bridge**: v0.17 feeds only `needs-probe` plan items through an injected runner, applies successful metadata, caches successful probe results, and records a summary receipt.
 - **Probe progress model**: v0.18 turns probe runner output into queued/running/applied/cached/failed/skipped progress events and batch counts for a future UI.
+- **Probe runner progress bridge**: v0.19 wires optional progress batch output and live progress callbacks directly into the probe plan runner bridge.
 - **Creator memory**: preferred styles, caption formats, pacing, and export presets can be remembered.
 - **Plugin-ready future**: effects, transitions, render presets, caption styles, and AI tools should become modular.
 
 ## Current Status
 
-**Stage:** v0.18 probe progress model
+**Stage:** v0.19 probe runner progress bridge
 
 ParaCut is not a working editor yet, but it now has a typed foundation for:
 
@@ -89,4 +90,6 @@ ParaCut is not a working editor yet, but it now has a typed foundation for:
 44. Recording a probe-plan runner summary receipt.
 45. Translating probe-plan runner output into UI-ready progress events.
 46. Summarizing probe progress batches by queued, running, applied, cached, failed, skipped, and terminal event counts.
-47. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, cached probe application loop, probe executor loop, probe runner loop, probe plan runner loop, and probe progress loop.
+47. Returning optional progress batches directly from the probe plan runner bridge.
+48. Emitting optional live probe progress callbacks during probe plan runner execution.
+49. Running smoke tests against the core loop, file adapter loop, desktop shell loop, desktop runtime loop, settings loop, AI approval loop, media import loop, media probe loop, probe cache loop, source fingerprint loop, probe planning loop, cached probe application loop, probe executor loop, probe runner loop, probe plan runner loop, probe progress loop, and probe runner progress bridge loop.
