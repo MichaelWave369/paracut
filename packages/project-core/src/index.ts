@@ -28,8 +28,10 @@ import {
 } from "../../timeline-core/src/index";
 import {
   createRenderJob,
+  createRenderPlan,
   type CreateRenderJobInput,
   type RenderJob,
+  type RenderPlan,
 } from "../../render-core/src/index";
 
 export interface ParaCutProject {
@@ -69,6 +71,11 @@ export interface AddClipInput {
 }
 
 export type QueueRenderJobInput = Omit<CreateRenderJobInput, "project_id">;
+
+export interface PlanRenderJobResult {
+  project: ParaCutProject;
+  plan: RenderPlan;
+}
 
 interface RecordProjectEventOptions {
   source?: ReceiptSource;
@@ -266,6 +273,32 @@ export function queueRenderJobForProject(project: ParaCutProject, input: QueueRe
   );
 }
 
+export function planRenderJobForProject(
+  project: ParaCutProject,
+  jobId: string,
+  createdAt = new Date().toISOString(),
+): PlanRenderJobResult {
+  const job = getRenderJobOrThrow(project, jobId);
+  const plan = createRenderPlan(job, project.timeline, project.media, createdAt);
+  const next = recordProjectEvent(
+    project,
+    "render.plan.created",
+    {
+      job_id: job.job_id,
+      plan_id: plan.plan_id,
+      preset_id: plan.preset.preset_id,
+      output_uri: plan.output_uri,
+      duration_seconds: plan.duration_seconds,
+      input_count: plan.inputs.length,
+      clip_count: plan.clips.length,
+      warning_count: plan.warnings.length,
+    },
+    { source: "render", created_at: createdAt },
+  );
+
+  return { project: next, plan };
+}
+
 export function getProjectMedia(project: ParaCutProject, assetId: string): MediaAsset | undefined {
   return project.media.assets.find((asset) => asset.asset_id === assetId);
 }
@@ -340,4 +373,10 @@ function assertAssetExists(project: ParaCutProject, assetId: string): void {
   if (!getProjectMedia(project, assetId)) {
     throw new Error(`Media asset not found: ${assetId}`);
   }
+}
+
+function getRenderJobOrThrow(project: ParaCutProject, jobId: string): RenderJob {
+  const job = project.render_jobs.find((candidate) => candidate.job_id === jobId);
+  if (!job) throw new Error(`Render job not found: ${jobId}`);
+  return job;
 }
