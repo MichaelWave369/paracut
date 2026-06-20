@@ -1,6 +1,6 @@
 {
   "name": "paracut",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "private": true,
   "description": "ParaCut: local-first AI-assisted video editor where the timeline is a ledger.",
   "license": "MIT",
@@ -22,7 +22,8 @@
     "smoke:probe-executor": "tsx scripts/probe-executor-smoke-test.ts",
     "smoke:probe-runner": "tsx scripts/probe-runner-smoke-test.ts",
     "smoke:probe-plan-runner": "tsx scripts/probe-plan-runner-smoke-test.ts",
-    "smoke": "pnpm smoke:core && pnpm smoke:file && pnpm smoke:desktop && pnpm smoke:runtime && pnpm smoke:settings && pnpm smoke:ai && pnpm smoke:media-import && pnpm smoke:media-probe && pnpm smoke:probe-cache && pnpm smoke:source-fingerprint && pnpm smoke:probe-planning && pnpm smoke:cached-probe-application && pnpm smoke:probe-executor && pnpm smoke:probe-runner && pnpm smoke:probe-plan-runner",
+    "smoke:probe-progress": "tsx scripts/probe-progress-smoke-test.ts",
+    "smoke": "pnpm smoke:core && pnpm smoke:file && pnpm smoke:desktop && pnpm smoke:runtime && pnpm smoke:settings && pnpm smoke:ai && pnpm smoke:media-import && pnpm smoke:media-probe && pnpm smoke:probe-cache && pnpm smoke:source-fingerprint && pnpm smoke:probe-planning && pnpm smoke:cached-probe-application && pnpm smoke:probe-executor && pnpm smoke:probe-runner && pnpm smoke:probe-plan-runner && pnpm smoke:probe-progress",
     "test": "pnpm smoke",
     "dev:desktop": "pnpm --filter @paracut/desktop dev"
   },
