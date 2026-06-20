@@ -5,12 +5,13 @@ import {
   createProject,
   importMediaToProject,
   moveClipInProject,
+  planRenderJobForProject,
   queueRenderJobForProject,
   serializeProject,
   splitClipInProject,
   trimClipInProject,
 } from "../packages/project-core/src/index";
-import { createRenderPlan, DEFAULT_EXPORT_PRESETS, renderPlanToCommandPreview } from "../packages/render-core/src/index";
+import { DEFAULT_EXPORT_PRESETS, renderPlanToCommandPreview } from "../packages/render-core/src/index";
 
 const now = "2026-06-19T12:00:00.000-07:00";
 
@@ -71,10 +72,9 @@ project = queueRenderJobForProject(project, {
   output_uri: "file://exports/paracut-smoke.mp4",
 });
 
-const renderJob = project.render_jobs[0];
-assert.ok(renderJob, "Render job should exist");
-
-const plan = createRenderPlan(renderJob, project.timeline, project.media, now);
+const planned = planRenderJobForProject(project, "render_vertical_test", now);
+project = planned.project;
+const plan = planned.plan;
 const commandPreview = renderPlanToCommandPreview(plan);
 
 assert.equal(project.media.assets.length, 1);
@@ -82,7 +82,7 @@ assert.equal(project.timeline.tracks.length, 2);
 assert.equal(project.timeline.tracks[0]?.clips.length, 1);
 assert.equal(project.timeline.tracks[1]?.clips.length, 1);
 assert.equal(project.render_jobs.length, 1);
-assert.equal(project.ledger.length, 9);
+assert.equal(project.ledger.length, 10);
 assert.equal(plan.inputs.length, 1);
 assert.equal(plan.clips.length, 2);
 assert.equal(plan.duration_seconds, 13);
