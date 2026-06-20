@@ -77,8 +77,6 @@ Goal: create a tested desktop shell state before native runtime complexity.
 - [x] Static workspace mock
 - [x] Desktop preview script
 - [x] Desktop shell smoke test
-- [ ] Real Tauri runtime wiring
-- [ ] Project open/save native dialog interface
 - [ ] Media shelf interface
 - [ ] Basic timeline interface
 - [ ] Inspector panel
@@ -101,11 +99,16 @@ Goal: assistant suggestions enter the same ledger as manual edits.
 
 ## v0.7 — Desktop Runtime Wiring
 
-Goal: move from shell contract to a local app runtime.
+Goal: move from shell contract to a local app runtime command bridge.
 
-- [ ] Add Tauri app runtime
-- [ ] Wire open project command to file adapter
-- [ ] Wire save project command to file adapter
+- [x] Desktop runtime state model
+- [x] Wire open project command to file adapter
+- [x] Wire save project command to file adapter
+- [x] Wire save-as project command to file adapter
+- [x] Add runtime project replacement helper for command mutations
+- [x] Desktop runtime smoke test
+- [ ] Real Tauri app runtime
+- [ ] Project open/save native dialog interface
 - [ ] Render static shell layout through app window
 - [ ] Add native app menu draft
 - [ ] Add local settings file
@@ -118,6 +121,3 @@ Goal: make ParaCut useful for daily creator workflows.
 - [ ] Basic export
 - [ ] Captions
 - [ ] Templates
-- [ ] Platform presets
-- [ ] Project memory
-- [ ] Plugin API draft
