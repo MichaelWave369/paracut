@@ -1,6 +1,6 @@
-# ParaCut Project Format v0.4
+# ParaCut Project Format v0.6
 
-A ParaCut project is a portable local folder with readable current state, an append-only receipt log, and a small manifest for fast validation.
+A ParaCut project is a portable local folder with readable current state, an append-only receipt log, assistant suggestion state, and a small manifest for fast validation.
 
 ## Folder Layout
 
@@ -16,7 +16,7 @@ my-project.paracut/
   cache/        # future disposable working cache
 ```
 
-v0.4 writes and reads the three spine files only:
+v0.4+ writes and reads the three spine files only:
 
 - `project.json`
 - `receipts.jsonl`
@@ -43,9 +43,12 @@ Media files are not copied yet. Media assets currently store URI references.
   },
   "ledger": [],
   "render_jobs": [],
+  "assistant_suggestions": [],
   "metadata": {}
 }
 ```
+
+Older `paracut.project.v0` files without `assistant_suggestions` are normalized to an empty assistant suggestion list when parsed.
 
 ## receipts.jsonl
 
@@ -133,11 +136,39 @@ Media files are not copied yet. Media assets currently store URI references.
 }
 ```
 
+## Assistant Suggestion
+
+```json
+{
+  "suggestion_id": "sug_001",
+  "project_id": "project_001",
+  "kind": "caption",
+  "status": "draft",
+  "summary": "Add an intro caption card.",
+  "rationale": "The opening beat needs context.",
+  "payload": {
+    "caption_text": "Welcome to ParaCut",
+    "target_timeline_seconds": 0
+  },
+  "created_at": "2026-06-19T12:00:00.000-07:00"
+}
+```
+
+Suggestion status values:
+
+```txt
+draft     Proposed by AI, awaiting review
+approved  Human approved but not yet applied
+rejected  Human rejected
+applied   Approved suggestion marked applied
+```
+
 ## Design Rules
 
 - `project.json` stores current state.
 - `receipts.jsonl` stores history.
 - `manifest.json` stores quick validation metadata.
+- Assistant suggestions must be receipt-tracked when proposed, approved, rejected, or applied.
 - Current state should be reconstructable from ledger events in future versions.
 - File references should avoid absolute paths when possible.
 - Hashes should be used for imported media verification when available.
