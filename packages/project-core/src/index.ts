@@ -91,9 +91,9 @@ export interface PlanRenderJobResult {
 }
 
 interface RecordProjectEventOptions {
-  source?: ReceiptSource;
-  approved_by?: ApprovalState;
-  created_at?: string;
+  source?: ReceiptSource | undefined;
+  approved_by?: ApprovalState | undefined;
+  created_at?: string | undefined;
 }
 
 export function createProject(input: CreateProjectInput): ParaCutProject {
