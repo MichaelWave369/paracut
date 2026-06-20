@@ -166,7 +166,7 @@ Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platfor
 - [x] Media probe smoke test
 - [ ] Real FFprobe execution adapter
 - [x] Probe cache file adapter
-- [ ] Probe-from-import batch bridge
+- [x] Probe planning bridge
 - [ ] Thumbnail extraction adapter
 - [ ] Waveform extraction adapter
 
@@ -183,8 +183,8 @@ Goal: save and reload probe results so unchanged media can avoid unnecessary re-
 - [x] Runtime cache/probe consistency validation
 - [x] Probe cache smoke test
 - [x] Source fingerprint adapter from real filesystem stats
+- [x] Probe planning cache-hit/cache-miss bridge
 - [ ] Probe cache pruning policy
-- [ ] Probe-from-import batch bridge
 - [ ] FFprobe execution adapter integration
 
 ## v0.12 — Source Fingerprint Adapter
@@ -200,9 +200,27 @@ Goal: derive stable local source fingerprints so probe cache lookup can become a
 - [x] Unsupported remote/data/unknown scheme status
 - [x] Probe-cache key input bridge
 - [x] Source fingerprint smoke test
-- [ ] Fingerprint-from-media-import bridge
-- [ ] Probe planning cache-hit/cache-miss bridge
+- [x] Probe planning cache-hit/cache-miss bridge
 - [ ] Strong hash adapter for user-selected deep verification
+
+## v0.13 — Probe Planning Bridge
+
+Goal: plan probe work before running FFprobe or mutating media metadata.
+
+- [x] Probe plan schema
+- [x] Per-asset planning helper
+- [x] Project-level planning helper
+- [x] Cache-hit lane
+- [x] Needs-probe lane
+- [x] Missing-source lane
+- [x] Unsupported-source lane
+- [x] Probe-plan summary counts
+- [x] Probe-plan receipt lifecycle
+- [x] Probe planning smoke test
+- [ ] Execute needs-probe items through real FFprobe adapter
+- [ ] Apply cached probe metadata to project media assets
+- [ ] Probe plan UI panel
+- [ ] Probe plan pruning/refresh policy
 
 ## v1.0 — Creator Workbench
 
