@@ -1,4 +1,4 @@
-import { getMediaAsset, isAudioAsset, isVisualAsset, type MediaAsset, type MediaLibrary } from "../../media-core/src/index";
+import { getMediaAsset, type MediaAsset, type MediaLibrary } from "../../media-core/src/index";
 import { getTimelineDuration, type TimelineClip, type TimelineState, type TimelineTrack } from "../../timeline-core/src/index";
 
 export type ExportPlatform = "wide" | "vertical" | "square" | "audio" | "custom";
@@ -40,6 +40,7 @@ export interface CreateRenderJobInput {
 
 export interface RenderPlanInputAsset {
   input_id: string;
+  input_index: number;
   asset_id: string;
   uri: string;
   kind: MediaAsset["kind"];
@@ -51,6 +52,7 @@ export interface RenderPlanClip {
   clip_id: string;
   asset_id: string;
   input_id: string;
+  input_index: number;
   track_id: string;
   track_kind: TimelineTrack["kind"];
   timeline_start: number;
@@ -230,8 +232,10 @@ function collectRenderInputs(timeline: TimelineState, media: MediaLibrary): Rend
       const asset = getMediaAsset(media, clip.asset_id);
       if (!asset) throw new Error(`Cannot build render plan. Missing media asset: ${clip.asset_id}`);
 
+      const inputIndex = byAssetId.size;
       byAssetId.set(asset.asset_id, {
-        input_id: `input_${byAssetId.size}`,
+        input_id: `input_${inputIndex}`,
+        input_index: inputIndex,
         asset_id: asset.asset_id,
         uri: asset.uri,
         kind: asset.kind,
@@ -265,6 +269,7 @@ function toRenderPlanClip(clip: TimelineClip, track: TimelineTrack, input: Rende
     clip_id: clip.clip_id,
     asset_id: clip.asset_id,
     input_id: input.input_id,
+    input_index: input.input_index,
     track_id: track.track_id,
     track_kind: track.kind,
     timeline_start: clip.timeline.start,
@@ -323,7 +328,7 @@ function buildFilterGraph(preset: ExportPreset, clips: RenderPlanClip[], duratio
   return visualClips.map((clip, index) => {
     const sourceDuration = clip.source_end - clip.source_start;
     return [
-      `[${clip.input_id}:v]`,
+      `[${clip.input_index}:v]`,
       `trim=start=${clip.source_start}:duration=${sourceDuration}`,
       `setpts=PTS-STARTPTS+${clip.timeline_start}/TB`,
       `scale=${preset.width}:${preset.height}:force_original_aspect_ratio=decrease`,
