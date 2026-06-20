@@ -37,15 +37,20 @@ Goal: prove timeline state can be mutated through pure operations and logged as 
 
 ## v0.3 — Render Contract Prototype
 
-Goal: create render job definitions before integrating a full render engine.
+Goal: create auditable render plans before integrating a full render engine.
 
 - [x] Export preset schema
 - [x] Render job schema
 - [x] Render status helpers
-- [ ] FFmpeg command planner
-- [ ] Render receipt lifecycle
+- [x] FFmpeg-style command planner
+- [x] Render plan input inventory
+- [x] Render plan clip normalization
+- [x] Render plan warning collection
+- [x] Render-plan receipt lifecycle
+- [x] Smoke test covers render planning
 - [ ] Output metadata capture
 - [ ] Error receipt capture
+- [ ] Real FFmpeg execution adapter
 
 ## v0.4 — Desktop App
 
