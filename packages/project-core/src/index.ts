@@ -1,4 +1,11 @@
-import { appendReceipt, createReceipt, type LedgerReceipt } from "../../ledger-core/src/index";
+import {
+  appendReceipt,
+  createReceipt,
+  fromJsonLine,
+  toJsonLine,
+  type LedgerReceipt,
+  type ReceiptSource,
+} from "../../ledger-core/src/index";
 import {
   addMediaAsset,
   createEmptyMediaLibrary,
@@ -61,6 +68,13 @@ export interface AddClipInput {
   source: TimeRange;
 }
 
+export type QueueRenderJobInput = Omit<CreateRenderJobInput, "project_id">;
+
+interface RecordProjectEventOptions {
+  source?: ReceiptSource;
+  created_at?: string;
+}
+
 export function createProject(input: CreateProjectInput): ParaCutProject {
   if (!input.project_id) throw new Error("Project requires project_id");
   if (!input.name) throw new Error("Project requires name");
@@ -79,10 +93,15 @@ export function createProject(input: CreateProjectInput): ParaCutProject {
     metadata: input.metadata ?? {},
   };
 
-  return recordProjectEvent(initial, "project.created", {
-    name: input.name,
-    metadata: initial.metadata,
-  }, now);
+  return recordProjectEvent(
+    initial,
+    "project.created",
+    {
+      name: input.name,
+      metadata: initial.metadata,
+    },
+    { source: "system", created_at: now },
+  );
 }
 
 export function importMediaToProject(project: ParaCutProject, input: ImportMediaInput): ParaCutProject {
@@ -92,14 +111,19 @@ export function importMediaToProject(project: ParaCutProject, input: ImportMedia
     media: addMediaAsset(project.media, asset),
   };
 
-  return recordProjectEvent(next, "media.imported", {
-    asset_id: asset.asset_id,
-    kind: asset.kind,
-    name: asset.name,
-    uri: asset.uri,
-    duration_seconds: asset.duration_seconds ?? null,
-    rights_note: asset.rights_note ?? null,
-  });
+  return recordProjectEvent(
+    next,
+    "media.imported",
+    {
+      asset_id: asset.asset_id,
+      kind: asset.kind,
+      name: asset.name,
+      uri: asset.uri,
+      duration_seconds: asset.duration_seconds ?? null,
+      rights_note: asset.rights_note ?? null,
+    },
+    { source: "import" },
+  );
 }
 
 export function addTrackToProject(project: ParaCutProject, input: AddTrackInput): ParaCutProject {
@@ -221,7 +245,7 @@ export function deleteClipFromProject(project: ParaCutProject, clipId: string): 
   });
 }
 
-export function queueRenderJobForProject(project: ParaCutProject, input: CreateRenderJobInput): ParaCutProject {
+export function queueRenderJobForProject(project: ParaCutProject, input: QueueRenderJobInput): ParaCutProject {
   const job = createRenderJob({
     ...input,
     project_id: project.project_id,
@@ -238,6 +262,7 @@ export function queueRenderJobForProject(project: ParaCutProject, input: CreateR
       output_uri: job.output_uri,
       preset_id: job.preset.preset_id,
     },
+    { source: "render" },
   );
 }
 
@@ -246,19 +271,59 @@ export function getProjectMedia(project: ParaCutProject, assetId: string): Media
 }
 
 export function serializeProject(project: ParaCutProject): string {
+  assertProject(project);
   return `${JSON.stringify(project, null, 2)}\n`;
+}
+
+export function parseProject(json: string): ParaCutProject {
+  const parsed = JSON.parse(json) as unknown;
+  assertProject(parsed);
+  return parsed;
+}
+
+export function serializeProjectReceipts(project: ParaCutProject): string {
+  return `${project.ledger.map(toJsonLine).join("\n")}\n`;
+}
+
+export function parseProjectReceipts(jsonl: string): LedgerReceipt[] {
+  return jsonl
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map(fromJsonLine);
+}
+
+export function assertProject(value: unknown): asserts value is ParaCutProject {
+  const candidate = value as Partial<ParaCutProject>;
+  if (!candidate.project_id) throw new Error("Project missing project_id");
+  if (!candidate.name) throw new Error("Project missing name");
+  if (candidate.schema_version !== "paracut.project.v0") {
+    throw new Error("Unsupported ParaCut project schema version");
+  }
+  if (!candidate.created_at) throw new Error("Project missing created_at");
+  if (!candidate.updated_at) throw new Error("Project missing updated_at");
+  if (!candidate.media || !Array.isArray(candidate.media.assets)) {
+    throw new Error("Project media library is invalid");
+  }
+  if (!candidate.timeline || !Array.isArray(candidate.timeline.tracks)) {
+    throw new Error("Project timeline is invalid");
+  }
+  if (!Array.isArray(candidate.ledger)) throw new Error("Project ledger is invalid");
+  if (!Array.isArray(candidate.render_jobs)) throw new Error("Project render_jobs is invalid");
+  validateTimeline(candidate.timeline);
 }
 
 function recordProjectEvent(
   project: ParaCutProject,
   type: string,
   payload: Record<string, unknown>,
-  createdAt = new Date().toISOString(),
+  options: RecordProjectEventOptions = {},
 ): ParaCutProject {
+  const createdAt = options.created_at ?? new Date().toISOString();
   const receipt = createReceipt({
     type,
     project_id: project.project_id,
-    source: "manual",
+    source: options.source ?? "manual",
     approved_by: "human",
     created_at: createdAt,
     payload,
