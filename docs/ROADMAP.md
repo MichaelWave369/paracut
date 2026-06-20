@@ -168,6 +168,7 @@ Goal: define a typed, receipt-aware probe layer before wiring FFprobe or platfor
 - [x] Probe cache file adapter
 - [x] Probe planning bridge
 - [x] Cached probe application bridge
+- [x] Probe plan runner bridge
 - [ ] Real FFprobe execution adapter
 - [ ] Thumbnail extraction adapter
 - [ ] Waveform extraction adapter
@@ -187,6 +188,7 @@ Goal: save and reload probe results so unchanged media can avoid unnecessary re-
 - [x] Source fingerprint adapter from real filesystem stats
 - [x] Probe planning cache-hit/cache-miss bridge
 - [x] Cached probe application bridge
+- [x] Probe plan runner cache write-back
 - [ ] Probe cache pruning policy
 - [ ] FFprobe execution adapter integration
 
@@ -205,6 +207,7 @@ Goal: derive stable local source fingerprints so probe cache lookup can become a
 - [x] Source fingerprint smoke test
 - [x] Probe planning cache-hit/cache-miss bridge
 - [x] Cached probe application bridge
+- [x] Probe plan runner bridge
 - [ ] Strong hash adapter for user-selected deep verification
 
 ## v0.13 — Probe Planning Bridge
@@ -223,6 +226,7 @@ Goal: plan probe work before running FFprobe or mutating media metadata.
 - [x] Probe planning smoke test
 - [x] Cached probe application bridge
 - [x] Probe executor interface boundary
+- [x] Feed `needs-probe` items through injected runner bridge
 - [ ] Execute needs-probe items through real FFprobe adapter
 - [ ] Probe plan UI panel
 - [ ] Probe plan pruning/refresh policy
@@ -240,6 +244,7 @@ Goal: safely apply cached probe metadata from a probe plan without running FFpro
 - [x] Reuse normal media probe application receipts
 - [x] Write cached-application summary receipt
 - [x] Cached probe application smoke test
+- [x] Feed `needs-probe` items into injectable runner bridge
 - [ ] Feed `needs-probe` items into real FFprobe executor
 - [ ] Probe application UI panel
 - [ ] Cache invalidation refresh policy
@@ -257,10 +262,10 @@ Goal: define the FFprobe execution boundary before spawning external processes.
 - [x] Completed/failed/timed-out/skipped executor receipt lifecycle
 - [x] Probe executor smoke test
 - [x] Injectable runner interface and mock harness
+- [x] Feed `needs-probe` plan items through runner bridge
 - [ ] Real child-process executor
 - [ ] Executable discovery policy
 - [ ] Sandbox/resource-limit policy
-- [ ] Feed `needs-probe` plan items through executor
 
 ## v0.16 — Probe Executor Runner Stub
 
@@ -278,10 +283,28 @@ Goal: prove executor orchestration through an injectable runner before enabling 
 - [x] Request-id mismatch normalization
 - [x] Optional executor receipt output
 - [x] Probe runner smoke test
+- [x] Feed `needs-probe` plan items through runner bridge
 - [ ] Real child-process runner behind explicit opt-in
 - [ ] Runner timeout enforcement policy
 - [ ] Runner sandbox/resource-limit policy
-- [ ] Feed `needs-probe` plan items through runner
+
+## v0.17 — Probe Plan Runner Bridge
+
+Goal: run only planned `needs-probe` items through an injected runner, then apply and cache successful probe metadata.
+
+- [x] Probe plan runner schema
+- [x] Run only `needs-probe` plan items
+- [x] Skip `cache-hit`, `missing-source`, and `unsupported-source` plan items
+- [x] Build canonical probe execution requests from plan items
+- [x] Execute requests through injected runner
+- [x] Record executor receipts for attempted runs
+- [x] Apply successful probe metadata through normal media probe bridge
+- [x] Save successful probe results back to `.paracut/probes/`
+- [x] Write probe-plan runner summary receipt
+- [x] Probe plan runner smoke test
+- [ ] Real FFprobe child-process runner behind explicit opt-in
+- [ ] Batch probe progress model
+- [ ] Probe retry/backoff policy
 
 ## v1.0 — Creator Workbench
 
