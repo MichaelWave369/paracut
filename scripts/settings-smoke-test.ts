@@ -3,21 +3,21 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import {
+  createDesktopRuntimeState,
+  loadDesktopRuntimeSettings,
+  replaceDesktopRuntimeSettings,
+  saveDesktopRuntimeSettings,
+} from "../apps/desktop/src/index";
+import {
   addRecentProjectFolder,
   createDefaultAppSettings,
   DEFAULT_EXPORT_PRESET_ID,
-  loadDesktopRuntimeSettings,
-  saveDesktopRuntimeSettings,
-  createDesktopRuntimeState,
-  replaceDesktopRuntimeSettings,
-  setAutosaveEnabled,
-  setDefaultExportPresetId,
-  setDefaultSettingsPanel,
-} from "../apps/desktop/src/index";
-import {
   loadOrCreateAppSettings,
   readAppSettingsFile,
   SETTINGS_FILE_NAME,
+  setAutosaveEnabled,
+  setDefaultExportPresetId,
+  setDefaultSettingsPanel,
   writeAppSettingsFile,
 } from "../packages/settings-core/src/index";
 
