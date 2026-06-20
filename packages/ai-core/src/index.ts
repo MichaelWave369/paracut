@@ -31,20 +31,20 @@ export interface CreateAssistantSuggestionInput {
   project_id: string;
   kind: AssistantSuggestionKind;
   summary: string;
-  rationale?: string;
-  payload?: Record<string, unknown>;
-  created_at?: string;
+  rationale?: string | undefined;
+  payload?: Record<string, unknown> | undefined;
+  created_at?: string | undefined;
 }
 
 export interface AssistantSuggestionReviewInput {
-  reviewed_at?: string;
-  reviewed_by?: string;
-  review_note?: string;
+  reviewed_at?: string | undefined;
+  reviewed_by?: string | undefined;
+  review_note?: string | undefined;
 }
 
 export interface AssistantSuggestionApplyInput {
-  applied_at?: string;
-  applied_by?: string;
+  applied_at?: string | undefined;
+  applied_by?: string | undefined;
 }
 
 export function createAssistantSuggestion(input: CreateAssistantSuggestionInput): AssistantSuggestion {
