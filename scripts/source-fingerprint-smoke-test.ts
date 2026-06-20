@@ -67,6 +67,11 @@ try {
   expectTrue(Boolean(fingerprint.fingerprint), "Successful fingerprint should include fingerprint string");
   expectTrue(fingerprint.size_bytes !== undefined && fingerprint.size_bytes > 0, "Fingerprint should include file size");
 
+  if (!fingerprint.fingerprint) throw new Error("Expected successful fingerprint string");
+  if (fingerprint.size_bytes === undefined) throw new Error("Expected successful fingerprint size");
+  const originalFingerprint = fingerprint.fingerprint;
+  const originalSizeBytes = fingerprint.size_bytes;
+
   const probe = createMediaProbeForAsset(asset, {
     project_id: project.project_id,
     source: "mock",
@@ -75,7 +80,7 @@ try {
       format_name: "mov,mp4,m4a,3gp,3g2,mj2",
       duration_seconds: 18,
       bitrate: 4_000_000,
-      size_bytes: fingerprint.size_bytes,
+      size_bytes: originalSizeBytes,
     },
     video: {
       codec: "h264",
@@ -94,7 +99,7 @@ try {
 
   await saveProbeResultToCache(rootDir, {
     result: probe,
-    source_fingerprint: fingerprint.fingerprint,
+    source_fingerprint: originalFingerprint,
     cached_at: "2026-06-19T00:03:00.000Z",
   });
 
@@ -113,7 +118,8 @@ try {
   });
 
   expectEqual(changedFingerprint.status, "fingerprinted", "Changed local file should still fingerprint");
-  expectNotEqual(changedFingerprint.fingerprint, fingerprint.fingerprint, "Changed local file should produce a different fingerprint");
+  if (!changedFingerprint.fingerprint) throw new Error("Expected changed fingerprint string");
+  expectNotEqual(changedFingerprint.fingerprint, originalFingerprint, "Changed local file should produce a different fingerprint");
 
   const missingAfterChange = await loadProbeResultFromCache(
     rootDir,
