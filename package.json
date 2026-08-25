@@ -29,7 +29,8 @@
     "smoke:parallax-waveforge-bridge": "tsx scripts/parallax-waveforge-bridge-smoke-test.ts",
     "smoke:parallax-pass5-real-artifact": "tsx scripts/parallax-pass5-real-artifact-smoke-test.ts",
     "smoke:parallax-pass6-adversarial": "tsx scripts/parallax-pass6-adversarial-smoke-test.ts",
-    "smoke": "pnpm smoke:core && pnpm smoke:file && pnpm smoke:desktop && pnpm smoke:runtime && pnpm smoke:settings && pnpm smoke:ai && pnpm smoke:media-import && pnpm smoke:media-probe && pnpm smoke:probe-cache && pnpm smoke:source-fingerprint && pnpm smoke:probe-planning && pnpm smoke:cached-probe-application && pnpm smoke:probe-executor && pnpm smoke:probe-runner && pnpm smoke:probe-plan-runner && pnpm smoke:probe-progress && pnpm smoke:probe-runner-progress && pnpm smoke:probe-progress-persistence && pnpm smoke:parallax-creative-import && pnpm smoke:parallax-waveforge-bridge && pnpm smoke:parallax-pass5-real-artifact && pnpm smoke:parallax-pass6-adversarial",
+    "smoke:parallax-pass7-freshness": "tsx scripts/parallax-pass7-freshness-smoke-test.ts",
+    "smoke": "pnpm smoke:core && pnpm smoke:file && pnpm smoke:desktop && pnpm smoke:runtime && pnpm smoke:settings && pnpm smoke:ai && pnpm smoke:media-import && pnpm smoke:media-probe && pnpm smoke:probe-cache && pnpm smoke:source-fingerprint && pnpm smoke:probe-planning && pnpm smoke:cached-probe-application && pnpm smoke:probe-executor && pnpm smoke:probe-runner && pnpm smoke:probe-plan-runner && pnpm smoke:probe-progress && pnpm smoke:probe-runner-progress && pnpm smoke:probe-progress-persistence && pnpm smoke:parallax-creative-import && pnpm smoke:parallax-waveforge-bridge && pnpm smoke:parallax-pass5-real-artifact && pnpm smoke:parallax-pass6-adversarial && pnpm smoke:parallax-pass7-freshness",
     "test": "pnpm smoke",
     "dev:desktop": "pnpm --filter @paracut/desktop dev"
   },
