@@ -11,7 +11,7 @@ function expectEqual<T>(actual: T, expected: T, message: string): void {
   }
 }
 
-const hashValue = "a".repeat(64);
+const hashValue = "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78";
 const bridge = {
   schema: "parallax.bridge.v1" as const,
   protocol: "parallax-bridge" as const,
@@ -40,14 +40,14 @@ const bridge = {
   requiresUserAction: true,
 };
 
-const input = parallaxBridgeToMediaImportInput(bridge);
+const input = await parallaxBridgeToMediaImportInput(bridge);
 const reference = createMediaImportReference(input);
 
 expectEqual(reference.kind, "image", "Bridge should enter ParaCut through native image import");
 expectEqual(reference.intent, "image-overlay", "Creative image should keep native image-overlay intent");
 expectEqual(reference.copy_policy, "reference-only", "Bridge should remain reference-only");
 expectEqual(reference.media_input.hash?.algorithm, "sha256", "SHA-256 algorithm should be preserved");
-expectEqual(reference.media_input.hash?.value, hashValue, "SHA-256 value should be preserved without prefix");
+expectEqual(reference.media_input.hash?.value, hashValue, "SHA-256 value should be verified and preserved without prefix");
 expectEqual(reference.media_input.metadata?.width, 960, "Canvas width should be preserved as media metadata");
 expectEqual(reference.media_input.metadata?.height, 720, "Canvas height should be preserved as media metadata");
 expectEqual(reference.media_input.imported_at, bridge.createdAt, "Bridge timestamp should become native imported_at");
@@ -55,7 +55,7 @@ expectTrue(reference.media_input.uri.startsWith("data:image/webp"), "Native data
 
 let blocked = false;
 try {
-  parallaxBridgeToMediaImportInput({ ...bridge, requiresUserAction: false });
+  await parallaxBridgeToMediaImportInput({ ...bridge, requiresUserAction: false });
 } catch {
   blocked = true;
 }
