@@ -32,40 +32,11 @@ export interface VerifyParallaxCreativeBridgeOptions {
   requireContentHash?: boolean;
 }
 
-export function parallaxBridgeToMediaImportInput(
+export async function parallaxBridgeToMediaImportInput(
   bridge: ParallaxCreativeBridgeV1,
-): CreateMediaImportReferenceInput {
-  assertCreativeBridgeEnvelope(bridge);
-
-  const native = bridge.payloadRefOrInline?.native;
-  const image = native?.image;
-  if (!image || !image.startsWith("data:image/")) {
-    throw new Error("Creative handoff requires a native data:image payload");
-  }
-
-  const hash = bridge.contentHash?.startsWith("sha256:")
-    ? { algorithm: "sha256" as const, value: bridge.contentHash.slice("sha256:".length) }
-    : undefined;
-  const width = native?.canvas?.width;
-  const height = native?.canvas?.height;
-  const metadata = width !== undefined || height !== undefined
-    ? {
-        ...(width !== undefined ? { width } : {}),
-        ...(height !== undefined ? { height } : {}),
-      }
-    : undefined;
-
-  return {
-    source_uri: image,
-    kind: "image",
-    name: native?.name || `Auralith handoff ${bridge.transferId}`,
-    ...(hash ? { hash } : {}),
-    ...(metadata ? { metadata } : {}),
-    rights_note: native?.note || "Creative image handed off by the user. Rights not independently verified by ParaCut.",
-    imported_at: bridge.createdAt,
-    copy_policy: "reference-only",
-    intent: "image-overlay",
-  };
+): Promise<CreateMediaImportReferenceInput> {
+  await verifyParallaxCreativeBridgeContentHash(bridge);
+  return projectParallaxBridgeToMediaImportInput(bridge);
 }
 
 export async function verifyParallaxCreativeBridgeContentHash(
@@ -105,8 +76,43 @@ export async function verifyParallaxCreativeBridgeContentHash(
 export async function verifiedParallaxBridgeToMediaImportInput(
   bridge: ParallaxCreativeBridgeV1,
 ): Promise<CreateMediaImportReferenceInput> {
-  await verifyParallaxCreativeBridgeContentHash(bridge);
   return parallaxBridgeToMediaImportInput(bridge);
+}
+
+function projectParallaxBridgeToMediaImportInput(
+  bridge: ParallaxCreativeBridgeV1,
+): CreateMediaImportReferenceInput {
+  assertCreativeBridgeEnvelope(bridge);
+
+  const native = bridge.payloadRefOrInline?.native;
+  const image = native?.image;
+  if (!image || !image.startsWith("data:image/")) {
+    throw new Error("Creative handoff requires a native data:image payload");
+  }
+
+  const hash = bridge.contentHash?.startsWith("sha256:")
+    ? { algorithm: "sha256" as const, value: bridge.contentHash.slice("sha256:".length) }
+    : undefined;
+  const width = native?.canvas?.width;
+  const height = native?.canvas?.height;
+  const metadata = width !== undefined || height !== undefined
+    ? {
+        ...(width !== undefined ? { width } : {}),
+        ...(height !== undefined ? { height } : {}),
+      }
+    : undefined;
+
+  return {
+    source_uri: image,
+    kind: "image",
+    name: native?.name || `Auralith handoff ${bridge.transferId}`,
+    ...(hash ? { hash } : {}),
+    ...(metadata ? { metadata } : {}),
+    rights_note: native?.note || "Creative image handed off by the user. Rights not independently verified by ParaCut.",
+    imported_at: bridge.createdAt,
+    copy_policy: "reference-only",
+    intent: "image-overlay",
+  };
 }
 
 function assertCreativeBridgeEnvelope(bridge: ParallaxCreativeBridgeV1): void {
