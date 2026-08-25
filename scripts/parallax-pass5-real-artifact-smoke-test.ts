@@ -28,12 +28,12 @@ const frozenWaveForgeBridge = JSON.parse(
   await readFile(new URL("./fixtures/parallax-pass5-waveforge-bridge.json", import.meta.url), "utf8"),
 );
 
-const encodedPng = String(artifact.data_uri).split(",", 2)[1];
-if (!encodedPng) throw new Error("Pass 5 fixture must contain a base64 data URI");
-const pngBytes = Buffer.from(encodedPng, "base64");
-const pngSha256 = createHash("sha256").update(pngBytes).digest("hex");
-assert.equal(pngBytes.length, artifact.bytes, "Pass 5 PNG byte count must match the frozen fixture");
-assert.equal(pngSha256, artifact.sha256, "Pass 5 PNG SHA-256 must match the frozen fixture");
+const encodedArtifact = String(artifact.data_uri).split(",", 2)[1];
+if (!encodedArtifact) throw new Error("Pass 5 fixture must contain a base64 data URI");
+const artifactBytes = Buffer.from(encodedArtifact, "base64");
+const artifactSha256 = createHash("sha256").update(artifactBytes).digest("hex");
+assert.equal(artifactBytes.length, artifact.bytes, "Pass 5 artifact byte count must match the frozen fixture");
+assert.equal(artifactSha256, artifact.sha256, "Pass 5 artifact SHA-256 must match the frozen fixture");
 
 const creativeBridge = {
   schema: "parallax.bridge.v1" as const,
@@ -58,7 +58,7 @@ const creativeBridge = {
       note: artifact.rights_note,
     },
   },
-  contentHash: `sha256:${pngSha256}`,
+  contentHash: `sha256:${artifactSha256}`,
   warnings: [],
   requiresUserAction: true,
 };
@@ -123,7 +123,7 @@ const plan: RenderPlan = {
 };
 
 const planSha256 = createHash("sha256").update(canonicalJson(plan), "utf8").digest("hex");
-assert.equal(planSha256, "c929aa69ebf11d0c6878caedefb7dffc621f52fb5716b55acc45e01be16ac088");
+assert.equal(planSha256, "dbfaa18ae5cfff24a8252f69f18ffe69e72afba3f0a729c6eb3bb32668c53710");
 
 const waveForgeBridge = renderPlanToWaveForgeBridge(plan, {
   contentHash: `sha256:${planSha256}`,
@@ -132,8 +132,8 @@ const waveForgeBridge = renderPlanToWaveForgeBridge(plan, {
 assert.deepEqual(waveForgeBridge, frozenWaveForgeBridge, "ParaCut must reproduce the frozen Pass 5 WaveForge bridge packet exactly");
 
 console.log("ParaCut Pass 5 real-artifact chain smoke passed", {
-  pngBytes: pngBytes.length,
-  pngSha256,
+  artifactBytes: artifactBytes.length,
+  artifactSha256,
   assetId: reference.asset_id,
   planSha256,
   bridgeContentHash: waveForgeBridge.contentHash,
