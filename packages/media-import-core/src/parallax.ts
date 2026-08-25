@@ -92,7 +92,9 @@ export async function verifyParallaxCreativeBridgeContentHash(
   }
 
   const bytes = decodeBase64ImageDataUri(image);
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  const digestInput = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(digestInput).set(bytes);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", digestInput);
   const actual = bytesToHex(new Uint8Array(digest));
   const expected = contentHash.slice("sha256:".length).toLowerCase();
   if (actual !== expected) {
