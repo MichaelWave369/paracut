@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import { createMediaImportReference } from "../packages/media-import-core/src/index";
-import { parallaxBridgeToMediaImportInput } from "../packages/media-import-core/src/parallax";
+import { verifiedParallaxBridgeToMediaImportInput } from "../packages/media-import-core/src/parallax";
 import type { RenderPlan } from "../packages/render-core/src/index";
 import { renderPlanToWaveForgeBridge } from "../packages/render-core/src/parallax";
 
@@ -63,7 +63,7 @@ const creativeBridge = {
   requiresUserAction: true,
 };
 
-const importInput = parallaxBridgeToMediaImportInput(creativeBridge);
+const importInput = await verifiedParallaxBridgeToMediaImportInput(creativeBridge);
 const reference = createMediaImportReference(importInput);
 assert.equal(reference.media_input.hash?.algorithm, "sha256");
 assert.equal(reference.media_input.hash?.value, artifact.sha256);
