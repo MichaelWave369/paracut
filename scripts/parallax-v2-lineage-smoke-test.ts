@@ -151,7 +151,7 @@ const bundle = await verifiedParallaxBridgeV2ToMediaImportBundle(bridge);
 assert.equal(bundle.lineage.profile, "parallax.creative-interop.v2");
 assert.equal(bundle.lineage.creativeManifestHash, manifestHash);
 assert.equal(bundle.lineage.baseContentHash, native.baseContentHash);
-assert.deepEqual(bundle.lineage.overlayContentHashes, [native.overlays[0].contentHash]);
+assert.deepEqual(bundle.lineage.overlayContentHashes, [native.overlays[0]!.contentHash]);
 assert.equal(bundle.lineage.semanticOverlayCount, 1);
 assert.equal(bundle.lineage.auralithCaptureHash, captureHash);
 assert.equal(bundle.lineage.auralithReceiptHash, receiptHash);
@@ -161,7 +161,7 @@ const overlayRef = createMediaImportReference(bundle.overlays[0]!);
 assert.equal(baseRef.copy_policy, "reference-only");
 assert.equal(overlayRef.copy_policy, "reference-only");
 assert.equal(baseRef.media_input.hash?.value, native.baseContentHash.slice("sha256:".length));
-assert.equal(overlayRef.media_input.hash?.value, native.overlays[0].contentHash.slice("sha256:".length));
+assert.equal(overlayRef.media_input.hash?.value, native.overlays[0]!.contentHash.slice("sha256:".length));
 
 const plan: RenderPlan = {
   plan_id: "plan_interop_v2_001",
@@ -272,7 +272,7 @@ await assert.rejects(
 console.log("Parallax Creative Interop v2 lineage smoke passed", {
   creativeManifestHash: manifestHash,
   baseContentHash: native.baseContentHash,
-  overlayContentHash: native.overlays[0].contentHash,
+  overlayContentHash: native.overlays[0]!.contentHash,
   auralithCaptureHash: captureHash,
   auralithReceiptHash: receiptHash,
   planHash,
