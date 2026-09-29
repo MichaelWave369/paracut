@@ -180,6 +180,18 @@ ParaCut is moving in small, CI-safe layers: data contracts first, then persisten
 
 ## Next likely lanes
 
+### Interop v2 candidate lane
+
+- [x] Verify Creative Bridge v2 base / protected overlays / semantic manifest
+- [x] Preserve base and protected overlays as separate native ParaCut media references
+- [x] Bind creative lineage into a `parallax.bridge.v2` RenderPlan handoff
+- [x] Preserve `planRevision` freshness semantics
+- [x] Keep v1 creative ingress and WaveForge handoff compatibility
+- [x] Freeze `parallax.creative-interop.v2` candidate spec + hash
+- [ ] Ratify the identical v2 profile in Domistika and Auralith after downstream CI
+- [ ] Ratify a CineSwarm receiver only under an authorized repository connection
+
+
 ### v0.21 — Probe Progress Receipt Bridge
 
 - [ ] Optional receipt for persisted progress batch writes
