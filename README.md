@@ -1,5 +1,24 @@
 # ParaCut
 
+## Parallax Creative Interop v2
+
+ParaCut now has a candidate v2 creative-lineage path connecting the protected Domistika/Auralith handoff to the native ParaCut RenderPlan and onward to WaveForgeStudio.
+
+```text
+Creative Bridge v2
+→ verify base / overlays / manifest
+→ separate ParaCut media references
+→ native RenderPlan
+→ lineage-bound parallax.bridge.v2
+→ WaveForgeStudio
+```
+
+The v2 handoff preserves semantic-overlay hashes, optional Auralith capture/receipt hashes, ParaCut asset hashes, RenderPlan hash, and monotonic `planRevision` without granting render, network, subprocess, automatic-import, or publish authority.
+
+The optional CineSwarm extension is currently **unratified on the receiver side** and is not part of the owned canonical scope.
+
+See [Parallax Creative Interop v2](docs/PARALLAX_CREATIVE_INTEROP_V2.md).
+
 **The timeline is a ledger.**
 
 ParaCut is a local-first, AI-assisted video editor built around a clean timeline core, reversible edit receipts, creator memory, auditable render plans, portable project folders, a desktop shell, runtime command wiring, local app settings, safe media import references, media probe metadata contracts, probe cache adapters, source fingerprints, probe planning, cached probe application, probe executor boundaries, safe probe runner stubs, probe plan runner bridges, probe progress events, live probe progress callbacks, probe progress persistence, and human-approved automation.
