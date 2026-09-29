@@ -1,91 +1,76 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ParaCut Desktop Shell</title>
-    <style>
-      body {
-        margin: 0;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #101114;
-        color: #f5f5f5;
-      }
-      .app {
-        display: grid;
-        grid-template-rows: 48px 1fr 160px;
-        min-height: 100vh;
-      }
-      header,
-      footer {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 0 16px;
-        background: #181a20;
-        border-bottom: 1px solid #282b33;
-      }
-      main {
-        display: grid;
-        grid-template-columns: 260px 1fr 320px;
-        min-height: 0;
-      }
-      section {
-        border-right: 1px solid #282b33;
-        padding: 16px;
-      }
-      .timeline {
-        display: grid;
-        place-items: center;
-        background: #12141a;
-      }
-      .panel-title {
-        color: #aeb6c8;
-        font-size: 12px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      .card {
-        margin-top: 12px;
-        padding: 12px;
-        border: 1px solid #303440;
-        border-radius: 12px;
-        background: #1a1d25;
-      }
-      .receipt {
-        color: #9fd8b6;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="app">
-      <header>
-        <strong>ParaCut</strong>
-        <span>The timeline is a ledger.</span>
-      </header>
-      <main>
-        <section>
-          <div class="panel-title">Media Shelf</div>
-          <div class="card">Project files and media references will land here.</div>
-        </section>
-        <section class="timeline">
-          <div>
-            <div class="panel-title">Timeline</div>
-            <h1>Desktop Shell Mock</h1>
-            <p>v0.5 proves shell state before real Tauri wiring.</p>
-          </div>
-        </section>
-        <section>
-          <div class="panel-title">Inspector</div>
-          <div class="card receipt">Receipts, render plans, and selected clip details will show here.</div>
-        </section>
-      </main>
-      <footer>
-        <span>Open project</span>
-        <span>Save project</span>
-        <span>Import media</span>
-        <span>Plan render</span>
-      </footer>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ParaCut · Interop Room</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#090b10; color:#e7ecf5; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 80% 0%,#19213a 0,#0b0e15 34%,#07090d 100%); }
+    header { display:flex; align-items:center; gap:14px; padding:16px 20px; border-bottom:1px solid #273044; background:#0d111bcc; position:sticky; top:0; backdrop-filter:blur(12px); z-index:2; }
+    header strong { font-size:20px; letter-spacing:.08em; }
+    .badge { padding:4px 8px; border:1px solid #3c4965; border-radius:999px; color:#9fb3d9; font-size:11px; }
+    #status { margin-left:auto; font-size:12px; color:#9fb3d9; }
+    #status[data-kind="ok"] { color:#8ce7ba; } #status[data-kind="error"] { color:#ff8f9e; }
+    .layout { display:grid; grid-template-columns:minmax(220px,1fr) minmax(360px,2fr) minmax(260px,1.15fr); gap:12px; padding:12px; min-height:calc(100vh - 64px); }
+    .column { display:flex; flex-direction:column; gap:12px; min-width:0; }
+    .panel { border:1px solid #263149; border-radius:14px; background:#101621e8; padding:14px; box-shadow:0 14px 40px #0005; }
+    .panel h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.15em; color:#7f96bd; }
+    .stack { display:flex; flex-direction:column; gap:7px; font-size:12px; }
+    .stack strong { color:#d9f7e6; } code { color:#9bd6ff; overflow-wrap:anywhere; font-size:10px; }
+    .asset { display:grid; grid-template-columns:1fr auto; gap:4px 8px; border:1px solid #29344a; background:#121a27; padding:9px; border-radius:9px; }
+    .asset code { grid-column:1 / -1; }
+    .timeline { min-height:330px; background:linear-gradient(#0c111a,#0b0f17); }
+    .track { display:grid; grid-template-columns:150px 1fr; gap:9px; align-items:center; margin:8px 0; }
+    .track > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#b7c4db; }
+    .clip { min-height:38px; display:flex; align-items:center; padding:0 10px; border-radius:6px; border:1px solid #3d6f67; background:linear-gradient(90deg,#143a35,#1a4f47); color:#aef3d5; }
+    .clip.overlay { border-color:#66578d; background:linear-gradient(90deg,#2d244a,#47346b); color:#d8c8ff; }
+    .actions { display:grid; grid-template-columns:repeat(5,minmax(110px,1fr)); gap:8px; padding:0 12px 14px; }
+    button { border:1px solid #364765; background:#141d2d; color:#dce7f8; padding:10px 12px; border-radius:9px; cursor:pointer; font:inherit; font-size:11px; }
+    button:hover { border-color:#6ca8a0; background:#172638; }
+    dl { display:grid; grid-template-columns:120px 1fr; gap:7px; margin:0; font-size:11px; } dt{color:#7f96bd;} dd{margin:0;min-width:0;}
+    .doctrine { color:#7485a2; line-height:1.6; font-size:11px; }
+    @media (max-width:950px){ .layout{grid-template-columns:1fr;} .actions{grid-template-columns:1fr 1fr;} }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>ParaCut</strong>
+    <span class="badge">Interop Room v0.1</span>
+    <span class="badge">The timeline is a ledger.</span>
+    <span id="status">Waiting for Creative Bridge v2</span>
+  </header>
+
+  <div class="layout">
+    <div class="column">
+      <section class="panel"><h2>Source</h2><div id="source-state" class="stack"></div></section>
+      <section class="panel"><h2>Media Shelf</h2><div id="media-state" class="stack"></div></section>
     </div>
-  </body>
+
+    <div class="column">
+      <section class="panel timeline"><h2>Timeline</h2><div id="timeline-state" class="stack"></div></section>
+      <section class="panel"><h2>Output</h2><div id="output-state" class="stack"></div></section>
+    </div>
+
+    <div class="column">
+      <section class="panel"><h2>Creative Lineage</h2><div id="lineage-state" class="stack"></div></section>
+      <section class="panel doctrine">
+        <h2>Authority</h2>
+        This room verifies, imports references, plans a timeline, and writes a bounded WaveForge handoff.
+        It does not render media, publish, call the network, or turn a receipt into permission.
+      </section>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="receive">1 · Verify Bridge</button>
+    <button id="import">2 · Import References</button>
+    <button id="timeline">3 · Build 12s Timeline</button>
+    <button id="plan">4 · Create RenderPlan</button>
+    <button id="waveforge">5 · Send to WaveForge</button>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
 </html>
