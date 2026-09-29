@@ -1,5 +1,21 @@
 # ParaCut
 
+## ParaCut Interop Room v0.1
+
+The browser-facing Interop Room makes the Creative Interop v2 lineage path live:
+
+```text
+Creative Bridge v2
+→ verified ParaCut references
+→ deterministic timeline
+→ native RenderPlan hash
+→ WaveForge v2 handoff
+```
+
+It installs `window.ParaCut`, exposes bounded native site tools when available, and is deployed from `apps/desktop/public` through GitHub Pages.
+
+See [Interop Room v0.1](docs/INTEROP_ROOM_V01.md).
+
 ## Parallax Creative Interop v2
 
 ParaCut now has a candidate v2 creative-lineage path connecting the protected Domistika/Auralith handoff to the native ParaCut RenderPlan and onward to WaveForgeStudio.
