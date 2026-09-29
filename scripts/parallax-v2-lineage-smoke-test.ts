@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 import { createMediaImportReference } from "../packages/media-import-core/src/index";
 import {
@@ -9,6 +10,25 @@ import {
 } from "../packages/media-import-core/src/parallax";
 import type { RenderPlan } from "../packages/render-core/src/index";
 import { renderPlanToWaveForgeBridgeV2 } from "../packages/render-core/src/parallax";
+
+
+const frozenSpec = await readFile(new URL("../docs/PARALLAX_CREATIVE_INTEROP_V2.md", import.meta.url));
+const frozenManifest = JSON.parse(
+  await readFile(new URL("../parallax-creative-interop.v2.json", import.meta.url), "utf8"),
+);
+const frozenSpecHash = createHash("sha256").update(frozenSpec).digest("hex");
+assert.equal(
+  frozenSpecHash,
+  frozenManifest.spec_sha256,
+  "Creative Interop v2 manifest must bind the exact frozen profile text",
+);
+assert.equal(frozenManifest.protocol_id, "parallax.creative-interop.v2");
+assert.equal(frozenManifest.status, "candidate_pending_repository_ratification");
+assert.equal(
+  frozenManifest.optional_extensions[0].status,
+  "unratified_receiver",
+  "CineSwarm extension must remain explicitly unratified",
+);
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map((item) => canonicalJson(item)).join(",") + "]";
