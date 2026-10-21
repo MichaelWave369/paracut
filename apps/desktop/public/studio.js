@@ -244,6 +244,15 @@ function stopPlayback() { playing = false; video.pause(); soundtrack.pause(); up
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
+    if (command.type === 'clip.source-audio.muted') {
+      // Audio-only edit: update the currently audible clip without pausing playback.
+      state = change(state, command);
+      const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
+      video.muted = isSourceAudioMuted(onScreen);
+      render();
+      status(command.muted ? 'Original video audio muted. A1 stays on.' : 'Original video audio restored.');
+      return;
+    }
     stopPlayback();
     state = change(state, command);
     if (selectedId && ![...state.clips, ...state.audioClips].some(c=>c.clip_id===selectedId)) selectedId = null;
