@@ -1,6 +1,7 @@
 import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, overlayMotionAt, isSourceAudioMuted, audioLevelAt, audioMixLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
+import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 
 const $ = id => document.getElementById(id);
@@ -53,6 +54,7 @@ const soundtrack = document.createElement('audio');
 soundtrack.preload = 'auto'; soundtrack.volume = .85;
 const waveforms = new Map();
 let soundSerial = 0;
+let liveBusMeters=null,liveMeterUnavailable=false;
 let draggedClipId = null;
 let editingTitleId = null;
 let draggingTrimEdge = null;
@@ -267,6 +269,37 @@ function showTitleAt(at) {
   node.dataset.color = style.color;
   node.style.opacity = String(titleOpacityAt(title, at));
 }
+// Only the A1/A2 preview elements pass through this Web Audio meter graph.
+// The browser export uses separate players and a separate audio context.
+function ensureLiveBusMeters() {
+  if(liveBusMeters) {
+    if(liveBusMeters.context.state==='suspended')
+      void liveBusMeters.context.resume().catch(e=>status('Live audio context: '+e.message,true));
+    return;
+  }
+  if(liveMeterUnavailable)return;
+  const AudioCtx=globalThis.AudioContext||globalThis.webkitAudioContext;
+  if(!AudioCtx){liveMeterUnavailable=true;return;}
+  try{
+    liveBusMeters=createPreviewBusMeters(AudioCtx,{a1:soundtrack,a2:audio2Player});
+    // The actual track volume now lives in the Web Audio GainNode;
+    // avoid applying its gain twice through HTMLMediaElement.volume.
+    soundtrack.volume=1;audio2Player.volume=1;
+    previewAudioAt(playhead);
+    void liveBusMeters.context.resume().catch(e=>
+      status('Live audio metering could not resume: '+e.message,true));
+  }catch(e){
+    liveMeterUnavailable=true;
+    status('Web Audio meters unavailable: '+e.message,true);
+  }
+}
+function setPreviewBusGain(lane,element,value) {
+  const safe=Math.max(0,Math.min(1,value));
+  if(liveBusMeters) {
+    element.volume=1;
+    liveBusMeters.setGain(lane,safe);
+  } else element.volume=safe;
+}
 function previewAudioAt(at) {
   const v = activeClip(state, Math.min(at, Math.max(0, duration(state) - .001)));
   const a = activeAudioClip(state, at);
@@ -275,8 +308,8 @@ function previewAudioAt(at) {
   video.volume = Math.min(1, audioLevelAt(v, at) * audioMixLevelAt(state,'video-1',at) * (dissolve ? 1 - dissolve.progress : 1));
   crossfadeVideo.muted = isSourceAudioMuted(dissolve?.incoming);
   crossfadeVideo.volume = Math.min(1, dissolve ? audioLevelAt(dissolve.incoming, at) * audioMixLevelAt(state,'video-1',at) * dissolve.progress : 0);
-  soundtrack.volume = Math.min(1, audioLevelAt(a, at) * audioMixLevelAt(state,'audio-1',at));
-  audio2Player.volume = Math.min(1, audioLevelAt(activeAudio2Clip(state,at),at) * audioMixLevelAt(state,'audio-2',at));
+  setPreviewBusGain('a1',soundtrack,audioLevelAt(a,at)*audioMixLevelAt(state,'audio-1',at));
+  setPreviewBusGain('a2',audio2Player,audioLevelAt(activeAudio2Clip(state,at),at)*audioMixLevelAt(state,'audio-2',at));
   overlayVideo.muted = isSourceAudioMuted(activeOverlayClip(state,at));
   overlayVideo.volume = Math.min(1, audioLevelAt(activeOverlayClip(state,at),at) * audioMixLevelAt(state,'video-2',at));
 }
@@ -305,7 +338,9 @@ async function syncLayerPlayer(el,clip,at,autoplay,kind) {
   if(Math.abs(el.currentTime-expected)>.16) {
     try{el.currentTime=Math.max(0,expected)}catch{}
   }
-  el.volume=Math.min(1,audioLevelAt(clip,at)*audioMixLevelAt(state,clip.track_id,at));
+  const effectiveGain=audioLevelAt(clip,at)*audioMixLevelAt(state,clip.track_id,at);
+  if(el===audio2Player)setPreviewBusGain('a2',el,effectiveGain);
+  else el.volume=Math.min(1,effectiveGain);
   if(kind==='video'){
     el.muted=isSourceAudioMuted(clip);
     el.style.display='block';
@@ -485,11 +520,26 @@ function drawTrimWaveform() {
   }catch{ /* leave numeric invalid input visible for correction */ }
 }
 function updatePeakGuides(at) {
+  const live=Boolean(liveBusMeters && playing &&
+    liveBusMeters.context.state==='running');
+  $('audio-meter-mode').textContent=live?'Measured A1/A2 playback peaks':'Estimated source peaks';
+  $('audio-meter-status').textContent=live
+    ? 'Live • Web Audio post-track-gain'
+    : liveMeterUnavailable?'Web Audio unavailable; showing estimates'
+      : 'Press Play to activate live bus meters';
   for(const [key,track] of [['a1','audio-1'],['a2','audio-2']]) {
-    const data=estimateTrackPeak(state,track,at,waveforms);
-    $('peak-'+key).value=data.peak;
-    $('peak-'+key+'-value').textContent=data.available
-      ? Math.round(data.peak*100)+'%' : '—';
+    if(live) {
+      const result=liveBusMeters.read(key);
+      $('peak-'+key).value=result.peak;
+      $('peak-'+key+'-value').textContent=formatDbfs(result.dbfs);
+      $('peak-'+key+'-label').textContent=key.toUpperCase()+' live peak';
+    } else {
+      const data=estimateTrackPeak(state,track,at,waveforms);
+      $('peak-'+key).value=data.peak;
+      $('peak-'+key+'-value').textContent=data.available
+        ? Math.round(data.peak*100)+'%' : '—';
+      $('peak-'+key+'-label').textContent=key.toUpperCase()+' estimate';
+    }
   }
 }
 function adjustTrimAtFraction(edge,fraction) {
@@ -636,7 +686,7 @@ async function syncSoundtrack(at, autoplay) {
   if (Math.abs(soundtrack.currentTime - expected) > .15) {
     try { soundtrack.currentTime = Math.min(clip.source.end - .005, expected); } catch {}
   }
-  soundtrack.volume = Math.min(1, audioLevelAt(clip, at) * audioMixLevelAt(state,'audio-1',at));
+  setPreviewBusGain('a1',soundtrack,audioLevelAt(clip,at)*audioMixLevelAt(state,'audio-1',at));
   if (autoplay && playing && soundtrack.paused) {
     try { await soundtrack.play(); } catch (e) { status('Soundtrack preview: ' + e.message, true); }
   } else if (!autoplay) soundtrack.pause();
@@ -674,6 +724,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
     if (Math.abs(video.currentTime - time) > .035) video.currentTime = Math.max(0,time);
     video.style.display = 'block'; $('empty-preview').hidden = true;
     if (autoplay && playhead < d - .005) {
+      ensureLiveBusMeters();
       await video.play(); playing = true;
     } else { video.pause(); playing = false; }
     void syncSoundtrack(playhead, playing);
@@ -686,7 +737,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
 function stopPlayback() {
   playing = false; video.pause(); soundtrack.pause(); overlayVideo.pause(); audio2Player.pause(); hideCrossfadePreview();
   if (transitionFrameHandle) cancelAnimationFrame(transitionFrameHandle);
-  transitionFrameHandle=0; updateTimeUI();
+  transitionFrameHandle=0; updateTimeUI();updatePeakGuides(playhead);
 }
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
