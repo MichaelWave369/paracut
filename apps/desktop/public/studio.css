@@ -58,3 +58,14 @@
 .title-preview[data-color=white]{color:#fff}
 .title-preview[data-color=mint]{color:#87f0df}
 .title-preview[data-color=gold]{color:#ffdd8a}
+
+/* R3.2: true two-decoder V1 visual crossfades */
+.screen #crossfade-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2;display:none;opacity:0}
+.screen #title-preview{z-index:5}
+.transition-control{padding:12px;background:#17293b;border:1px solid #386486;border-radius:8px;margin:15px 0}
+.transition-control[hidden]{display:none}
+.transition-control>label{font-size:11px;font-weight:700;color:#b9e3f1}
+.transition-row{display:flex;align-items:center;gap:8px;margin:8px 0}
+.transition-row input{min-width:55px;flex:1;border:1px solid #45617b;background:#0c1724;color:#f4fcff;padding:8px;border-radius:6px}
+.timeline-clip.has-transition{border-right:5px solid #9ad1ff}
+.timeline-clip .transition-caption{font-size:10px;color:#c9e8ff}
