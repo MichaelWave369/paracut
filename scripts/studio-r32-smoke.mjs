@@ -70,7 +70,7 @@ assert.match(html,/id="crossfade-video"/);
 assert.match(html,/id="apply-crossfade"/);
 assert.match(ui,/const fade=crossfadeAt\(state,at\)/);
 assert.match(ui,/drawVideoFrame\(encoderIncoming,fade.progress\)/);
-assert.match(ui,/incomingVideoGain.gain.value =\s*audioLevelAt\(fade.incoming,at\) \* fade.progress/);
+assert.match(ui,/audioLevelAt\(fade.incoming,at\) \* audioMixLevelAt\(state,'video-1',at\) \* fade.progress/);
 assert.match(ui,/videoSourceGain.gain.value = audioLevelAt\(clip,timelinePosition\) \*/);
 assert.match(ui,/const skipped = index > 0/);
 console.log('ParaCut R3.2 crossfade smoke PASS: overlap geometry, preview/export wiring, preservation, and transition invariants.');
