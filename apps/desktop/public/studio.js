@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 
@@ -6,6 +6,37 @@ const $ = id => document.getElementById(id);
 let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 let activeExportFormat = null;
+let timelineZoom=1; // local interface preference, not saved into media drafts
+function timelineExtent(){
+  return Math.max(duration(state),state.audioClips.at(-1)?.timeline.end||0,
+    state.video2Clips.at(-1)?.timeline.end||0,
+    state.audio2Clips.at(-1)?.timeline.end||0,
+    ...state.titles.map(t=>t.end),.01);
+}
+function updateStoryPlayhead() {
+  const total=timelineExtent(),line=$('storyboard-playhead');
+  line.style.display=state.clips.length?'block':'none';
+  line.style.left=(100*Math.min(playhead,total)/total)+'%';
+}
+function snapPlacement(start,span,track,excludeClipId=null) {
+  if(!$('snap-enabled').checked) return {start,snapped:false};
+  const total=timelineExtent(),px=$('storyboard-canvas').clientWidth||800;
+  return snapLayerTime(state,{desiredStart:start,span,trackId:track,excludeClipId,
+    extraAnchors:[playhead],threshold:Math.min(.75,Math.max(.05,12*total/px))});
+}
+function placeOnLayer(command) {
+  const isAdd=command.type==='clip.layer.added';
+  const clip=isAdd?null:[...state.video2Clips,...state.audio2Clips].find(c=>c.clip_id===command.clip_id);
+  const asset=isAdd?state.assets.find(a=>a.asset_id===command.asset_id):null;
+  const span=isAdd?asset?.duration:clip?.source.end-clip?.source.start;
+  const track=isAdd?command.track_id:clip?.track_id;
+  if(!Number.isFinite(span)||!track)return status('Select compatible layer media.',true);
+  const snapped=snapPlacement(command.start,span,track,clip?.clip_id||null);
+  const previous=state.receipts.length;
+  edit({...command,start:snapped.start});
+  $('snap-feedback').textContent = state.receipts.length>previous && snapped.snapped
+    ? 'Snapped '+snapped.edge+' to '+fmt(snapped.anchor) : '';
+}
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
 const crossfadeVideo = $('crossfade-video');
@@ -61,6 +92,7 @@ function updateTimeUI() {
   $('seek').value = String(Math.min(playhead, d));
   $('play').textContent = playing ? '❚❚' : '▶';
   showTitleAt(playhead);
+  updateStoryPlayhead();
 }
 function drawMedia() {
   const list = $('media-list'); list.replaceChildren();
@@ -86,9 +118,25 @@ function drawMedia() {
     layer.className='add layer-add';layer.textContent=isAudio?'+A2':'+V2';
     layer.title=isAudio?'Place audio on A2 at the playhead':'Place video overlay on V2 at the playhead';
     layer.disabled=!linked||exporting;
-    layer.addEventListener('click',()=>edit({type:'clip.layer.added',
+    layer.addEventListener('click',()=>placeOnLayer({type:'clip.layer.added',
       asset_id:asset.asset_id,track_id:isAudio?'audio-2':'video-2',start:playhead}));
     div.append(name,add,layer);list.append(div);
+  }
+}
+function drawPrecisionRuler(total,width) {
+  const el=$('precision-ruler'); el.replaceChildren();
+  const ideal=65*total/Math.max(width,1);
+  const intervals=[.1,.25,.5,1,2,5,10,15,30,60,120,300,600,1800,3600];
+  const every=intervals.find(n=>n>=ideal)||3600;
+  const maxTicks=Math.min(100,Math.floor(total/every)+1);
+  for(let i=0;i<maxTicks;i++){
+    const at=Math.round(i*every*1000)/1000;
+    const tick=document.createElement('button');tick.type='button';
+    tick.className='precision-tick';tick.style.left=String(100*at/total)+'%';
+    tick.textContent=fmt(at).slice(0,-4);
+    tick.title='Seek to '+fmt(at);tick.disabled=exporting;
+    tick.addEventListener('click',()=>{stopPlayback();void seekTo(Math.min(at,duration(state)));});
+    el.append(tick);
   }
 }
 function drawTimeline() {
@@ -96,7 +144,11 @@ function drawTimeline() {
     { el: $('timeline-track'), clips: state.clips, empty: 'Your video timeline is empty. Add video files.' },
     { el: $('audio-track'), clips: state.audioClips, empty: 'Add audio files for soundtrack or voiceover.' },
   ];
-  const total = Math.max(duration(state), state.audioClips.at(-1)?.timeline.end || 0, .01);
+  const total=timelineExtent();
+  const viewport=$('storyboard-scroll');
+  const width=Math.round(Math.max(700,viewport.clientWidth-16)*timelineZoom);
+  $('storyboard-canvas').style.width=width+'px';
+  drawPrecisionRuler(total,width);
   for (const lane of lanes) {
     lane.el.replaceChildren();
     if (!lane.clips.length) {
@@ -109,7 +161,8 @@ function drawTimeline() {
       const item = document.createElement('button');
       item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '') + (clip.transition_out_seconds ? ' has-transition' : '');
       item.draggable = !exporting;
-      item.style.flex = String(Math.max((clip.timeline.end - clip.timeline.start) / total, .04)) + ' 0 68px';
+      item.style.left=String(100*clip.timeline.start/total)+'%';
+      item.style.width=String(Math.max(.3,100*(clip.timeline.end-clip.timeline.start)/total))+'%';
       item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
       item.title = (asset?.name || 'Missing file') + ' · ' + fmt(clip.timeline.start) + ' to ' + fmt(clip.timeline.end);
       const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
@@ -160,7 +213,7 @@ function drawTimeline() {
       lane.el.append(item);
     }
   }
-  const layerTotal=Math.max(duration(state),.01);
+  const layerTotal=total;
   for(const [el,clips,kind] of [
     [$('video2-track'),state.video2Clips,'video'],
     [$('audio2-track'),state.audio2Clips,'audio']]){
@@ -173,7 +226,14 @@ function drawTimeline() {
       item.type='button';item.className='layer-clip '+kind+(selectedId===clip.clip_id?' selected':'');
       item.style.left=String(Math.min(100,100*clip.timeline.start/layerTotal))+'%';
       item.style.width=String(Math.max(2,Math.min(100,100*(clip.timeline.end-clip.timeline.start)/layerTotal)))+'%';
-      item.textContent=(asset?.name||'Missing media')+' · '+fmt(clip.timeline.start);
+      const name=document.createElement('span');
+      name.textContent=(asset?.name||'Missing media')+' · '+fmt(clip.timeline.start);
+      item.append(name);
+      if(kind==='audio'&&waveforms.has(clip.asset_id)){
+        const canvas=document.createElement('canvas');canvas.className='waveform';
+        item.append(canvas);
+        requestAnimationFrame(()=>paintWaveform(canvas,waveforms.get(clip.asset_id)));
+      }
       item.title='Start '+fmt(clip.timeline.start)+' · Select, adjust or drag on the storyboard';
       item.addEventListener('click',()=>{selectedId=clip.clip_id;drawTimeline();drawInspector();
         void seekTo(Math.min(clip.timeline.start,duration(state)),{autoplay:playing});});
@@ -188,7 +248,7 @@ function drawTimeline() {
       if(!clips.some(c=>c.clip_id===clip_id))return;
       const rect=el.getBoundingClientRect();
       const x=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));
-      edit({type:'clip.layer.moved',clip_id,start:Math.round(x*layerTotal*10)/10});
+      placeOnLayer({type:'clip.layer.moved',clip_id,start:Math.round(x*layerTotal*10)/10});
     };
   }
 }
@@ -364,6 +424,8 @@ function drawTitles() {
     chip.textContent = title.text.length > 28 ? title.text.slice(0,28) + '…' : title.text;
     chip.title = 'Seek to ' + fmt(title.start); chip.disabled = exporting;
     chip.addEventListener('click', () => { stopPlayback(); void seekTo(Math.min(title.start,duration(state))); });
+    chip.style.left=String(100*title.start/timelineExtent())+'%';
+    chip.style.width=String(Math.max(.3,100*(title.end-title.start)/timelineExtent()))+'%';
     track.append(chip);
   }
 }
@@ -664,7 +726,7 @@ $('clip-volume').addEventListener('input', e => {
 $('apply-crossfade').addEventListener('click', () => edit({
   type:'clip.transition.updated',clip_id:selectedId,seconds:Number($('crossfade-seconds').value)
 }));
-$('apply-layer-start').addEventListener('click',()=>edit({type:'clip.layer.moved',
+$('apply-layer-start').addEventListener('click',()=>placeOnLayer({type:'clip.layer.moved',
   clip_id:selectedId,start:Number($('layer-start').value)}));
 $('apply-overlay-style').addEventListener('click',()=>edit({type:'clip.overlay.updated',
   clip_id:selectedId,layout:$('overlay-layout').value,
@@ -705,7 +767,27 @@ for(const [name, method] of [['undo',undo],['redo',redo]]) $(name).addEventListe
 $('project-name').addEventListener('change', e => edit({ type:'project.renamed', name:e.target.value }));
 $('new-project').addEventListener('click', () => {
   if (exporting || !confirm('Start a new project? Export your draft first if you want to keep these edits.')) return;
-  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; resetTitleEditor(); render(); void seekTo(0); status('New project ready.');
+  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; resetTitleEditor(); $('timeline-zoom').addEventListener('input',event=>{
+  const scroll=$('storyboard-scroll'),total=timelineExtent();
+  const relative=total>0?playhead/total:0;
+  const oldWidth=$('storyboard-canvas').clientWidth||1;
+  const screenX=relative*oldWidth-scroll.scrollLeft;
+  timelineZoom=Number(event.target.value);
+  $('zoom-label').textContent=Math.round(timelineZoom*100)+'%';
+  drawTimeline(); drawTitles(); updateStoryPlayhead();
+  const newWidth=$('storyboard-canvas').clientWidth;
+  scroll.scrollLeft=Math.max(0,relative*newWidth-screenX);
+});
+$('fit-timeline').addEventListener('click',()=>{
+  timelineZoom=1;$('timeline-zoom').value='1';
+  $('zoom-label').textContent='100%';drawTimeline();drawTitles();
+  $('storyboard-scroll').scrollLeft=0;updateStoryPlayhead();
+});
+$('snap-enabled').addEventListener('change',event=>{
+  $('snap-feedback').textContent=event.target.checked?'Snap ON':'Snap OFF';
+});
+window.addEventListener('resize',()=>{drawTimeline();drawTitles();updateStoryPlayhead();});
+render(); void seekTo(0); status('New project ready.');
 });
 $('save-draft').addEventListener('click', () => {
   const file = (state.name.replace(/[^a-z0-9_-]+/ig,'-').slice(0,60) || 'paracut') + '.paracut.json';

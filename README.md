@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎚️ ParaCut Studio R5.1 — Precision Timeline
+
+The browser editor now has **100–400% zoom**, a clickable time ruler, a shared scrolling scale for **V1/V2/A1/A2/T1**, and optional **smart snapping** for layered clips. V1 crossfades keep their actual overlapping positions, and A2 audio waveforms can be shown when decoded. No media upload or draft-format migration. [R5.1 usage and limits](docs/STUDIO_R51.md).
+
+
 ## 🎥 ParaCut Studio R5 — Layered Storyboard
 
 The browser editor now has **V2 video overlays** (picture-in-picture or full-frame, with opacity fades) and **A2 audio** for voiceover/FX, alongside the existing V1 cuts/crossfades and A1 soundtrack. Add at the playhead, position clips in independent storyboard lanes, preview and export in the browser. The old local FFmpeg companion refuses unsupported layered drafts rather than silently dropping tracks. [R5 guide and constraints](docs/STUDIO_R5.md).

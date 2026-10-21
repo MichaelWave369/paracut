@@ -56,6 +56,40 @@ export function reflow(clips, trackId = 'video-1') {
     return next;
   });
 }
+// R5.1 editor snapping: pure suggestions, never changes saved project data.
+// Snap a layer START or END to a visible boundary only when the proposed
+// placement is legal on its own lane (no overlapping existing clips).
+export function snapLayerTime(state, {desiredStart, span, trackId, excludeClipId=null,
+  extraAnchors=[], threshold=.25} = {}) {
+  validate(state);
+  if(!['video-2','audio-2'].includes(trackId)||!finite(desiredStart)||
+     !finite(span)||span<.079||!finite(threshold)||threshold<0||threshold>5||
+     !Array.isArray(extraAnchors)||extraAnchors.length>50 ||
+     extraAnchors.some(t=>!finite(t))) throw Error('Invalid snap request.');
+  const lane=trackId==='video-2'?state.video2Clips:state.audio2Clips;
+  const validStart = x => finite(x) && x>=0 && x+span<=86400 &&
+    lane.every(c=>c.clip_id===excludeClipId ||
+      x>=c.timeline.end-.001 || x+span<=c.timeline.start+.001);
+  const anchors=[0,duration(state),...extraAnchors];
+  for(const c of [...state.clips,...state.audioClips,...state.video2Clips,...state.audio2Clips]) {
+    if(c.clip_id===excludeClipId) continue;
+    anchors.push(c.timeline.start,c.timeline.end);
+  }
+  for(const t of state.titles) anchors.push(t.start,t.end);
+  const options=[];
+  for(const anchor of anchors) for(const edge of ['start','end']) {
+    const x=edge==='start'?anchor:anchor-span;
+    const delta=Math.abs(x-desiredStart);
+    if(delta<=threshold+.00001 && validStart(x))
+      options.push({start:round(x),snapped:true,anchor:round(anchor),edge,delta});
+  }
+  options.sort((a,b)=>a.delta-b.delta || (a.edge==='start'?-1:1));
+  if(options.length) {
+    const {start,snapped,anchor,edge}=options[0];
+    return {start,snapped,anchor,edge};
+  }
+  return {start:round(desiredStart),snapped:false,anchor:null,edge:null};
+}
 export function crossfadeAt(state, time) {
   if (!state || !Number.isFinite(time)) return null;
   for (let i = 0; i < state.clips.length - 1; i++) {

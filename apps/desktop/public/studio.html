@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R5 · Layered Storyboard</title>
+  <title>ParaCut Studio R5.1 · Timeline Precision</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5 · LAYERED STORYBOARD</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.1 · TIMELINE PRECISION</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -48,12 +48,22 @@
         </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R5</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R5.1</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
           <button id="remove" title="Remove selected clip (Delete)">✕ Delete</button>
         </div></div>
+        <div class="precision-toolbar">
+          <label class="snap-label" for="snap-enabled"><input id="snap-enabled" type="checkbox" checked> ⌁ Snap boundaries</label>
+          <label for="timeline-zoom">Timeline zoom <strong id="zoom-label">100%</strong></label>
+          <input id="timeline-zoom" type="range" min="1" max="4" step=".25" value="1" aria-label="Timeline zoom">
+          <button id="fit-timeline" title="Fit all tracks horizontally">Fit</button>
+          <span id="snap-feedback" role="status" aria-live="polite"></span>
+        </div>
+        <div id="storyboard-scroll" class="storyboard-scroll" tabindex="0" aria-label="Scrollable storyboard timeline">
+        <div id="storyboard-canvas" class="storyboard-canvas">
+        <div id="precision-ruler" class="precision-ruler" aria-label="Time ruler"></div>
         <div class="timeline-ruler"><span>00:00</span><span>VIDEO 1 · RIPPLE SEQUENCE</span><span id="timeline-total">00:00</span></div>
         <div class="track-heading"><span>V1</span> VIDEO · RIPPLE CUT</div>
         <div id="timeline-track" class="timeline-track" aria-label="Video timeline"><div class="empty-timeline">Your video timeline is empty. Add clips from Media Shelf.</div></div>
@@ -65,7 +75,9 @@
         <div id="audio2-track" class="layer-track audio-layer" aria-label="Second audio storyboard"><span class="empty-timeline">Add audio on A2 to overlap music and voiceovers at the playhead.</span></div>
         <div class="track-heading titles-heading"><span>T1</span> TEXT · OVERLAYS</div>
         <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
-        <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Layered clips are moved by the Start Time control in Inspector.</p>
+        <div id="storyboard-playhead" class="storyboard-playhead" aria-hidden="true"></div>
+        </div></div>
+        <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Layered clips can be dragged or moved precisely from Inspector. Snap aligns clip starts/ends with playhead, titles, and other track boundaries; zoom reveals details.</p>
       </div>
     </section>
 
@@ -80,7 +92,7 @@
         <div id="layer-start-control" class="transition-control" hidden>
           <label for="layer-start">Layer start time (seconds)</label>
           <div class="transition-row"><input id="layer-start" type="number" min="0" step="0.1"><button id="apply-layer-start">Move Clip</button></div>
-          <p class="tip">V2/A2 clips sit at absolute storyboard times. Clips on the same layer cannot overlap.</p>
+          <p class="tip">V2/A2 clips use absolute time. Enable Snap above the timeline to align starts/ends to the playhead or existing cuts. Same-lane overlaps are still rejected.</p>
         </div>
         <div id="overlay-style-control" class="transition-control" hidden>
           <label>V2 visual overlay</label>
