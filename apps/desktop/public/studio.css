@@ -91,3 +91,26 @@
 .layer-clip:hover{filter:brightness(1.15)}
 .layer-add{font-size:10px!important;padding:7px 8px!important;white-space:nowrap}
 .layer-add-guide{font-size:11px;color:#9bc2d4;margin:8px 0}
+
+/* R5.1: one horizontal scale for V1, V2, A1, A2 and T1. */
+.precision-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:8px 0 12px;font-size:11px;color:#bed0e2}
+.precision-toolbar label{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.precision-toolbar input[type=range]{width:105px;accent-color:#7ce6cf}
+.precision-toolbar input[type=checkbox]{accent-color:#7ce6cf}
+.precision-toolbar #snap-feedback{color:#86dfd4;font-size:10px;flex:1;min-height:12px;min-width:90px}
+.storyboard-scroll{overflow-x:auto;overflow-y:hidden;border:1px solid #35495e;border-radius:9px;scrollbar-color:#567790 #152538;max-width:100%}
+.storyboard-canvas{position:relative;min-width:100%;padding:4px 6px 12px}
+.precision-ruler{position:relative;height:27px;background:#12202d;border-bottom:1px solid #344a5f;overflow:hidden}
+.precision-tick{position:absolute;top:0;bottom:0;border-left:1px solid #58738c;background:none;border-top:0;border-right:0;border-bottom:0;padding:2px 0 0 3px;color:#adcfdf;font:10px monospace;white-space:nowrap;cursor:pointer}
+.precision-tick:hover{color:#fff;border-left-color:#a6f2db}
+.storyboard-canvas>.timeline-track{position:relative;display:block;overflow:hidden;padding:0;min-height:114px;margin-bottom:7px}
+.storyboard-canvas .timeline-clip{position:absolute;top:7px;height:98px;min-width:0;flex:none!important;gap:5px;padding:8px 6px}
+.storyboard-canvas .timeline-clip:hover{z-index:8}
+.storyboard-canvas .timeline-clip.selected{z-index:9}
+.storyboard-canvas .empty-timeline{display:block;margin:18px 10px;font-size:11px}
+.storyboard-canvas .layer-track{min-height:65px}
+.storyboard-canvas .layer-clip{min-width:0}
+.storyboard-canvas .audio-layer .waveform{width:100%;height:20px;opacity:.6;margin-top:2px}
+.storyboard-playhead{position:absolute;top:0;bottom:0;width:2px;background:#ffd78e;box-shadow:0 0 7px #ffba5377;pointer-events:none;z-index:12;display:none}
+.storyboard-playhead::before{content:'';position:absolute;left:-5px;top:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #ffd78e}
+@media(max-width:600px){.precision-toolbar{gap:5px}.precision-toolbar #snap-feedback{flex-basis:100%}}
