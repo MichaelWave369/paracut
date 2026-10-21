@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 
@@ -6,6 +6,37 @@ const $ = id => document.getElementById(id);
 let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 let activeExportFormat = null;
+let timelineZoom=1; // local interface preference, not saved into media drafts
+function timelineExtent(){
+  return Math.max(duration(state),state.audioClips.at(-1)?.timeline.end||0,
+    state.video2Clips.at(-1)?.timeline.end||0,
+    state.audio2Clips.at(-1)?.timeline.end||0,
+    ...state.titles.map(t=>t.end),.01);
+}
+function updateStoryPlayhead() {
+  const total=timelineExtent(),line=$('storyboard-playhead');
+  line.style.display=state.clips.length?'block':'none';
+  line.style.left=(100*Math.min(playhead,total)/total)+'%';
+}
+function snapPlacement(start,span,track,excludeClipId=null) {
+  if(!$('snap-enabled').checked) return {start,snapped:false};
+  const total=timelineExtent(),px=$('storyboard-canvas').clientWidth||800;
+  return snapLayerTime(state,{desiredStart:start,span,trackId:track,excludeClipId,
+    extraAnchors:[playhead],threshold:Math.min(.75,Math.max(.05,12*total/px))});
+}
+function placeOnLayer(command) {
+  const isAdd=command.type==='clip.layer.added';
+  const clip=isAdd?null:[...state.video2Clips,...state.audio2Clips].find(c=>c.clip_id===command.clip_id);
+  const asset=isAdd?state.assets.find(a=>a.asset_id===command.asset_id):null;
+  const span=isAdd?asset?.duration:clip?.source.end-clip?.source.start;
+  const track=isAdd?command.track_id:clip?.track_id;
+  if(!Number.isFinite(span)||!track)return status('Select compatible layer media.',true);
+  const snapped=snapPlacement(command.start,span,track,clip?.clip_id||null);
+  const previous=state.receipts.length;
+  edit({...command,start:snapped.start});
+  $('snap-feedback').textContent = state.receipts.length>previous && snapped.snapped
+    ? 'Snapped '+snapped.edge+' to '+fmt(snapped.anchor) : '';
+}
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
 const crossfadeVideo = $('crossfade-video');
@@ -61,6 +92,7 @@ function updateTimeUI() {
   $('seek').value = String(Math.min(playhead, d));
   $('play').textContent = playing ? '❚❚' : '▶';
   showTitleAt(playhead);
+  updateStoryPlayhead();
 }
 function drawMedia() {
   const list = $('media-list'); list.replaceChildren();
@@ -86,7 +118,7 @@ function drawMedia() {
     layer.className='add layer-add';layer.textContent=isAudio?'+A2':'+V2';
     layer.title=isAudio?'Place audio on A2 at the playhead':'Place video overlay on V2 at the playhead';
     layer.disabled=!linked||exporting;
-    layer.addEventListener('click',()=>edit({type:'clip.layer.added',
+    layer.addEventListener('click',()=>placeOnLayer({type:'clip.layer.added',
       asset_id:asset.asset_id,track_id:isAudio?'audio-2':'video-2',start:playhead}));
     div.append(name,add,layer);list.append(div);
   }
@@ -188,7 +220,7 @@ function drawTimeline() {
       if(!clips.some(c=>c.clip_id===clip_id))return;
       const rect=el.getBoundingClientRect();
       const x=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));
-      edit({type:'clip.layer.moved',clip_id,start:Math.round(x*layerTotal*10)/10});
+      placeOnLayer({type:'clip.layer.moved',clip_id,start:Math.round(x*layerTotal*10)/10});
     };
   }
 }
@@ -664,7 +696,7 @@ $('clip-volume').addEventListener('input', e => {
 $('apply-crossfade').addEventListener('click', () => edit({
   type:'clip.transition.updated',clip_id:selectedId,seconds:Number($('crossfade-seconds').value)
 }));
-$('apply-layer-start').addEventListener('click',()=>edit({type:'clip.layer.moved',
+$('apply-layer-start').addEventListener('click',()=>placeOnLayer({type:'clip.layer.moved',
   clip_id:selectedId,start:Number($('layer-start').value)}));
 $('apply-overlay-style').addEventListener('click',()=>edit({type:'clip.overlay.updated',
   clip_id:selectedId,layout:$('overlay-layout').value,
