@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R5.3 · Waveform Precision</title>
+  <title>ParaCut Studio R5.4 · Live Bus Meters</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.3 · WAVEFORM PRECISION</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.4 · LIVE AUDIO METERS</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -48,7 +48,7 @@
         </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R5.3</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R5.4</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
@@ -164,10 +164,11 @@
             <label><input type="checkbox" id="mixer-a2-solo"> Solo</label>
           </div>
         </div>
-        <div class="mix-peak-guide" aria-label="Estimated peaks from locally decoded waveform, not live signal meters">
-          <div class="peak-guide-row"><span>A1 peak estimate</span><meter id="peak-a1" min="0" max="1" low=".5" high=".85" optimum="0" value="0"></meter><output id="peak-a1-value">—</output></div>
-          <div class="peak-guide-row"><span>A2 peak estimate</span><meter id="peak-a2" min="0" max="1" low=".5" high=".85" optimum="0" value="0"></meter><output id="peak-a2-value">—</output></div>
-          <p class="tip">Waveform-based level guide only. Not a calibrated or live signal meter; peaks may be missing for large or undecodable files. Watch your finished movie's audio levels.</p>
+        <div class="mix-peak-guide" aria-label="A1 and A2 audio level guides and measured preview levels">
+          <div class="meter-mode"><strong id="audio-meter-mode">Estimated source peaks</strong><span id="audio-meter-status" role="status" aria-live="polite">Press Play to activate live bus meters where supported</span></div>
+          <div class="peak-guide-row"><span id="peak-a1-label">A1 estimate</span><meter id="peak-a1" min="0" max="1" low=".5" high=".85" optimum="0" value="0"></meter><output id="peak-a1-value">—</output></div>
+          <div class="peak-guide-row"><span id="peak-a2-label">A2 estimate</span><meter id="peak-a2" min="0" max="1" low=".5" high=".85" optimum="0" value="0"></meter><output id="peak-a2-value">—</output></div>
+          <p class="tip" id="meter-disclaimer">Before playback these are coarse waveform estimates. During supported playback they become measured post-gain A1/A2 preview-bus peaks in dBFS, not the combined master mix, a LUFS measurement or export-quality proof.</p>
         </div>
         <label class="duck-control"><input type="checkbox" id="mixer-duck"> Duck A1 when A2 plays</label>
         <p class="tip">Optional voiceover ducking lowers A1 to 40% under A2, with short fades. Solo isolates selected audio buses, including muting original video audio. Changes are saved and undoable.</p>
