@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R5.1 · Timeline Precision</title>
+  <title>ParaCut Studio R5.2 · Mix & Motion</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.1 · TIMELINE PRECISION</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.2 · MIX & MOTION</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -48,7 +48,7 @@
         </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R5.1</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R5.2</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
@@ -100,6 +100,11 @@
             <label>Placement<select id="overlay-layout"><option value="pip">Picture-in-picture</option><option value="full">Full-frame overlay</option></select></label>
             <label>Opacity (%)<input id="overlay-opacity" type="number" min="0" max="100" step="1" value="100"></label>
           </div>
+          <label>Entrance/Exit Motion<select id="overlay-motion">
+            <option value="none">Dissolve only</option>
+            <option value="slide-left">Slide from left</option>
+            <option value="rise">Rise upward</option>
+          </select></label>
           <div class="field-pair">
             <label>Fade in (sec)<input id="overlay-fade-in" type="number" min="0" step=".1" value="0"></label>
             <label>Fade out (sec)<input id="overlay-fade-out" type="number" min="0" step=".1" value="0"></label>
@@ -130,6 +135,28 @@
           <p class="tip">Affects this clip's audio only. Fade times must fit inside its duration.</p>
         </div>
         <dl id="selected-meta" class="metadata"></dl>
+      </div>
+      <hr>
+      <div class="panel-title"><h2>Track Mixer</h2><span class="tiny">A1 + A2</span></div>
+      <div class="track-mixer" id="track-mixer">
+        <div class="mixer-channel" data-mixer="a1">
+          <div class="mixer-channel-top"><strong>A1 · SOUNDTRACK</strong><span id="mixer-a1-value">100%</span></div>
+          <input type="range" id="mixer-a1-gain" min="0" max="100" value="100" step="1" aria-label="A1 track level">
+          <div class="mixer-channel-actions">
+            <label><input type="checkbox" id="mixer-a1-mute"> Mute</label>
+            <label><input type="checkbox" id="mixer-a1-solo"> Solo</label>
+          </div>
+        </div>
+        <div class="mixer-channel" data-mixer="a2">
+          <div class="mixer-channel-top"><strong>A2 · VOICE / FX</strong><span id="mixer-a2-value">100%</span></div>
+          <input type="range" id="mixer-a2-gain" min="0" max="100" value="100" step="1" aria-label="A2 track level">
+          <div class="mixer-channel-actions">
+            <label><input type="checkbox" id="mixer-a2-mute"> Mute</label>
+            <label><input type="checkbox" id="mixer-a2-solo"> Solo</label>
+          </div>
+        </div>
+        <label class="duck-control"><input type="checkbox" id="mixer-duck"> Duck A1 when A2 plays</label>
+        <p class="tip">Optional voiceover ducking lowers A1 to 40% under A2, with short fades. Solo isolates selected audio buses, including muting original video audio. Changes are saved and undoable.</p>
       </div>
       <hr>
       <div class="panel-title"><h2>Titles &amp; Overlays</h2><span class="tiny">T1</span></div>
