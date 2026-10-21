@@ -1,15 +1,17 @@
 import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
+import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
+let activeExportFormat = null;
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
 const crossfadeVideo = $('crossfade-video');
 crossfadeVideo.preload = 'auto';
 let previewTransitionSerial = 0, loadingTransition = null, transitionFrameHandle = 0;
-let encoderVideo = document.createElement('video'); // fresh element per WebM export
+let encoderVideo = document.createElement('video'); // fresh element per export
 const soundtrack = document.createElement('audio');
 soundtrack.preload = 'auto'; soundtrack.volume = .85;
 const waveforms = new Map();
@@ -357,7 +359,20 @@ function render() {
   $('redo').disabled = !state.redo.length || exporting;
   $('split').disabled = !selectedId || exporting;
   $('remove').disabled = !selectedId || exporting;
-  $('export-webm').disabled = (!state.clips.length || [...state.clips, ...state.audioClips].some(c => !media.has(c.asset_id))) && !exporting;
+  const canExport = Boolean(state.clips.length) &&
+    [...state.clips, ...state.audioClips].every(c => media.has(c.asset_id));
+  const recordingReady = Boolean(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream);
+  const mp4Mime = recordingReady ? findRecorderMime('mp4') : null;
+  const webmMime = recordingReady ? findRecorderMime('webm') : null;
+  $('export-mp4').disabled = (exporting && activeExportFormat !== 'mp4') ||
+    (!exporting && (!canExport || !mp4Mime));
+  $('export-webm').disabled = (exporting && activeExportFormat !== 'webm') ||
+    (!exporting && (!canExport || !webmMime));
+  $('export-mp4').title = mp4Mime
+    ? 'Export an actual MP4 container using this browser (beta)'
+    : 'MP4 encoding is unavailable in this browser. Use WebM export.';
+  $('mp4-support').textContent = mp4Mime ? '' :
+    'MP4 unavailable here; WebM remains an option.';
   $('preview-label').textContent = selectedId ? 'Selected clip · ' + ([...state.clips, ...state.audioClips].find(c=>c.clip_id===selectedId)?.clip_id?.slice(0,8) || '') : 'Program';
 }
 // Playback uses the video playhead as the master clock and keeps the
@@ -603,21 +618,26 @@ document.addEventListener('keydown', e => {
   else if (e.key.toLowerCase() === 's') $('split').click();
   else if (e.key === 'Delete' || e.key === 'Backspace') $('remove').click();
 });
-function supportedWebm() {
-  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return null;
-  for (const mime of ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']) {
-    if (MediaRecorder.isTypeSupported(mime)) return mime;
+async function renderVideo(format) {
+  if (exporting) {
+    if (activeExportFormat === format) {
+      cancelExport = true; status('Cancel requested. Stopping export…');
+    }
+    return;
   }
-  return null;
-}
-async function renderWebm() {
-  if (exporting) { cancelExport = true; status('Cancel requested. Stopping export…'); return; }
+  expectedMime(format);
   if (!state.clips.length) return status('Timeline is empty.',true);
-  if ([...state.clips, ...state.audioClips].some(c=>!media.has(c.asset_id))) return status('Relink all media sources before exporting.',true);
-  if (duration(state) > 300) return status('R3 browser export is limited to 5 minutes. Save a draft and use a shorter cut.',true);
-  const mime = supportedWebm();
-  if (!mime) return status('This browser cannot record WebM. Try desktop Chrome/Edge.',true);
-  stopPlayback(); exporting=true; cancelExport=false; $('export-webm').textContent='Cancel Export'; render();
+  if ([...state.clips, ...state.audioClips].some(c=>!media.has(c.asset_id)))
+    return status('Relink all media sources before exporting.',true);
+  if (duration(state) > 300) return status('Browser export is limited to five minutes. Save a draft and use a shorter cut.',true);
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream)
+    return status('This browser does not provide video recording. Try a recent desktop browser.',true);
+  const mime = findRecorderMime(format);
+  if (!mime) return status(format.toUpperCase() + ' recording is not supported by this browser. Try the other format.',true);
+  stopPlayback();
+  exporting=true; activeExportFormat=format; cancelExport=false;
+  $(format === 'mp4' ? 'export-mp4' : 'export-webm').textContent='Cancel Export';
+  render();
   let recorder, ctx, stream, videoStream, videoSourceGain, incomingVideoGain, soundtrackGain;
   let encoderAudio = document.createElement('audio');
   encoderVideo = document.createElement('video');
@@ -674,6 +694,7 @@ async function renderWebm() {
     }
     stream=new MediaStream(tracks);
     recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:3_500_000});
+    const recordedMime = recorderOutputFormat(format, recorder.mimeType || mime);
     recorder.ondataavailable=e=>{if(e.data?.size) chunks.push(e.data);};
     const stopped=new Promise((resolve,reject)=>{
       recorder.onstop=resolve;
@@ -791,12 +812,16 @@ async function renderWebm() {
     }
     recorder.stop(); await stopped;
     if (cancelExport) throw Error('Export cancelled.');
-    const blob = new Blob(chunks,{type:mime});
+    const blob = new Blob(chunks,{type:recordedMime});
     if(blob.size < 1000) throw Error('Encoder produced no usable video.');
-    download((state.name.replace(/[^a-z0-9_-]+/ig,'-').slice(0,60) || 'paracut')+'.webm',blob);
-    state.receipts.push({receipt_id:uuid(),action:'render.webm.exported',at:new Date().toISOString(),source:'human',details:{bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,title_count:state.titles.length,
-      crossfades:state.clips.filter(c=>c.transition_out_seconds>0).length,mime,format:'browser-beta'}});
-    status('WebM downloaded ('+(blob.size/1048576).toFixed(1)+' MiB). Check the file before sharing.');
+    // Never give a WebM stream an .mp4 filename: inspect its header first.
+    await checkExportContainer(blob, format);
+    download((state.name.replace(/[^a-z0-9_-]+/ig,'-').slice(0,60) || 'paracut')+'.'+format,blob);
+    state.receipts.push({receipt_id:uuid(),action:'render.'+format+'.exported',at:new Date().toISOString(),source:'human',details:{
+      bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,title_count:state.titles.length,
+      crossfades:state.clips.filter(c=>c.transition_out_seconds>0).length,mime:recordedMime,
+      container_signature_verified:true,format:'browser-beta'}});
+    status(format.toUpperCase()+' downloaded ('+(blob.size/1048576).toFixed(1)+' MiB). Watch and listen before sharing.');
   } catch(err) { status('Export: '+err.message,true); }
   finally {
     if(recorder?.state==='recording') { recorder.onstop=null; recorder.stop(); }
@@ -805,8 +830,11 @@ async function renderWebm() {
     encoderAudio.pause(); encoderAudio.removeAttribute('src'); encoderAudio.load();
     stream?.getTracks().forEach(t=>t.stop()); videoStream?.getTracks().forEach(t=>t.stop());
     await ctx?.close();
-    exporting=false;cancelExport=false;$('export-webm').textContent='Export WebM β';$('render-status').textContent='';render();
+    exporting=false;activeExportFormat=null;cancelExport=false;
+    $('export-webm').textContent='Export WebM β';$('export-mp4').textContent='Export MP4 β';
+    $('render-status').textContent='';render();
   }
 }
-$('export-webm').addEventListener('click',()=>{void renderWebm();});
+$('export-webm').addEventListener('click',()=>{void renderVideo('webm');});
+$('export-mp4').addEventListener('click',()=>{void renderVideo('mp4');});
 render(); void seekTo(0);

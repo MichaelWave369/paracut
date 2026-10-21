@@ -4,18 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R3.2 · Video Crossfades</title>
+  <title>ParaCut Studio R4 · Export Studio</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R3.2 · CROSSFADE STUDIO</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R4 · EXPORT STUDIO</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
       <button id="open-draft">Open Draft</button>
       <button id="save-draft">Save Draft</button>
-      <button id="export-webm" class="primary">Export WebM β</button>
+      <button id="export-mp4" class="primary" title="MP4 is available only if this browser supports encoding it">Export MP4 β</button>
+      <button id="export-webm" title="Browser WebM beta export">Export WebM β</button>
+      <span id="mp4-support" class="export-support" role="status" aria-live="polite"></span>
       <a href="./index.html" class="muted-link">Interop Room ↗</a>
     </div>
   </header>

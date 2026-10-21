@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎞️ ParaCut Studio R4 — native browser MP4 beta
+
+In the local-first video editor, **Export MP4 β** is now offered when the user's browser reports an available MP4 recording encoder. ParaCut records an actual MP4 container and checks the file signature before download; unsupported browsers keep **Export WebM β**. The existing video/audio timeline, crossfades, titles and interop room remain intact. [Read R4 export limitations](docs/STUDIO_R4.md).
+
+
 ## 🎞️ ParaCut Studio R3.2 — Video Crossfades
 
 The browser editor now supports **true overlapping video dissolves** between adjacent V1 clips, including a second moving video decoder and WebM beta export blending with independent gain-controlled source audio. Select an outgoing clip in V1, set **Crossfade to next video**, and preview the blend. R1/R2/R3 drafts remain readable; source media stays local. [R3.2 guide and limitations](docs/STUDIO_R32.md).

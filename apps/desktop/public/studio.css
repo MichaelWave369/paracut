@@ -69,3 +69,8 @@
 .transition-row input{min-width:55px;flex:1;border:1px solid #45617b;background:#0c1724;color:#f4fcff;padding:8px;border-radius:6px}
 .timeline-clip.has-transition{border-right:5px solid #9ad1ff}
 .timeline-clip .transition-caption{font-size:10px;color:#c9e8ff}
+
+/* R4 recording capability: unsupported MP4 is disabled instead of mislabeled. */
+.export-support{color:#d2b587;font-size:10px;max-width:185px;line-height:1.3}
+.top-actions #export-mp4:disabled{opacity:.45;border-style:dashed}
+@media(max-width:690px){.top-actions .export-support{width:100%;max-width:none;order:4}}
