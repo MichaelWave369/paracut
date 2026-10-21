@@ -220,7 +220,6 @@ function previewAudioAt(at) {
 }
 // V2/A2 use independent timeline positions and decoder elements.
 async function syncLayerPlayer(el,clip,at,autoplay,kind) {
-  const serialKey=kind==='video'?'layerVideoSerial':'layerAudioSerial';
   if(!clip||at>=duration(state)){
     el.pause();
     if(kind==='video')el.style.display='none';
@@ -781,7 +780,7 @@ async function renderVideo(format) {
       if(overlay && encoderOverlay.dataset.clip===overlay.clip_id && encoderOverlay.readyState>=2){
         const opacity=overlayOpacityAt(overlay,at);
         g.save();g.globalAlpha=opacity;
-        if((overlay.overlay_layout??'pip')==='full')drawVideoFrame(encoderOverlay,1);
+        if((overlay.overlay_layout??'pip')==='full')drawVideoFrame(encoderOverlay,opacity);
         else{
           const vw=encoderOverlay.videoWidth,vh=encoderOverlay.videoHeight;
           if(vw&&vh){const ratio=Math.min(420/vw,220/vh);
