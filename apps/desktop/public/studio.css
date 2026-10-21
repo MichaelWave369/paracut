@@ -114,3 +114,9 @@
 .storyboard-playhead{position:absolute;top:0;bottom:0;width:2px;background:#ffd78e;box-shadow:0 0 7px #ffba5377;pointer-events:none;z-index:12;display:none}
 .storyboard-playhead::before{content:'';position:absolute;left:-5px;top:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #ffd78e}
 @media(max-width:600px){.precision-toolbar{gap:5px}.precision-toolbar #snap-feedback{flex-basis:100%}}
+
+.storyboard-canvas .title-track{position:relative;display:block;min-height:51px;overflow:hidden}
+.storyboard-canvas .title-chip{position:absolute;top:7px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;height:35px}
+.storyboard-canvas .title-chip:hover{z-index:7}
+.storyboard-canvas .timeline-clip.has-transition{border-right-width:5px}
+.storyboard-canvas .audio-track{min-height:114px}
