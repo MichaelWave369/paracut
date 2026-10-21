@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎧 ParaCut Studio R5.3 — Waveform Precision
+
+Audio clips on **A1/A2** now expose a source waveform with draggable IN/OUT trim markers, numeric timing and playhead-to-trim shortcuts. A clearly labeled **estimated level guide** shows coarse A1/A2 waveform levels with current track mixer/duck/solo effects. These are not calibrated live meters. No draft or export format changes. [R5.3 guide](docs/STUDIO_R53.md).
+
+
 ## 🎚️ ParaCut Studio R5.2 — Audio Mixing & Overlay Motion
 
 The five-track browser storyboard gains **A1/A2 track gain, mute, solo and voiceover ducking**, plus V2 entrance/exit motion presets (dissolve, slide, rise). Preview and browser WebM/conditional MP4 export use shared mixer/motion math. Older project drafts remain supported; the opt-in local FFmpeg CLI refuses mixer settings it cannot represent. [R5.2 guide](docs/STUDIO_R52.md).
