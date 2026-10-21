@@ -692,6 +692,9 @@ async function syncSoundtrack(at, autoplay) {
   } else if (!autoplay) soundtrack.pause();
 }
 async function seekTo(seconds, { autoplay = false } = {}) {
+  // Start/resume the preview AudioContext before any async metadata awaits.
+  // Browsers generally require this to happen inside the user gesture.
+  if(autoplay)ensureLiveBusMeters();
   const serial = ++seekSerial, d = duration(state);
   playhead = Math.max(0, Math.min(d, Number(seconds) || 0));
   updateTimeUI();
