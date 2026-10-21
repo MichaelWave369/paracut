@@ -27,7 +27,7 @@ const edge=snapLayerTime(s,{desiredStart:5.13,span:2,trackId:'video-2',threshold
 assert.equal(edge.start,5);
 assert.equal(edge.snapped,true);
 const clipId=s.video2Clips[0].clip_id;
-const own=snapLayerTime(s,{desiredStart:4.89,span:2,trackId:'video-2',excludeClipId:clipId,threshold:.2});
+const own=snapLayerTime(s,{desiredStart:4.89,span:2,trackId:'video-2',excludeClipId:clipId,extraAnchors:[5],threshold:.2});
 assert.equal(own.start,5);
 const nearPlayhead=snapLayerTime(s,{desiredStart:10.19,span:2,trackId:'audio-2',
   extraAnchors:[10],threshold:.25});
