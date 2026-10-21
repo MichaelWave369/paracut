@@ -24,13 +24,41 @@ export function isSourceAudioMuted(clip) {
 export function activeAudioClip(state, time) {
   return state.audioClips.find(clip => time >= clip.timeline.start && time < clip.timeline.end) || null;
 }
+// A transition is attached to the outgoing clip. Only adjacent V1 clips
+// overlap; the A1 soundtrack remains on its independent absolute timeline.
+export function maxCrossfade(clips, index) {
+  if (index < 0 || index >= clips.length - 1) return 0;
+  const a = clips[index], b = clips[index + 1];
+  const aLen = a.source.end - a.source.start, bLen = b.source.end - b.source.start;
+  return round(Math.max(0, Math.min(1.5, aLen / 3, bLen / 3)));
+}
 export function reflow(clips, trackId = 'video-1') {
   let t = 0;
-  return clips.map(clip => {
+  return clips.map((clip, index) => {
+    if (trackId === 'video-1' && index > 0) t -= clips[index-1].transition_out_seconds || 0;
     const seconds = round(clip.source.end - clip.source.start);
     const next = { ...clip, track_id: trackId, timeline: { start: round(t), end: round(t + seconds) } };
     t += seconds;
     return next;
+  });
+}
+export function crossfadeAt(state, time) {
+  if (!state || !Number.isFinite(time)) return null;
+  for (let i = 0; i < state.clips.length - 1; i++) {
+    const outgoing = state.clips[i], incoming = state.clips[i+1];
+    const seconds = outgoing.transition_out_seconds || 0;
+    if (seconds > 0 && time >= incoming.timeline.start && time < outgoing.timeline.end) {
+      return { outgoing, incoming, start:incoming.timeline.start, end:outgoing.timeline.end,
+        progress: Math.max(0,Math.min(1,(time-incoming.timeline.start)/seconds)),seconds };
+    }
+  }
+  return null;
+}
+function normalizeTransitions(clips) {
+  return clips.map((clip,index) => {
+    const limit = maxCrossfade(clips,index);
+    const amount = Math.max(0,Math.min(limit,clip.transition_out_seconds || 0));
+    return {...clip, transition_out_seconds:round(amount)};
   });
 }
 // Browser clip audio automation; defaults preserve older R1/R2 project sound.
@@ -148,6 +176,13 @@ export function change(state, command) {
     if (!clip) throw Error('Source audio mute is available only for video clips.');
     if (typeof command.muted !== 'boolean') throw Error('Source audio mute must be true or false.');
     clip.source_audio_muted = command.muted;
+  } else if (type === 'clip.transition.updated') {
+    const index = clips.findIndex(c=>c.clip_id === command.clip_id);
+    if (index < 0 || index >= clips.length-1) throw Error('Select a video clip with a following video.');
+    const seconds = command.seconds;
+    if (!finite(seconds) || seconds < 0 || seconds > maxCrossfade(clips,index) + 0.0001)
+      throw Error('Crossfade must fit both adjacent clips (maximum '+maxCrossfade(clips,index)+' seconds).');
+    clips[index].transition_out_seconds = round(seconds);
   } else if (type === 'clip.audio.updated') {
     const clip = laneFor(command.clip_id)?.find(c => c.clip_id === command.clip_id);
     if (!clip) throw Error('Select a clip first.');
@@ -177,9 +212,10 @@ export function change(state, command) {
     const offset = t - c.timeline.start;
     if (!finite(t) || offset < 0.08 || c.timeline.end - t < 0.08) throw Error('Move the playhead inside the clip to split.');
     const at = round(c.source.start + offset);
-    lane.splice(index, 1,
-      fitFades({ ...c, clip_id: id(), source: { start: c.source.start, end: at } }),
-      fitFades({ ...c, clip_id: id(), source: { start: at, end: c.source.end } }));
+    const first = fitFades({ ...c, clip_id: id(), source: { start: c.source.start, end: at },
+      ...(lane === clips ? {transition_out_seconds:0} : {}) });
+    const second = fitFades({ ...c, clip_id: id(), source: { start: at, end: c.source.end } });
+    lane.splice(index, 1, first, second);
   } else if (type === 'clip.moved' || type === 'clip.reordered') {
     const lane = laneFor(command.clip_id);
     if (!lane) throw Error('Select a clip first.');
@@ -203,13 +239,14 @@ export function change(state, command) {
     name = String(command.name || '').trim().slice(0, 100);
     if (!name) throw Error('Project name cannot be empty.');
   } else throw Error('Unknown studio edit.');
-  clips = reflow(clips, 'video-1');
+  clips = reflow(normalizeTransitions(clips), 'video-1');
   audioClips = reflow(audioClips, 'audio-1');
   const next = { ...state, assets, clips, audioClips, titles, name, undo: [...state.undo.slice(-39), before], redo: [],
     receipts: [...state.receipts, receipt(type, { clip_id: command.clip_id || null,
       asset_id: command.asset_id || command.asset?.asset_id || null,
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
+      ...(type === 'clip.transition.updated' ? {seconds:command.seconds} : {}),
       ...(type === 'title.added' || type === 'title.updated' ? { title: command.title.text.slice(0,100) } : {}) })] };
   validate(next);
   return next;
@@ -239,6 +276,12 @@ export function validate(state) {
     ids.add(a.asset_id);
   }
   const clipIds = new Set();
+  // Verify transition ranges and that stored positions reflect the overlaps.
+  for (let i=0;i<state.clips.length;i++) {
+    const seconds=state.clips[i].transition_out_seconds ?? 0;
+    if (!finite(seconds) || seconds < 0 || seconds > maxCrossfade(state.clips,i)+.0001)
+      throw Error('Invalid crossfade duration.');
+  }
   for (const [lane, trackId, kind] of [[state.clips, 'video-1','video/'],[state.audioClips, 'audio-1','audio/']]) {
     const normalized = reflow(lane, trackId);
     for (let i = 0; i < lane.length; i++) {
