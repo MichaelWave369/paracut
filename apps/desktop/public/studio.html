@@ -68,6 +68,13 @@
         <div class="field-pair"><label>Source In (sec)<input id="in-time" type="number" min="0" step="0.001"></label><label>Source Out (sec)<input id="out-time" type="number" min="0" step="0.001"></label></div>
         <button id="apply-trim" class="wide">Apply Trim</button>
         <div class="field-pair"><button id="move-left">← Earlier</button><button id="move-right">Later →</button></div>
+        <div id="source-audio-control" class="source-audio-control" hidden>
+          <label class="source-audio-toggle" for="mute-source-audio">
+            <input id="mute-source-audio" type="checkbox">
+            <span>Mute original video audio</span>
+          </label>
+          <p class="tip">Mutes only this video's built-in sound. Your A1 soundtrack keeps playing. Applies to preview and WebM export.</p>
+        </div>
         <dl id="selected-meta" class="metadata"></dl>
       </div>
       <hr>
