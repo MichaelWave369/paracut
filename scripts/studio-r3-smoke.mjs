@@ -80,7 +80,7 @@ assert.throws(()=>importDraft(JSON.stringify(badGain)),/Audio settings/);
 // Guard the two output paths against feature regressions.
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
-assert.match(js,/video\.volume = Math\.min\(1, audioLevelAt\(v, at\)\)/);
+assert.match(js,/video\.volume = Math\.min\(1, audioLevelAt\(v, at\) \* \(dissolve \? 1 - dissolve\.progress : 1\)\)/);
 assert.match(js,/soundtrack\.volume = Math\.min\(1, audioLevelAt\(a, at\)\)/);
 assert.match(js,/videoSourceGain\.gain\.value = audioLevelAt\(clip,timelinePosition\)/);
 assert.match(js,/soundtrackGain\.gain\.value = audioLevelAt\(clip, at\)/);
