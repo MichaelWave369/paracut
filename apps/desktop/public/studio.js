@@ -361,12 +361,15 @@ function supportedWebm() {
 async function renderWebm() {
   if (exporting) { cancelExport = true; status('Cancel requested. Stopping export…'); return; }
   if (!state.clips.length) return status('Timeline is empty.',true);
-  if (state.clips.some(c=>!media.has(c.asset_id))) return status('Relink all video sources before exporting.',true);
-  if (duration(state) > 300) return status('R1 browser export is limited to 5 minutes. Save a draft and use a shorter cut.',true);
+  if ([...state.clips, ...state.audioClips].some(c=>!media.has(c.asset_id))) return status('Relink all media sources before exporting.',true);
+  if (duration(state) > 300) return status('R2 browser export is limited to 5 minutes. Save a draft and use a shorter cut.',true);
   const mime = supportedWebm();
   if (!mime) return status('This browser cannot record WebM. Try desktop Chrome/Edge.',true);
   stopPlayback(); exporting=true; cancelExport=false; $('export-webm').textContent='Cancel Export'; render();
   let recorder, ctx, stream, videoStream;
+  let encoderAudio = document.createElement('audio');
+  encoderVideo = document.createElement('video');
+  encoderVideo.playsInline = true;
   const chunks=[];
   try {
     const canvas = document.createElement('canvas'); canvas.width=1280; canvas.height=720;
@@ -387,6 +390,10 @@ async function renderWebm() {
       const source=ctx.createMediaElementSource(encoderVideo);
       const dest=ctx.createMediaStreamDestination();
       source.connect(dest);
+      if (state.audioClips.length) {
+        const music = ctx.createMediaElementSource(encoderAudio);
+        music.connect(dest);
+      }
       tracks.push(...dest.stream.getAudioTracks());
       await ctx.resume();
     }
@@ -398,10 +405,34 @@ async function renderWebm() {
       recorder.onerror=e=>reject(e.error || Error('MediaRecorder failed.'));
     });
     recorder.start(1000);
-    encoderVideo.muted=false;
+    encoderVideo.muted = false;
+    encoderAudio.muted = false;
+    encoderAudio.volume = .85;
+    // Maintain one independent sequential soundtrack over the video cut.
+    // Each source change is aligned to the video timeline position; in-browser
+    // capture remains real-time beta and can drift by a few frames.
+    async function syncExportSoundtrack(at) {
+      const clip = activeAudioClip(state, at);
+      if (!clip) { encoderAudio.pause(); return; }
+      const ref = media.get(clip.asset_id);
+      if (!ref) throw Error('Missing audio source during export.');
+      if (encoderAudio.dataset.clip !== clip.clip_id) {
+        encoderAudio.pause(); encoderAudio.src = ref.url; encoderAudio.dataset.clip = clip.clip_id;
+        encoderAudio.load();
+        await new Promise((resolve, reject) => {
+          if (encoderAudio.readyState >= 1) return resolve();
+          encoderAudio.addEventListener('loadedmetadata', resolve, { once:true });
+          encoderAudio.addEventListener('error', () => reject(Error('Cannot decode soundtrack for export.')), { once:true });
+        });
+      }
+      const position = Math.min(clip.source.end - .005, clip.source.start + at - clip.timeline.start);
+      if (Math.abs(encoderAudio.currentTime - position) > .16) encoderAudio.currentTime = position;
+      if (encoderAudio.paused) await encoderAudio.play();
+    }
     for (let index=0; index<state.clips.length; index++) {
       if(cancelExport) throw Error('Export cancelled.');
       const clip=state.clips[index], ref=media.get(clip.asset_id);
+      encoderAudio.pause();
       encoderVideo.pause(); encoderVideo.src=ref.url; encoderVideo.load();
       await new Promise((resolve,reject)=>{
         encoderVideo.addEventListener('loadedmetadata',resolve,{once:true});
@@ -413,26 +444,30 @@ async function renderWebm() {
         encoderVideo.addEventListener('seeked',resolve,{once:true});
       });
       await encoderVideo.play();
+      await syncExportSoundtrack(clip.timeline.start);
       while (encoderVideo.currentTime < clip.source.end - .015 && !encoderVideo.ended) {
         if(cancelExport) throw Error('Export cancelled.');
-        if(document.hidden) throw Error('Keep this tab visible during R1 recording.');
+        if(document.hidden) throw Error('Keep this tab visible during R2 recording.');
+        const timelinePosition = clip.timeline.start + Math.max(0, encoderVideo.currentTime - clip.source.start);
+        await syncExportSoundtrack(timelinePosition);
         paint();
         $('render-status').textContent = `Recording clip ${index+1}/${state.clips.length} · ${fmt(encoderVideo.currentTime - clip.source.start)}`;
         await new Promise(resolve => requestAnimationFrame(resolve));
       }
-      paint(); encoderVideo.pause();
+      paint(); encoderVideo.pause(); encoderAudio.pause();
     }
     recorder.stop(); await stopped;
     if (cancelExport) throw Error('Export cancelled.');
     const blob = new Blob(chunks,{type:mime});
     if(blob.size < 1000) throw Error('Encoder produced no usable video.');
     download((state.name.replace(/[^a-z0-9_-]+/ig,'-').slice(0,60) || 'paracut')+'.webm',blob);
-    state.receipts.push({receipt_id:uuid(),action:'render.webm.exported',at:new Date().toISOString(),source:'human',details:{bytes:blob.size,duration_seconds:duration(state),mime,format:'browser-beta'}});
+    state.receipts.push({receipt_id:uuid(),action:'render.webm.exported',at:new Date().toISOString(),source:'human',details:{bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,mime,format:'browser-beta'}});
     status('WebM downloaded ('+(blob.size/1048576).toFixed(1)+' MiB). Check the file before sharing.');
   } catch(err) { status('Export: '+err.message,true); }
   finally {
     if(recorder?.state==='recording') { recorder.onstop=null; recorder.stop(); }
     encoderVideo.pause(); encoderVideo.removeAttribute('src'); encoderVideo.load();
+    encoderAudio.pause(); encoderAudio.removeAttribute('src'); encoderAudio.load();
     stream?.getTracks().forEach(t=>t.stop()); videoStream?.getTracks().forEach(t=>t.stop());
     await ctx?.close();
     exporting=false;cancelExport=false;$('export-webm').textContent='Export WebM β';$('render-status').textContent='';render();
