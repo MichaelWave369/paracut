@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎞️ ParaCut Studio R4.1 — Opt-in local H.264/AAC MP4 export
+
+For browsers without built-in MP4 encoding, R4.1 adds a **standalone local FFmpeg companion** that can render saved Studio drafts with real video transitions, soundtrack audio, source mute, fades and styled titles. It is a manual Node CLI, **not** an in-browser action or bundled encoder. Media stays local; the browser editor and WebM fallback stay unchanged. [Setup and limitations](docs/STUDIO_R41.md).
+
+
 ## 🎞️ ParaCut Studio R4 — native browser MP4 beta
 
 In the local-first video editor, **Export MP4 β** is now offered when the user's browser reports an available MP4 recording encoder. ParaCut records an actual MP4 container and checks the file signature before download; unsupported browsers keep **Export WebM β**. The existing video/audio timeline, crossfades, titles and interop room remain intact. [Read R4 export limitations](docs/STUDIO_R4.md).
