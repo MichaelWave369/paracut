@@ -78,3 +78,16 @@
 /* R4.2 links to an explicitly launched local Windows tool; browser never starts FFmpeg. */
 .local-export-link{color:#9adfd2;font-size:11px;text-decoration:none;white-space:nowrap;margin-left:auto}
 .local-export-link:hover,.local-export-link:focus{text-decoration:underline}
+
+/* R5 layered storyboard, relative positioning instead of ripple sequencing */
+.screen #overlay-video{position:absolute;z-index:3;top:5%;right:5%;width:34%;height:32%;object-fit:contain;background:#020713;display:none;opacity:0;border:2px solid rgba(255,255,255,.42);border-radius:8px;pointer-events:none}
+.screen #overlay-video.full-overlay{inset:0;width:100%;height:100%;border:0;border-radius:0;background:transparent}
+.overlay-heading span{background:#274355;color:#a8edff}
+.layer-track{position:relative;min-height:59px;background:#142839;border:1px solid #3a526e;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.layer-track.audio-layer{background:#262038;border-color:#595078}
+.layer-clip{position:absolute;top:7px;height:44px;min-width:2%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;font-size:11px;padding:5px 7px;border-radius:5px;background:#1b7182;color:#f2feff;border:1px solid #4db9c0}
+.layer-clip.audio{background:#71518c;border-color:#b49ad9}
+.layer-clip.selected{outline:2px solid #ffe4a4;outline-offset:-2px}
+.layer-clip:hover{filter:brightness(1.15)}
+.layer-add{font-size:10px!important;padding:7px 8px!important;white-space:nowrap}
+.layer-add-guide{font-size:11px;color:#9bc2d4;margin:8px 0}

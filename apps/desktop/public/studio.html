@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R4 · Export Studio</title>
+  <title>ParaCut Studio R5 · Layered Storyboard</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R4 · EXPORT STUDIO</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5 · LAYERED STORYBOARD</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -27,16 +27,17 @@
       <div class="panel-title"><h2>Media Shelf</h2><span id="asset-count" class="tiny">0 files</span></div>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Import video or audio">
         <span class="plus">＋</span><strong>Import media</strong><span>Drop files or click to browse</span>
-        <small>Video + audio files · R3</small>
+        <small>Video + audio files · V1/V2 + A1/A2</small>
       </div>
       <div id="media-list" class="media-list" aria-live="polite"></div>
-      <p class="tip">Add to a track with +. Video and audio stay on your device.</p>
+      <div class="layer-add-guide">Media + appends to V1/A1. Use the second button for V2/A2 at the current playhead.</div>
+      <p class="tip">Media stays on your device. V2 overlays are placed above V1; A2 mixes with A1.</p>
     </aside>
 
     <section class="center">
       <div class="preview panel">
         <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span></div>
-        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
+        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-video" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
         <div class="transport">
           <button id="backward" title="Go to start">⏮</button>
           <button id="play" class="play" title="Play or pause (Space)">▶</button>
@@ -47,7 +48,7 @@
         </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R3.2</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R5</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
@@ -56,11 +57,15 @@
         <div class="timeline-ruler"><span>00:00</span><span>VIDEO 1 · RIPPLE SEQUENCE</span><span id="timeline-total">00:00</span></div>
         <div class="track-heading"><span>V1</span> VIDEO · RIPPLE CUT</div>
         <div id="timeline-track" class="timeline-track" aria-label="Video timeline"><div class="empty-timeline">Your video timeline is empty. Add clips from Media Shelf.</div></div>
+        <div class="track-heading overlay-heading"><span>V2</span> VIDEO · OVERLAYS / PICTURE-IN-PICTURE</div>
+        <div id="video2-track" class="layer-track" aria-label="Overlay video storyboard"><span class="empty-timeline">Add video on V2 to place it over V1 at the playhead.</span></div>
         <div class="track-heading soundtrack"><span>A1</span> AUDIO · SOUNDTRACK</div>
         <div id="audio-track" class="timeline-track audio-track" aria-label="Audio soundtrack timeline"><div class="empty-timeline">Add audio tracks, voiceovers, or music from the Media Shelf.</div></div>
+        <div class="track-heading soundtrack"><span>A2</span> AUDIO · VOICEOVER / FX / MUSIC</div>
+        <div id="audio2-track" class="layer-track audio-layer" aria-label="Second audio storyboard"><span class="empty-timeline">Add audio on A2 to overlap music and voiceovers at the playhead.</span></div>
         <div class="track-heading titles-heading"><span>T1</span> TEXT · OVERLAYS</div>
         <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
-        <p class="tip">For a dissolve, select a V1 clip and set its transition to the next clip in the Inspector. V1 clips overlap during crossfades, shortening the cut. A1 and T1 remain independently timed.</p>
+        <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Layered clips are moved by the Start Time control in Inspector.</p>
       </div>
     </section>
 
@@ -72,12 +77,30 @@
         <div class="field-pair"><label>Source In (sec)<input id="in-time" type="number" min="0" step="0.001"></label><label>Source Out (sec)<input id="out-time" type="number" min="0" step="0.001"></label></div>
         <button id="apply-trim" class="wide">Apply Trim</button>
         <div class="field-pair"><button id="move-left">← Earlier</button><button id="move-right">Later →</button></div>
+        <div id="layer-start-control" class="transition-control" hidden>
+          <label for="layer-start">Layer start time (seconds)</label>
+          <div class="transition-row"><input id="layer-start" type="number" min="0" step="0.1"><button id="apply-layer-start">Move Clip</button></div>
+          <p class="tip">V2/A2 clips sit at absolute storyboard times. Clips on the same layer cannot overlap.</p>
+        </div>
+        <div id="overlay-style-control" class="transition-control" hidden>
+          <label>V2 visual overlay</label>
+          <div class="field-pair">
+            <label>Placement<select id="overlay-layout"><option value="pip">Picture-in-picture</option><option value="full">Full-frame overlay</option></select></label>
+            <label>Opacity (%)<input id="overlay-opacity" type="number" min="0" max="100" step="1" value="100"></label>
+          </div>
+          <div class="field-pair">
+            <label>Fade in (sec)<input id="overlay-fade-in" type="number" min="0" step=".1" value="0"></label>
+            <label>Fade out (sec)<input id="overlay-fade-out" type="number" min="0" step=".1" value="0"></label>
+          </div>
+          <button id="apply-overlay-style" class="wide">Apply Overlay Style</button>
+          <p class="tip">Video opacity fades affect V2 visuals. Source audio is independently muted by default.</p>
+        </div>
         <div id="source-audio-control" class="source-audio-control" hidden>
           <label class="source-audio-toggle" for="mute-source-audio">
             <input id="mute-source-audio" type="checkbox">
             <span>Mute original video audio</span>
           </label>
-          <p class="tip">Mutes only this video's built-in sound. Your A1 soundtrack keeps playing. Applies to preview and WebM export.</p>
+          <p class="tip">Mutes only this video's built-in sound. Your A1/A2 soundtracks keep playing. Applies to preview and browser export.</p>
         </div>
         <div id="transition-control" class="transition-control" hidden>
           <label for="crossfade-seconds">Crossfade to next video</label>

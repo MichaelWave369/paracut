@@ -35,6 +35,7 @@ export function buildAss(titles, length) {
 }
 
 export function planLocalMp4(state, mediaByAsset, output, {ffmpeg='ffmpeg'}={}) {
+  if(state?.video2Clips?.length || state?.audio2Clips?.length) throw Error('R4.1 local MP4 companion does not support V2/A2 layered tracks yet. Use the browser MP4/WebM renderer; no layers were silently omitted.');
   if(!state?.clips?.length)throw Error('A video clip is required.');
   if(state.clips.length>32||state.audioClips.length>32)throw Error('Local export limit: 32 clips per lane.');
   const length=state.clips.at(-1).timeline.end;
