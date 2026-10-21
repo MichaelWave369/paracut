@@ -12,6 +12,12 @@
 6. Preview your cut with its soundtrack. Try **Export WebM β** to capture both streams locally, then listen to/watch the saved file.
 7. Save a `paracut.studio.draft.v2` file; it contains edit references and history **but no media bytes**. Reimport your original videos and audio to relink after reopening.
 
+## Source video audio mute (R2.1 fix)
+
+When imported video already contains an unwanted soundtrack (e.g., generated Grok music), click the **teal V1 video clip**, then in the **Inspector** check **Mute original video audio**. This disables that specific clip's built-in sound in preview and sets its source to zero gain in the WebM beta export mixer. The independently imported purple **A1 soundtrack remains audible**. Uncheck to restore original sound.
+
+Mute is a non-destructive edit, saved in draft JSON, reversible with Undo/Redo, and inherited by split halves. Existing R1/R2 browser drafts with no mute flag default to unmuted. The original video file is never changed. This is a per-video-clip control, not a global audio effect or audio-removal operation. Browser exports remain beta and should be checked by listening to the rendered file.
+
 ## Compatibility
 
 - R2 will **read v1 browser drafts**; the new JSON schema is `paracut.studio.draft.v2` and includes a separate `audioClips` lane.

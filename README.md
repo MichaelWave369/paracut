@@ -1,5 +1,9 @@
 # ParaCut
 
+## 🔇 Video source-audio mute
+
+For videos with unwanted built-in audio, select a V1 clip, then check **Mute original video audio** in the Inspector. Preview and WebM beta export exclude that clip's sound while the A1 soundtrack keeps playing. The setting is saved with browser drafts, can be undone, and does not modify the source video.
+
 ## 🎧 ParaCut Studio R2 — soundtrack lane, waveforms and drag reordering
 
 Our live local-first editing studio now supports a separate soundtrack/voiceover lane beside the video track, visual waveforms for decodable audio, clip drag-to-reorder, playback with soundtrack, and **experimental mixed-audio WebM export**. Open `apps/desktop/public/studio.html` through Pages or HTTP. The Interop Room and native project-core remain unchanged. [R2 guide and limits](docs/STUDIO_R2.md).

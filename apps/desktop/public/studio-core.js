@@ -16,6 +16,10 @@ export function duration(state) {
 export function activeClip(state, time) {
   return state.clips.find(clip => time >= clip.timeline.start && time < clip.timeline.end) || null;
 }
+// Older v1/v2 drafts have no source_audio_muted flag; their default is audible.
+export function isSourceAudioMuted(clip) {
+  return clip?.track_id === 'video-1' && clip.source_audio_muted === true;
+}
 export function activeAudioClip(state, time) {
   return state.audioClips.find(clip => time >= clip.timeline.start && time < clip.timeline.end) || null;
 }
@@ -55,7 +59,8 @@ export function change(state, command) {
     const lane = isAudio ? audioClips : clips;
     if (lane.length >= 400) throw Error('This track has reached its 400-clip safety limit.');
     lane.push({ clip_id: id(), asset_id: asset.asset_id, track_id: isAudio ? 'audio-1' : 'video-1',
-      timeline: { start: 0, end: 0 }, source: { start: 0, end: asset.duration }, enabled: true, effects: [] });
+      timeline: { start: 0, end: 0 }, source: { start: 0, end: asset.duration }, enabled: true, effects: [],
+      ...(isAudio ? {} : { source_audio_muted: false }) });
   } else if (type === 'clip.trimmed') {
     const c = laneFor(command.clip_id)?.find(item => item.clip_id === command.clip_id);
     if (!c) throw Error('Select a clip first.');
@@ -65,6 +70,11 @@ export function change(state, command) {
       throw Error('In/out must be inside the source and at least 0.08 seconds apart.');
     }
     c.source = { start: round(start), end: round(end) };
+  } else if (type === 'clip.source-audio.muted') {
+    const clip = clips.find(item => item.clip_id === command.clip_id);
+    if (!clip) throw Error('Source audio mute is available only for video clips.');
+    if (typeof command.muted !== 'boolean') throw Error('Source audio mute must be true or false.');
+    clip.source_audio_muted = command.muted;
   } else if (type === 'clip.split') {
     const lane = laneFor(command.clip_id);
     if (!lane) throw Error('Select a clip first.');
@@ -103,7 +113,8 @@ export function change(state, command) {
   audioClips = reflow(audioClips, 'audio-1');
   const next = { ...state, assets, clips, audioClips, name, undo: [...state.undo.slice(-39), before], redo: [],
     receipts: [...state.receipts, receipt(type, { clip_id: command.clip_id || null,
-      asset_id: command.asset_id || command.asset?.asset_id || null })] };
+      asset_id: command.asset_id || command.asset?.asset_id || null,
+      ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}) })] };
   validate(next);
   return next;
 }
@@ -138,6 +149,10 @@ export function validate(state) {
       const c = lane[i], a = state.assets.find(item => item.asset_id === c?.asset_id);
       if (!a || !a.type.startsWith(kind) || c.track_id !== trackId) throw Error('Invalid ' + kind.slice(0, -1) + ' reference.');
       if (!c.clip_id || clipIds.has(c.clip_id)) throw Error('Duplicate clip ID.');
+      if (c.source_audio_muted !== undefined &&
+          (trackId !== 'video-1' || typeof c.source_audio_muted !== 'boolean')) {
+        throw Error('Invalid source audio mute flag.');
+      }
       clipIds.add(c.clip_id);
       if (!finite(c.source?.start) || !finite(c.source?.end) || c.source.start < 0
           || c.source.end > a.duration + 0.002 || c.source.end - c.source.start < 0.079) throw Error('Invalid clip source range.');
