@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 
 const $ = id => document.getElementById(id);
@@ -41,6 +41,7 @@ function updateTimeUI() {
   $('seek').max = String(Math.max(d, 0.001));
   $('seek').value = String(Math.min(playhead, d));
   $('play').textContent = playing ? '❚❚' : '▶';
+  showTitleAt(playhead);
 }
 function drawMedia() {
   const list = $('media-list'); list.replaceChildren();
@@ -129,6 +130,66 @@ function drawTimeline() {
     }
   }
 }
+
+function showTitleAt(at) {
+  const title = visibleTitle(state, at);
+  const node = $('title-preview');
+  node.hidden = !title;
+  node.textContent = title?.text || '';
+}
+function previewAudioAt(at) {
+  const v = activeClip(state, Math.min(at, Math.max(0, duration(state) - .001)));
+  const a = activeAudioClip(state, at);
+  video.muted = isSourceAudioMuted(v);
+  video.volume = Math.min(1, audioLevelAt(v, at));
+  soundtrack.volume = Math.min(1, audioLevelAt(a, at));
+}
+function drawTitles() {
+  const list = $('title-list'), track = $('title-track');
+  list.replaceChildren(); track.replaceChildren();
+  if (!state.titles.length) {
+    const empty = document.createElement('span');
+    empty.className = 'empty-timeline'; empty.textContent = 'Add timed text in the Titles panel.';
+    track.append(empty);
+  }
+  for (const title of state.titles) {
+    const row = document.createElement('div'); row.className = 'title-item';
+    const label = document.createElement('span'); label.textContent = title.text;
+    const times = document.createElement('small'); times.textContent = fmt(title.start) + ' → ' + fmt(title.end);
+    label.append(times);
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = 'Delete';
+    del.title = 'Delete title'; del.disabled = exporting;
+    del.addEventListener('click', () => edit({type:'title.deleted',title_id:title.title_id}));
+    row.append(label,del); list.append(row);
+    const chip = document.createElement('button'); chip.type='button'; chip.className='title-chip';
+    chip.textContent = title.text.length > 28 ? title.text.slice(0,28) + '…' : title.text;
+    chip.title = 'Seek to ' + fmt(title.start); chip.disabled = exporting;
+    chip.addEventListener('click', () => { stopPlayback(); void seekTo(Math.min(title.start,duration(state))); });
+    track.append(chip);
+  }
+}
+function drawTitleOnCanvas(ctx, title) {
+  if (!title) return;
+  const words = title.text.split(/\s+/);
+  ctx.save();
+  ctx.font = 'bold 52px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  const lines = [], maxWidth = 1100;
+  for (const word of words) {
+    const idx = lines.length - 1;
+    if (idx < 0 || ctx.measureText(lines[idx] + ' ' + word).width > maxWidth) lines.push(word);
+    else lines[idx] += ' ' + word;
+  }
+  const shown = lines.slice(0,4), base = 625 - (shown.length - 1) * 30;
+  shown.forEach((line,i) => {
+    const y = base + 59 * i;
+    ctx.lineWidth = 8; ctx.strokeStyle = '#000d';
+    ctx.strokeText(line, 640, y, maxWidth);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(line,640,y,maxWidth);
+  });
+  ctx.restore();
+}
 function drawInspector() {
   const clip = [...state.clips, ...state.audioClips].find(c => c.clip_id === selectedId);
   $('inspector-fields').hidden = !clip;
@@ -140,6 +201,11 @@ function drawInspector() {
   $('out-time').value = String(clip.source.end);
   $('in-time').max = String(asset.duration);
   $('out-time').max = String(asset.duration);
+  $('clip-volume').value = String(Math.round((clip.volume ?? 1) * 100));
+  $('volume-number').textContent = Math.round((clip.volume ?? 1) * 100) + '%';
+  $('fade-in').value = String(clip.fade_in ?? 0);
+  $('fade-out').value = String(clip.fade_out ?? 0);
+  $('apply-audio').disabled = exporting;
   $('source-audio-control').hidden = clip.track_id !== 'video-1';
   $('mute-source-audio').checked = isSourceAudioMuted(clip);
   $('mute-source-audio').disabled = exporting;
@@ -162,7 +228,8 @@ function drawReceipts() {
 }
 function render() {
   $('project-name').value = state.name;
-  drawMedia(); drawTimeline(); drawInspector(); drawReceipts(); updateTimeUI();
+  drawMedia(); drawTimeline(); drawInspector(); drawTitles(); drawReceipts(); updateTimeUI();
+  previewAudioAt(playhead);
   $('undo').disabled = !state.undo.length || exporting;
   $('redo').disabled = !state.redo.length || exporting;
   $('split').disabled = !selectedId || exporting;
@@ -199,6 +266,7 @@ async function syncSoundtrack(at, autoplay) {
   if (Math.abs(soundtrack.currentTime - expected) > .15) {
     try { soundtrack.currentTime = Math.min(clip.source.end - .005, expected); } catch {}
   }
+  soundtrack.volume = Math.min(1, audioLevelAt(clip, at));
   if (autoplay && playing && soundtrack.paused) {
     try { await soundtrack.play(); } catch (e) { status('Soundtrack preview: ' + e.message, true); }
   } else if (!autoplay) soundtrack.pause();
@@ -230,6 +298,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
     if (serial !== seekSerial) return;
     // Apply on every seek, even when two clips share the same media asset.
     video.muted = isSourceAudioMuted(clip);
+    previewAudioAt(playhead);
     const time = Math.min(clip.source.end - .005, clip.source.start + Math.max(0, playhead - clip.timeline.start));
     if (Math.abs(video.currentTime - time) > .035) video.currentTime = Math.max(0,time);
     video.style.display = 'block'; $('empty-preview').hidden = true;
@@ -244,13 +313,16 @@ function stopPlayback() { playing = false; video.pause(); soundtrack.pause(); up
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (command.type === 'clip.source-audio.muted') {
+    if (['clip.source-audio.muted','clip.audio.updated','title.added','title.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
       video.muted = isSourceAudioMuted(onScreen);
+      previewAudioAt(playhead);
       render();
-      status(command.muted ? 'Original video audio muted. A1 stays on.' : 'Original video audio restored.');
+      status(command.type === 'clip.source-audio.muted'
+        ? (command.muted ? 'Original video audio muted. A1 stays on.' : 'Original video audio restored.')
+        : command.type + ' ✓');
       return;
     }
     stopPlayback();
@@ -307,6 +379,7 @@ video.addEventListener('timeupdate', () => {
   if (!clip || video.dataset.asset !== clip.asset_id) return;
   playhead = Math.min(clip.timeline.end, clip.timeline.start + Math.max(0, video.currentTime - clip.source.start));
   updateTimeUI();
+  previewAudioAt(playhead);
   void syncSoundtrack(playhead, true);
   if (video.currentTime >= clip.source.end - .045 || video.ended) {
     if (clip.timeline.end >= duration(state) - .005) { stopPlayback(); playhead = duration(state); updateTimeUI(); }
@@ -334,6 +407,18 @@ for (const kind of ['dragenter', 'dragover']) $('drop-zone').addEventListener(ki
 for (const kind of ['dragleave', 'drop']) $('drop-zone').addEventListener(kind, e => { e.preventDefault(); e.currentTarget.classList.remove('drag'); });
 $('drop-zone').addEventListener('drop', e => { void importVideos([...e.dataTransfer.files]); });
 $('apply-trim').addEventListener('click', () => edit({ type:'clip.trimmed', clip_id:selectedId, start:Number($('in-time').value), end:Number($('out-time').value) }));
+$('clip-volume').addEventListener('input', e => {
+  $('volume-number').textContent = e.target.value + '%';
+});
+$('apply-audio').addEventListener('click', () => edit({
+  type:'clip.audio.updated',clip_id:selectedId,volume:Number($('clip-volume').value)/100,
+  fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
+}));
+$('add-title').addEventListener('click', () => {
+  const name = $('title-text').value.trim();
+  edit({type:'title.added',title:{text:name,start:Number($('title-start').value),end:Number($('title-end').value)}});
+  if (state.titles.some(t=>t.text === name)) $('title-text').value = '';
+});
 $('mute-source-audio').addEventListener('change', event => edit({
   type: 'clip.source-audio.muted', clip_id: selectedId, muted: event.target.checked
 }));
@@ -385,11 +470,11 @@ async function renderWebm() {
   if (exporting) { cancelExport = true; status('Cancel requested. Stopping export…'); return; }
   if (!state.clips.length) return status('Timeline is empty.',true);
   if ([...state.clips, ...state.audioClips].some(c=>!media.has(c.asset_id))) return status('Relink all media sources before exporting.',true);
-  if (duration(state) > 300) return status('R2 browser export is limited to 5 minutes. Save a draft and use a shorter cut.',true);
+  if (duration(state) > 300) return status('R3 browser export is limited to 5 minutes. Save a draft and use a shorter cut.',true);
   const mime = supportedWebm();
   if (!mime) return status('This browser cannot record WebM. Try desktop Chrome/Edge.',true);
   stopPlayback(); exporting=true; cancelExport=false; $('export-webm').textContent='Cancel Export'; render();
-  let recorder, ctx, stream, videoStream, videoSourceGain;
+  let recorder, ctx, stream, videoStream, videoSourceGain, soundtrackGain;
   let encoderAudio = document.createElement('audio');
   encoderVideo = document.createElement('video');
   encoderVideo.playsInline = true;
@@ -397,12 +482,13 @@ async function renderWebm() {
   try {
     const canvas = document.createElement('canvas'); canvas.width=1280; canvas.height=720;
     const g = canvas.getContext('2d',{alpha:false}); if(!g) throw Error('Canvas unavailable.');
-    const paint = () => {
+    const paint = (at = 0) => {
       g.fillStyle='#05070b'; g.fillRect(0,0,canvas.width,canvas.height);
       if (encoderVideo.readyState < 2) return;
       const vw=encoderVideo.videoWidth, vh=encoderVideo.videoHeight; if(!vw||!vh) return;
       const scale=Math.min(canvas.width/vw,canvas.height/vh), w=vw*scale,h=vh*scale;
       g.drawImage(encoderVideo,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+      drawTitleOnCanvas(g, visibleTitle(state,at));
     };
     paint(); videoStream=canvas.captureStream(30);
     const tracks=[...videoStream.getVideoTracks()];
@@ -420,7 +506,9 @@ async function renderWebm() {
       videoSourceGain.connect(dest);
       if (state.audioClips.length) {
         const music = ctx.createMediaElementSource(encoderAudio);
-        music.connect(dest);
+        soundtrackGain = ctx.createGain();
+        music.connect(soundtrackGain);
+        soundtrackGain.connect(dest);
       }
       tracks.push(...dest.stream.getAudioTracks());
       await ctx.resume();
@@ -435,12 +523,13 @@ async function renderWebm() {
     recorder.start(1000);
     encoderVideo.muted = false;
     encoderAudio.muted = false;
-    encoderAudio.volume = .85;
+    encoderAudio.volume = 1;
     // Maintain one independent sequential soundtrack over the video cut.
     // Each source change is aligned to the video timeline position; in-browser
     // capture remains real-time beta and can drift by a few frames.
     async function syncExportSoundtrack(at) {
       const clip = activeAudioClip(state, at);
+      if (soundtrackGain) soundtrackGain.gain.value = audioLevelAt(clip, at);
       if (!clip) { encoderAudio.pause(); return; }
       const ref = media.get(clip.asset_id);
       if (!ref) throw Error('Missing audio source during export.');
@@ -462,7 +551,7 @@ async function renderWebm() {
       const clip=state.clips[index], ref=media.get(clip.asset_id);
       // This branch reaches the recorder's actual mix, while the A1 audio
       // source stays independently connected to the output destination.
-      if (videoSourceGain) videoSourceGain.gain.value = isSourceAudioMuted(clip) ? 0 : 1;
+      if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,clip.timeline.start);
       encoderAudio.pause();
       encoderVideo.pause(); encoderVideo.src=ref.url; encoderVideo.load();
       await new Promise((resolve,reject)=>{
@@ -478,21 +567,22 @@ async function renderWebm() {
       await syncExportSoundtrack(clip.timeline.start);
       while (encoderVideo.currentTime < clip.source.end - .015 && !encoderVideo.ended) {
         if(cancelExport) throw Error('Export cancelled.');
-        if(document.hidden) throw Error('Keep this tab visible during R2 recording.');
+        if(document.hidden) throw Error('Keep this tab visible during R3 recording.');
         const timelinePosition = clip.timeline.start + Math.max(0, encoderVideo.currentTime - clip.source.start);
         await syncExportSoundtrack(timelinePosition);
-        paint();
+        if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition);
+        paint(timelinePosition);
         $('render-status').textContent = `Recording clip ${index+1}/${state.clips.length} · ${fmt(encoderVideo.currentTime - clip.source.start)}`;
         await new Promise(resolve => requestAnimationFrame(resolve));
       }
-      paint(); encoderVideo.pause(); encoderAudio.pause();
+      paint(clip.timeline.end - .001); encoderVideo.pause(); encoderAudio.pause();
     }
     recorder.stop(); await stopped;
     if (cancelExport) throw Error('Export cancelled.');
     const blob = new Blob(chunks,{type:mime});
     if(blob.size < 1000) throw Error('Encoder produced no usable video.');
     download((state.name.replace(/[^a-z0-9_-]+/ig,'-').slice(0,60) || 'paracut')+'.webm',blob);
-    state.receipts.push({receipt_id:uuid(),action:'render.webm.exported',at:new Date().toISOString(),source:'human',details:{bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,mime,format:'browser-beta'}});
+    state.receipts.push({receipt_id:uuid(),action:'render.webm.exported',at:new Date().toISOString(),source:'human',details:{bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,title_count:state.titles.length,mime,format:'browser-beta'}});
     status('WebM downloaded ('+(blob.size/1048576).toFixed(1)+' MiB). Check the file before sharing.');
   } catch(err) { status('Export: '+err.message,true); }
   finally {

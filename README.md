@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎬 ParaCut Studio R3 — Creative Timeline
+
+The browser video editor now adds **per-clip volume and fade-in/out**, plus **timed title overlays** in preview and beta WebM exports. R1/R2 browser drafts can still be opened; the original files remain local and the Interop Room is preserved. [R3 guide and current limits](docs/STUDIO_R3.md).
+
+
 ## 🔇 Video source-audio mute
 
 For videos with unwanted built-in audio, select a V1 clip, then check **Mute original video audio** in the Inspector. Preview and WebM beta export exclude that clip's sound while the A1 soundtrack keeps playing. The setting is saved with browser drafts, can be undone, and does not modify the source video.
