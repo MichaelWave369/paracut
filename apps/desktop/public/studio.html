@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R3.1 · Title Designer</title>
+  <title>ParaCut Studio R3.2 · Video Crossfades</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R3.1 · TITLE DESIGNER</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R3.2 · CROSSFADE STUDIO</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -34,7 +34,7 @@
     <section class="center">
       <div class="preview panel">
         <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span></div>
-        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
+        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
         <div class="transport">
           <button id="backward" title="Go to start">⏮</button>
           <button id="play" class="play" title="Play or pause (Space)">▶</button>
@@ -45,7 +45,7 @@
         </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R3</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R3.2</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
@@ -58,7 +58,7 @@
         <div id="audio-track" class="timeline-track audio-track" aria-label="Audio soundtrack timeline"><div class="empty-timeline">Add audio tracks, voiceovers, or music from the Media Shelf.</div></div>
         <div class="track-heading titles-heading"><span>T1</span> TEXT · OVERLAYS</div>
         <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
-        <p class="tip">Select a clip to trim, adjust gain/fades, or split. Drag within its track to reorder. T1 titles draw over the video.</p>
+        <p class="tip">For a dissolve, select a V1 clip and set its transition to the next clip in the Inspector. V1 clips overlap during crossfades, shortening the cut. A1 and T1 remain independently timed.</p>
       </div>
     </section>
 
@@ -76,6 +76,11 @@
             <span>Mute original video audio</span>
           </label>
           <p class="tip">Mutes only this video's built-in sound. Your A1 soundtrack keeps playing. Applies to preview and WebM export.</p>
+        </div>
+        <div id="transition-control" class="transition-control" hidden>
+          <label for="crossfade-seconds">Crossfade to next video</label>
+          <div class="transition-row"><input id="crossfade-seconds" type="number" min="0" max="1.5" step="0.1" value="0"><button id="apply-crossfade">Apply</button></div>
+          <p class="tip" id="crossfade-note">0 = hard cut. Up to 1.5 seconds if both clips are long enough.</p>
         </div>
         <div class="audio-adjustments">
           <label for="clip-volume">Audio volume <span id="volume-number">100%</span></label>
