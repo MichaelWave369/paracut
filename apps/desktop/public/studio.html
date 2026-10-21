@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R2 · Video + Audio</title>
+  <title>ParaCut Studio R3 · Creative Timeline</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R2 · LOCAL-FIRST EDITOR</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R3 · CREATIVE TIMELINE</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -25,7 +25,7 @@
       <div class="panel-title"><h2>Media Shelf</h2><span id="asset-count" class="tiny">0 files</span></div>
       <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Import video or audio">
         <span class="plus">＋</span><strong>Import media</strong><span>Drop files or click to browse</span>
-        <small>Video + audio files · R2</small>
+        <small>Video + audio files · R3</small>
       </div>
       <div id="media-list" class="media-list" aria-live="polite"></div>
       <p class="tip">Add to a track with +. Video and audio stay on your device.</p>
@@ -34,7 +34,7 @@
     <section class="center">
       <div class="preview panel">
         <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span></div>
-        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
+        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
         <div class="transport">
           <button id="backward" title="Go to start">⏮</button>
           <button id="play" class="play" title="Play or pause (Space)">▶</button>
@@ -45,7 +45,7 @@
         </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R2</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R3</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
@@ -56,7 +56,9 @@
         <div id="timeline-track" class="timeline-track" aria-label="Video timeline"><div class="empty-timeline">Your video timeline is empty. Add clips from Media Shelf.</div></div>
         <div class="track-heading soundtrack"><span>A1</span> AUDIO · SOUNDTRACK</div>
         <div id="audio-track" class="timeline-track audio-track" aria-label="Audio soundtrack timeline"><div class="empty-timeline">Add audio tracks, voiceovers, or music from the Media Shelf.</div></div>
-        <p class="tip">Select a clip to trim or split. Drag clips to reorder within their track. The soundtrack overlays video from time zero.</p>
+        <div class="track-heading titles-heading"><span>T1</span> TEXT · OVERLAYS</div>
+        <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
+        <p class="tip">Select a clip to trim, adjust gain/fades, or split. Drag within its track to reorder. T1 titles draw over the video.</p>
       </div>
     </section>
 
@@ -75,8 +77,31 @@
           </label>
           <p class="tip">Mutes only this video's built-in sound. Your A1 soundtrack keeps playing. Applies to preview and WebM export.</p>
         </div>
+        <div class="audio-adjustments">
+          <label for="clip-volume">Audio volume <span id="volume-number">100%</span></label>
+          <input id="clip-volume" type="range" min="0" max="100" step="1" value="100">
+          <div class="field-pair">
+            <label>Fade in (sec)<input id="fade-in" type="number" min="0" step="0.1" value="0"></label>
+            <label>Fade out (sec)<input id="fade-out" type="number" min="0" step="0.1" value="0"></label>
+          </div>
+          <button id="apply-audio" class="wide">Apply Audio Settings</button>
+          <p class="tip">Affects this clip's audio only. Fade times must fit inside its duration.</p>
+        </div>
         <dl id="selected-meta" class="metadata"></dl>
       </div>
+      <hr>
+      <div class="panel-title"><h2>Titles &amp; Overlays</h2><span class="tiny">T1</span></div>
+      <div class="title-editor">
+        <label for="title-text">Text overlay</label>
+        <input id="title-text" type="text" maxlength="100" placeholder="A thousand worlds. One book.">
+        <div class="field-pair">
+          <label>Start (sec)<input id="title-start" type="number" min="0" step="0.1" value="0"></label>
+          <label>End (sec)<input id="title-end" type="number" min="0" step="0.1" value="3"></label>
+        </div>
+        <button id="add-title" class="wide">+ Add Text Overlay</button>
+        <p class="tip">Titles appear in preview and WebM export, centered near the bottom of the frame.</p>
+      </div>
+      <div id="title-list" class="title-list"></div>
       <hr>
       <div class="panel-title"><h2>Edit Receipts</h2><span id="receipt-count" class="tiny">0</span></div>
       <ol id="receipts" class="receipts"></ol>
