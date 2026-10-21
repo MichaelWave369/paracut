@@ -66,5 +66,6 @@ assert.match(ui,/video\.muted = isSourceAudioMuted\(clip\)/);
 assert.match(ui,/source\.connect\(videoSourceGain\)/);
 assert.match(ui,/videoSourceGain\.connect\(dest\)/);
 assert.match(ui,/videoSourceGain\.gain\.value = audioLevelAt\(clip,clip.timeline.start\)/);
-assert.match(ui,/music\.connect\(dest\)/);
+assert.match(ui,/music\.connect\(soundtrackGain\)/);
+assert.match(ui,/soundtrackGain\.connect\(dest\)/);
 console.log('ParaCut Studio mute smoke: PASS (per-video mute, A1 isolation, preview/export wiring, split, undo/redo, old drafts).');
