@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎧 ParaCut Studio R2 — soundtrack lane, waveforms and drag reordering
+
+Our live local-first editing studio now supports a separate soundtrack/voiceover lane beside the video track, visual waveforms for decodable audio, clip drag-to-reorder, playback with soundtrack, and **experimental mixed-audio WebM export**. Open `apps/desktop/public/studio.html` through Pages or HTTP. The Interop Room and native project-core remain unchanged. [R2 guide and limits](docs/STUDIO_R2.md).
+
+
 ## 🎬 ParaCut Studio R1 — usable browser editing slice
 
 Open [ParaCut Studio](apps/desktop/public/studio.html) on GitHub Pages (or a local HTTP server) to import video, build a sequential cut, trim/split/reorder clips, undo/redo, preview, save/reopen a draft, and try real-time **WebM beta** export on supported browsers. The original files remain local. See [Studio R1 scope and limitations](docs/STUDIO_R1.md). The original Interop Room remains available separately.

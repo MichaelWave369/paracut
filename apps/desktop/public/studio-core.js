@@ -1,13 +1,14 @@
-// ParaCut Studio R1: dependency-free browser timeline model.
+// ParaCut Studio R2: local-first browser draft model with separate video/audio tracks.
 // This is a browser draft format, NOT the canonical ParaCut project-core format.
-export const DRAFT_SCHEMA = 'paracut.studio.draft.v1';
+export const DRAFT_SCHEMA = 'paracut.studio.draft.v2';
+export const LEGACY_DRAFT_SCHEMA = 'paracut.studio.draft.v1';
 const id = () => (globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 const copy = value => JSON.parse(JSON.stringify(value));
 const round = n => Math.round(n * 1000) / 1000;
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 
 export function newStudio(name = 'Untitled Cut') {
-  return { schema: DRAFT_SCHEMA, name, assets: [], clips: [], receipts: [], undo: [], redo: [] };
+  return { schema: DRAFT_SCHEMA, name, assets: [], clips: [], audioClips: [], receipts: [], undo: [], redo: [] };
 }
 export function duration(state) {
   return state.clips.length ? state.clips[state.clips.length - 1].timeline.end : 0;
@@ -15,40 +16,48 @@ export function duration(state) {
 export function activeClip(state, time) {
   return state.clips.find(clip => time >= clip.timeline.start && time < clip.timeline.end) || null;
 }
-export function reflow(clips) {
+export function activeAudioClip(state, time) {
+  return state.audioClips.find(clip => time >= clip.timeline.start && time < clip.timeline.end) || null;
+}
+export function reflow(clips, trackId = 'video-1') {
   let t = 0;
   return clips.map(clip => {
     const seconds = round(clip.source.end - clip.source.start);
-    const next = { ...clip, track_id: 'video-1', timeline: { start: round(t), end: round(t + seconds) } };
+    const next = { ...clip, track_id: trackId, timeline: { start: round(t), end: round(t + seconds) } };
     t += seconds;
     return next;
   });
 }
-function checkpoint(state) { return { assets: copy(state.assets), clips: copy(state.clips), name: state.name }; }
+function checkpoint(state) { return { assets: copy(state.assets), clips: copy(state.clips), audioClips: copy(state.audioClips), name: state.name }; }
 function receipt(action, details = {}) {
   return { receipt_id: id(), action, at: new Date().toISOString(), source: 'human', details };
 }
 export function change(state, command) {
   validate(state);
   const before = checkpoint(state);
-  let assets = copy(state.assets), clips = copy(state.clips), name = state.name;
+  let assets = copy(state.assets), clips = copy(state.clips), audioClips = copy(state.audioClips), name = state.name;
   const { type } = command;
+  const laneFor = clipId => clips.some(c => c.clip_id === clipId) ? clips
+    : audioClips.some(c => c.clip_id === clipId) ? audioClips : null;
   if (type === 'asset.added') {
     const a = command.asset;
     if (!a || !a.name || !finite(a.duration) || a.duration < 0.1 || a.duration > 86400) throw Error('Invalid media duration.');
     if (!finite(a.size) || a.size < 0) throw Error('Invalid media size.');
-    if (!String(a.type).startsWith('video/')) throw Error('Studio R1 accepts video files only.');
-    if (assets.some(item => item.asset_id === a.asset_id)) throw Error('Duplicate media ID.');
-    if (assets.length >= 200) throw Error('This R1 project has reached its 200-file safety limit.');
-    assets.push({ asset_id: a.asset_id || id(), name: String(a.name).slice(0, 240), type: a.type, size: a.size, lastModified: a.lastModified, duration: round(a.duration) });
+    if (!String(a.type).startsWith('video/') && !String(a.type).startsWith('audio/')) throw Error('R2 accepts video and audio files only.');
+    if (!a.asset_id || assets.some(item => item.asset_id === a.asset_id)) throw Error('Missing or duplicate media ID.');
+    if (assets.length >= 200) throw Error('This project has reached its 200-file safety limit.');
+    assets.push({ asset_id: a.asset_id, name: String(a.name).slice(0, 240), type: a.type,
+      size: a.size, lastModified: a.lastModified, duration: round(a.duration) });
   } else if (type === 'clip.appended') {
     const asset = assets.find(item => item.asset_id === command.asset_id);
     if (!asset) throw Error('Media not found.');
-    if (clips.length >= 400) throw Error('This R1 timeline has reached its 400-clip safety limit.');
-    clips.push({ clip_id: id(), asset_id: asset.asset_id, track_id: 'video-1',
+    const isAudio = asset.type.startsWith('audio/');
+    const lane = isAudio ? audioClips : clips;
+    if (lane.length >= 400) throw Error('This track has reached its 400-clip safety limit.');
+    lane.push({ clip_id: id(), asset_id: asset.asset_id, track_id: isAudio ? 'audio-1' : 'video-1',
       timeline: { start: 0, end: 0 }, source: { start: 0, end: asset.duration }, enabled: true, effects: [] });
   } else if (type === 'clip.trimmed') {
-    const c = clips.find(item => item.clip_id === command.clip_id);
+    const c = laneFor(command.clip_id)?.find(item => item.clip_id === command.clip_id);
     if (!c) throw Error('Select a clip first.');
     const asset = assets.find(a => a.asset_id === c.asset_id);
     const start = Number(command.start), end = Number(command.end);
@@ -57,31 +66,44 @@ export function change(state, command) {
     }
     c.source = { start: round(start), end: round(end) };
   } else if (type === 'clip.split') {
-    const index = clips.findIndex(item => item.clip_id === command.clip_id);
-    if (index < 0) throw Error('Select a clip first.');
-    const c = clips[index], t = Number(command.time);
+    const lane = laneFor(command.clip_id);
+    if (!lane) throw Error('Select a clip first.');
+    const index = lane.findIndex(item => item.clip_id === command.clip_id);
+    const c = lane[index], t = Number(command.time);
     const offset = t - c.timeline.start;
     if (!finite(t) || offset < 0.08 || c.timeline.end - t < 0.08) throw Error('Move the playhead inside the clip to split.');
     const at = round(c.source.start + offset);
-    clips.splice(index, 1,
+    lane.splice(index, 1,
       { ...c, clip_id: id(), source: { start: c.source.start, end: at } },
       { ...c, clip_id: id(), source: { start: at, end: c.source.end } });
-  } else if (type === 'clip.moved') {
-    const index = clips.findIndex(item => item.clip_id === command.clip_id);
-    if (index < 0) throw Error('Select a clip first.');
-    const nextIndex = index + command.step;
-    if (![-1, 1].includes(command.step) || nextIndex < 0 || nextIndex >= clips.length) throw Error('Cannot move clip farther.');
-    [clips[index], clips[nextIndex]] = [clips[nextIndex], clips[index]];
+  } else if (type === 'clip.moved' || type === 'clip.reordered') {
+    const lane = laneFor(command.clip_id);
+    if (!lane) throw Error('Select a clip first.');
+    const index = lane.findIndex(item => item.clip_id === command.clip_id);
+    if (type === 'clip.moved') {
+      const nextIndex = index + command.step;
+      if (![-1, 1].includes(command.step) || nextIndex < 0 || nextIndex >= lane.length) throw Error('Cannot move clip farther.');
+      [lane[index], lane[nextIndex]] = [lane[nextIndex], lane[index]];
+    } else {
+      if (command.clip_id === command.target_id) throw Error('Drop onto a different clip.');
+      if (!lane.some(c => c.clip_id === command.target_id)) throw Error('Clip reorder must stay on the same track.');
+      const [clip] = lane.splice(index, 1);
+      const targetIndex = lane.findIndex(c => c.clip_id === command.target_id);
+      lane.splice(targetIndex + (command.after ? 1 : 0), 0, clip);
+    }
   } else if (type === 'clip.deleted') {
-    if (!clips.some(item => item.clip_id === command.clip_id)) throw Error('Clip not found.');
+    if (!laneFor(command.clip_id)) throw Error('Clip not found.');
     clips = clips.filter(item => item.clip_id !== command.clip_id);
+    audioClips = audioClips.filter(item => item.clip_id !== command.clip_id);
   } else if (type === 'project.renamed') {
     name = String(command.name || '').trim().slice(0, 100);
     if (!name) throw Error('Project name cannot be empty.');
   } else throw Error('Unknown studio edit.');
-  clips = reflow(clips);
-  const next = { ...state, assets, clips, name, undo: [...state.undo.slice(-39), before], redo: [],
-    receipts: [...state.receipts, receipt(type, { clip_id: command.clip_id || null, asset_id: command.asset_id || command.asset?.asset_id || null })] };
+  clips = reflow(clips, 'video-1');
+  audioClips = reflow(audioClips, 'audio-1');
+  const next = { ...state, assets, clips, audioClips, name, undo: [...state.undo.slice(-39), before], redo: [],
+    receipts: [...state.receipts, receipt(type, { clip_id: command.clip_id || null,
+      asset_id: command.asset_id || command.asset?.asset_id || null })] };
   validate(next);
   return next;
 }
@@ -98,32 +120,46 @@ export function redo(state) {
     receipts: [...state.receipts, receipt('edit.redone')] };
 }
 export function validate(state) {
-  if (!state || !Array.isArray(state.assets) || !Array.isArray(state.clips) || state.assets.length > 200 || state.clips.length > 400) throw Error('Invalid ParaCut draft.');
-  const ids = new Set(state.assets.map(a => a.asset_id));
-  if (ids.size !== state.assets.length) throw Error('Duplicate media IDs.');
-  const clipIds = new Set(), normalized = reflow(state.clips);
-  for (let i = 0; i < state.clips.length; i++) {
-    const c = state.clips[i], a = state.assets.find(item => item.asset_id === c.asset_id);
-    if (!a || !finite(a.duration) || !finite(a.size) || !String(a.type).startsWith('video/')) throw Error('Invalid video reference.');
-    if (clipIds.has(c.clip_id)) throw Error('Duplicate clip ID.');
-    clipIds.add(c.clip_id);
-    if (!finite(c.source?.start) || !finite(c.source?.end) || c.source.start < 0 || c.source.end > a.duration + 0.002 || c.source.end - c.source.start < 0.079) throw Error('Invalid clip source range.');
-    if (!finite(c.timeline?.start) || !finite(c.timeline?.end) || Math.abs(c.timeline.start - normalized[i].timeline.start) > 0.003 || Math.abs(c.timeline.end - normalized[i].timeline.end) > 0.003) throw Error('Timeline is not sequential.');
+  if (!state || !Array.isArray(state.assets) || !Array.isArray(state.clips) || !Array.isArray(state.audioClips)
+      || state.assets.length > 200 || state.clips.length > 400 || state.audioClips.length > 400) {
+    throw Error('Invalid ParaCut draft.');
+  }
+  const ids = new Set();
+  for (const a of state.assets) {
+    if (!a || typeof a.asset_id !== 'string' || !a.asset_id || ids.has(a.asset_id)
+        || typeof a.name !== 'string' || !finite(a.duration) || a.duration < 0.1 || a.duration > 86400
+        || !finite(a.size) || a.size < 0 || !/^(audio|video)\//.test(a.type)) throw Error('Invalid media reference.');
+    ids.add(a.asset_id);
+  }
+  const clipIds = new Set();
+  for (const [lane, trackId, kind] of [[state.clips, 'video-1','video/'],[state.audioClips, 'audio-1','audio/']]) {
+    const normalized = reflow(lane, trackId);
+    for (let i = 0; i < lane.length; i++) {
+      const c = lane[i], a = state.assets.find(item => item.asset_id === c?.asset_id);
+      if (!a || !a.type.startsWith(kind) || c.track_id !== trackId) throw Error('Invalid ' + kind.slice(0, -1) + ' reference.');
+      if (!c.clip_id || clipIds.has(c.clip_id)) throw Error('Duplicate clip ID.');
+      clipIds.add(c.clip_id);
+      if (!finite(c.source?.start) || !finite(c.source?.end) || c.source.start < 0
+          || c.source.end > a.duration + 0.002 || c.source.end - c.source.start < 0.079) throw Error('Invalid clip source range.');
+      if (!finite(c.timeline?.start) || !finite(c.timeline?.end)
+          || Math.abs(c.timeline.start - normalized[i].timeline.start) > 0.003
+          || Math.abs(c.timeline.end - normalized[i].timeline.end) > 0.003) throw Error('Timeline is not sequential.');
+    }
   }
   return true;
 }
 export function exportDraft(state) {
   validate(state);
-  const { name, assets, clips, receipts } = state;
-  return JSON.stringify({ schema: DRAFT_SCHEMA, name, assets, clips, receipts: receipts.slice(-500),
-    note: 'Video files are NOT embedded. Relink the originals when reopening.' }, null, 2);
+  const { name, assets, clips, audioClips, receipts } = state;
+  return JSON.stringify({ schema: DRAFT_SCHEMA, name, assets, clips, audioClips, receipts: receipts.slice(-500),
+    note: 'Media files are NOT embedded. Relink the originals when reopening.' }, null, 2);
 }
 export function importDraft(json) {
   if (String(json).length > 4_000_000) throw Error('Draft file is too large.');
   const input = JSON.parse(json);
-  if (input.schema !== DRAFT_SCHEMA) throw Error('Not a ParaCut Studio R1 draft.');
+  if (input.schema !== DRAFT_SCHEMA && input.schema !== LEGACY_DRAFT_SCHEMA) throw Error('Not a ParaCut Studio draft.');
   const state = { schema: DRAFT_SCHEMA, name: String(input.name || 'Recovered Cut').slice(0, 100),
-    assets: input.assets, clips: input.clips, receipts: Array.isArray(input.receipts) ? input.receipts.filter(r => r && typeof r === 'object' && typeof r.action === 'string').slice(-500) : [],
+    assets: input.assets, clips: input.clips, audioClips: input.schema === LEGACY_DRAFT_SCHEMA ? [] : input.audioClips, receipts: Array.isArray(input.receipts) ? input.receipts.filter(r => r && typeof r === 'object' && typeof r.action === 'string').slice(-500) : [],
     undo: [], redo: [] };
   validate(state);
   state.receipts.push(receipt('project.draft.opened', { imported_receipts_unverified: true }));
