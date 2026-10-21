@@ -31,3 +31,22 @@ jobs:
 
       - name: Smoke test
         run: pnpm smoke
+
+  windows-launcher-parse:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse PowerShell GUI launcher
+        shell: powershell
+        run: |
+          $tokens = $null
+          $errors = $null
+          $scriptPath = Join-Path $env:GITHUB_WORKSPACE 'tools/windows-export.ps1'
+          [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | Format-List | Out-String | Write-Host
+            exit 1
+          }
+          Write-Host 'Windows PowerShell syntax PASS'
