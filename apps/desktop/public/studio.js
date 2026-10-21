@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 
 const $ = id => document.getElementById(id);
@@ -6,6 +6,9 @@ let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
+const crossfadeVideo = $('crossfade-video');
+crossfadeVideo.preload = 'auto';
+let previewTransitionSerial = 0, loadingTransition = null, transitionFrameHandle = 0;
 let encoderVideo = document.createElement('video'); // fresh element per WebM export
 const soundtrack = document.createElement('audio');
 soundtrack.preload = 'auto'; soundtrack.volume = .85;
@@ -32,7 +35,10 @@ function clearMedia() {
   for (const entry of media.values()) URL.revokeObjectURL(entry.url);
   media.clear(); waveforms.clear();
   soundtrack.pause(); soundtrack.removeAttribute('src'); soundtrack.load(); delete soundtrack.dataset.clip;
-  video.pause(); video.removeAttribute('src'); video.load(); delete video.dataset.asset;
+  video.pause(); video.removeAttribute('src'); video.load(); delete video.dataset.asset; delete video.dataset.clip;
+  ++previewTransitionSerial; loadingTransition = null;
+  crossfadeVideo.pause(); crossfadeVideo.removeAttribute('src'); crossfadeVideo.load();
+  delete crossfadeVideo.dataset.clip; crossfadeVideo.style.display='none';
 }
 function updateTimeUI() {
   const d = duration(state);
@@ -83,7 +89,7 @@ function drawTimeline() {
       const asset = state.assets.find(a => a.asset_id === clip.asset_id);
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
-      item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '');
+      item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '') + (clip.transition_out_seconds ? ' has-transition' : '');
       item.draggable = !exporting;
       item.style.flex = String(Math.max((clip.timeline.end - clip.timeline.start) / total, .04)) + ' 0 68px';
       item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
@@ -91,6 +97,12 @@ function drawTimeline() {
       const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
       const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
       item.append(label, time);
+      if (!isAudio && clip.transition_out_seconds > 0) {
+        const badge = document.createElement('small');
+        badge.className = 'transition-caption';
+        badge.textContent = '⇄ '+clip.transition_out_seconds.toFixed(2)+'s';
+        item.append(badge);
+      }
       if (isSourceAudioMuted(clip)) {
         const mutedLabel = document.createElement('small');
         mutedLabel.className = 'muted-indicator';
@@ -147,9 +159,67 @@ function showTitleAt(at) {
 function previewAudioAt(at) {
   const v = activeClip(state, Math.min(at, Math.max(0, duration(state) - .001)));
   const a = activeAudioClip(state, at);
+  const dissolve = crossfadeAt(state, at);
   video.muted = isSourceAudioMuted(v);
-  video.volume = Math.min(1, audioLevelAt(v, at));
+  video.volume = Math.min(1, audioLevelAt(v, at) * (dissolve ? 1 - dissolve.progress : 1));
+  crossfadeVideo.muted = isSourceAudioMuted(dissolve?.incoming);
+  crossfadeVideo.volume = Math.min(1, dissolve ? audioLevelAt(dissolve.incoming, at) * dissolve.progress : 0);
   soundtrack.volume = Math.min(1, audioLevelAt(a, at));
+}
+function hideCrossfadePreview() {
+  crossfadeVideo.pause();
+  crossfadeVideo.style.display = 'none';
+  crossfadeVideo.style.opacity = '0';
+}
+// Loads the next video independently. Its first frames play simultaneously
+// with the outgoing clip while the current V1 boundary dissolves.
+async function syncCrossfadePreview(at, autoplay) {
+  const fade = crossfadeAt(state,at);
+  if (!fade) { hideCrossfadePreview(); return; }
+  const ref = media.get(fade.incoming.asset_id);
+  if (!ref) { hideCrossfadePreview(); return; }
+  if (crossfadeVideo.dataset.clip !== fade.incoming.clip_id) {
+    if (loadingTransition === fade.incoming.clip_id) return;
+    const serial = ++previewTransitionSerial;
+    loadingTransition = fade.incoming.clip_id;
+    crossfadeVideo.pause(); crossfadeVideo.src = ref.url; crossfadeVideo.dataset.clip = fade.incoming.clip_id; crossfadeVideo.load();
+    try {
+      await new Promise((resolve, reject) => {
+        if (crossfadeVideo.readyState >= 1) return resolve();
+        crossfadeVideo.addEventListener('loadedmetadata',resolve,{once:true});
+        crossfadeVideo.addEventListener('error',()=>reject(Error('Crossfade video could not be decoded.')),{once:true});
+      });
+    } catch(e) { status(e.message,true); return; }
+    finally { if (serial === previewTransitionSerial) loadingTransition=null; }
+    if (serial !== previewTransitionSerial) return;
+  }
+  const expected = fade.incoming.source.start + at - fade.incoming.timeline.start;
+  if (Math.abs(crossfadeVideo.currentTime-expected) > .18) {
+    try { crossfadeVideo.currentTime = Math.min(fade.incoming.source.end-.005,expected); } catch {}
+  }
+  previewAudioAt(at);
+  crossfadeVideo.style.opacity=String(fade.progress);
+  crossfadeVideo.style.display='block';
+  if (autoplay && playing && crossfadeVideo.paused) {
+    try { await crossfadeVideo.play(); } catch(e) { status('Crossfade preview: '+e.message,true); }
+  } else if (!autoplay) crossfadeVideo.pause();
+}
+// Motion/opacity interpolates on animation frames, independently of the
+// browser's low-frequency video 'timeupdate' events.
+function transitionFrame() {
+  transitionFrameHandle=0;
+  if (!playing) return;
+  const current=state.clips.find(c=>c.clip_id===video.dataset.clip);
+  if (current) {
+    const at=Math.min(current.timeline.end, current.timeline.start + Math.max(0,video.currentTime-current.source.start));
+    const fade=crossfadeAt(state,at);
+    if (fade) { previewAudioAt(at); void syncCrossfadePreview(at,true); }
+    else if (crossfadeVideo.style.display !== 'none') hideCrossfadePreview();
+  }
+  transitionFrameHandle=requestAnimationFrame(transitionFrame);
+}
+function startTransitionFrames() {
+  if (!transitionFrameHandle) transitionFrameHandle=requestAnimationFrame(transitionFrame);
 }
 function loadTitleForEdit(title) {
   editingTitleId = title.title_id;
@@ -246,6 +316,14 @@ function drawInspector() {
   $('out-time').value = String(clip.source.end);
   $('in-time').max = String(asset.duration);
   $('out-time').max = String(asset.duration);
+  const nextBoundary = state.clips.findIndex(c => c.clip_id === clip.clip_id);
+  const transitionAllowed = clip.track_id === 'video-1' && nextBoundary >= 0 && nextBoundary < state.clips.length-1;
+  $('transition-control').hidden = !transitionAllowed;
+  $('crossfade-seconds').value = String(clip.transition_out_seconds || 0);
+  const allowedSeconds = transitionAllowed ? maxCrossfade(state.clips,nextBoundary) : 0;
+  $('crossfade-seconds').max = String(allowedSeconds);
+  $('apply-crossfade').disabled = exporting || !transitionAllowed;
+  $('crossfade-note').textContent = '0 = hard cut · up to '+allowedSeconds.toFixed(2)+' seconds with the next V1 clip.';
   $('clip-volume').value = String(Math.round((clip.volume ?? 1) * 100));
   $('volume-number').textContent = Math.round((clip.volume ?? 1) * 100) + '%';
   $('fade-in').value = String(clip.fade_in ?? 0);
@@ -341,6 +419,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
       });
     }
     if (serial !== seekSerial) return;
+    video.dataset.clip = clip.clip_id;
     // Apply on every seek, even when two clips share the same media asset.
     video.muted = isSourceAudioMuted(clip);
     previewAudioAt(playhead);
@@ -351,10 +430,16 @@ async function seekTo(seconds, { autoplay = false } = {}) {
       await video.play(); playing = true;
     } else { video.pause(); playing = false; }
     void syncSoundtrack(playhead, playing);
+    void syncCrossfadePreview(playhead, playing);
+    if (playing) startTransitionFrames();
     updateTimeUI();
   } catch (e) { playing = false; status('Preview failed: ' + e.message, true); updateTimeUI(); }
 }
-function stopPlayback() { playing = false; video.pause(); soundtrack.pause(); updateTimeUI(); }
+function stopPlayback() {
+  playing = false; video.pause(); soundtrack.pause(); hideCrossfadePreview();
+  if (transitionFrameHandle) cancelAnimationFrame(transitionFrameHandle);
+  transitionFrameHandle=0; updateTimeUI();
+}
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
@@ -426,6 +511,7 @@ video.addEventListener('timeupdate', () => {
   updateTimeUI();
   previewAudioAt(playhead);
   void syncSoundtrack(playhead, true);
+  void syncCrossfadePreview(playhead,true);
   if (video.currentTime >= clip.source.end - .045 || video.ended) {
     if (clip.timeline.end >= duration(state) - .005) { stopPlayback(); playhead = duration(state); updateTimeUI(); }
     else void seekTo(clip.timeline.end + .001, { autoplay:true });
@@ -455,6 +541,9 @@ $('apply-trim').addEventListener('click', () => edit({ type:'clip.trimmed', clip
 $('clip-volume').addEventListener('input', e => {
   $('volume-number').textContent = e.target.value + '%';
 });
+$('apply-crossfade').addEventListener('click', () => edit({
+  type:'clip.transition.updated',clip_id:selectedId,seconds:Number($('crossfade-seconds').value)
+}));
 $('apply-audio').addEventListener('click', () => edit({
   type:'clip.audio.updated',clip_id:selectedId,volume:Number($('clip-volume').value)/100,
   fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
@@ -529,27 +618,38 @@ async function renderWebm() {
   const mime = supportedWebm();
   if (!mime) return status('This browser cannot record WebM. Try desktop Chrome/Edge.',true);
   stopPlayback(); exporting=true; cancelExport=false; $('export-webm').textContent='Cancel Export'; render();
-  let recorder, ctx, stream, videoStream, videoSourceGain, soundtrackGain;
+  let recorder, ctx, stream, videoStream, videoSourceGain, incomingVideoGain, soundtrackGain;
   let encoderAudio = document.createElement('audio');
   encoderVideo = document.createElement('video');
   encoderVideo.playsInline = true;
+  const encoderIncoming = document.createElement('video');
+  encoderIncoming.playsInline = true;
   const chunks=[];
   try {
     const canvas = document.createElement('canvas'); canvas.width=1280; canvas.height=720;
     const g = canvas.getContext('2d',{alpha:false}); if(!g) throw Error('Canvas unavailable.');
+    const drawVideoFrame = (el, alpha) => {
+      const vw=el.videoWidth, vh=el.videoHeight;
+      if (!vw || !vh || el.readyState < 2) return;
+      const scale=Math.min(canvas.width/vw,canvas.height/vh), w=vw*scale,h=vh*scale;
+      g.save(); g.globalAlpha = alpha;
+      g.drawImage(el,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+      g.restore();
+    };
     const paint = (at = 0) => {
       g.fillStyle='#05070b'; g.fillRect(0,0,canvas.width,canvas.height);
-      if (encoderVideo.readyState < 2) return;
-      const vw=encoderVideo.videoWidth, vh=encoderVideo.videoHeight; if(!vw||!vh) return;
-      const scale=Math.min(canvas.width/vw,canvas.height/vh), w=vw*scale,h=vh*scale;
-      g.drawImage(encoderVideo,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+      drawVideoFrame(encoderVideo,1);
+      const fade=crossfadeAt(state,at);
+      if (fade && encoderIncoming.dataset.clip === fade.incoming.clip_id)
+        drawVideoFrame(encoderIncoming,fade.progress);
       drawTitleOnCanvas(g, visibleTitle(state,at), at);
     };
     paint(); videoStream=canvas.captureStream(30);
     const tracks=[...videoStream.getVideoTracks()];
     // Audio is captured from the decoded source through Web Audio, not the user's microphone.
     const AudioCtx=window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx && state.audioClips.length) throw Error('This browser cannot mix audio. Try desktop Chrome/Edge.');
+    if (!AudioCtx && (state.audioClips.length || state.clips.some(c=>c.transition_out_seconds>0)))
+      throw Error('This browser cannot mix overlapping source audio. Try desktop Chrome/Edge.');
     if (AudioCtx) {
       ctx=new AudioCtx();
       const source=ctx.createMediaElementSource(encoderVideo);
@@ -559,6 +659,10 @@ async function renderWebm() {
       videoSourceGain = ctx.createGain();
       source.connect(videoSourceGain);
       videoSourceGain.connect(dest);
+      const incomingSource = ctx.createMediaElementSource(encoderIncoming);
+      incomingVideoGain = ctx.createGain(); incomingVideoGain.gain.value = 0;
+      incomingSource.connect(incomingVideoGain);
+      incomingVideoGain.connect(dest);
       if (state.audioClips.length) {
         const music = ctx.createMediaElementSource(encoderAudio);
         soundtrackGain = ctx.createGain();
@@ -577,6 +681,7 @@ async function renderWebm() {
     });
     recorder.start(1000);
     encoderVideo.muted = false;
+    encoderIncoming.muted = false;
     encoderAudio.muted = false;
     encoderAudio.volume = 1;
     // Maintain one independent sequential soundtrack over the video cut.
@@ -601,48 +706,102 @@ async function renderWebm() {
       if (Math.abs(encoderAudio.currentTime - position) > .16) encoderAudio.currentTime = position;
       if (encoderAudio.paused) await encoderAudio.play();
     }
+    async function prepareIncoming(clip, at) {
+      const ref=media.get(clip.asset_id);
+      if (!ref) throw Error('Relink the incoming crossfade source.');
+      if (encoderIncoming.dataset.clip !== clip.clip_id) {
+        encoderIncoming.pause();
+        encoderIncoming.src = ref.url;
+        encoderIncoming.dataset.clip = clip.clip_id;
+        encoderIncoming.load();
+        await new Promise((resolve,reject) => {
+          if (encoderIncoming.readyState >= 1) return resolve();
+          encoderIncoming.addEventListener('loadedmetadata',resolve,{once:true});
+          encoderIncoming.addEventListener('error',()=>reject(Error('Cannot decode crossfade source.')),{once:true});
+        });
+      }
+      const expected=clip.source.start + Math.max(0,at-clip.timeline.start);
+      if (Math.abs(encoderIncoming.currentTime-expected) > .04) {
+        encoderIncoming.currentTime=expected;
+        await new Promise((resolve,reject) => {
+          if (!encoderIncoming.seeking) return resolve();
+          encoderIncoming.addEventListener('seeked',resolve,{once:true});
+          encoderIncoming.addEventListener('error',()=>reject(Error('Crossfade source seek failed.')),{once:true});
+        });
+      }
+    }
+    async function syncExportCrossfade(at) {
+      const fade=crossfadeAt(state,at);
+      if (!fade) {
+        if (incomingVideoGain) incomingVideoGain.gain.value=0;
+        encoderIncoming.pause();
+        return;
+      }
+      // The second player displays a *moving* incoming scene, not a still.
+      if (encoderIncoming.dataset.clip !== fade.incoming.clip_id)
+        await prepareIncoming(fade.incoming,at);
+      const expected=fade.incoming.source.start + at - fade.incoming.timeline.start;
+      if (Math.abs(encoderIncoming.currentTime-expected) > .22)
+        encoderIncoming.currentTime = Math.min(fade.incoming.source.end-.005,expected);
+      if (incomingVideoGain) incomingVideoGain.gain.value =
+        audioLevelAt(fade.incoming,at) * fade.progress;
+      if (encoderIncoming.paused) await encoderIncoming.play();
+    }
     for (let index=0; index<state.clips.length; index++) {
       if(cancelExport) throw Error('Export cancelled.');
       const clip=state.clips[index], ref=media.get(clip.asset_id);
       // This branch reaches the recorder's actual mix, while the A1 audio
       // source stays independently connected to the output destination.
       if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,clip.timeline.start);
+      if (incomingVideoGain) incomingVideoGain.gain.value = 0;
+      encoderIncoming.pause();
       encoderAudio.pause();
       encoderVideo.pause(); encoderVideo.src=ref.url; encoderVideo.load();
       await new Promise((resolve,reject)=>{
         encoderVideo.addEventListener('loadedmetadata',resolve,{once:true});
         encoderVideo.addEventListener('error',()=>reject(Error('Cannot decode source.')),{once:true});
       });
-      encoderVideo.currentTime=clip.source.start;
+      const skipped = index > 0 ? (state.clips[index-1].transition_out_seconds || 0) : 0;
+      encoderVideo.currentTime=clip.source.start+skipped;
       await new Promise(resolve=> {
         if (encoderVideo.seeked || Math.abs(encoderVideo.currentTime - clip.source.start)<.04) return resolve();
         encoderVideo.addEventListener('seeked',resolve,{once:true});
       });
+      // Preload the next decoder before playback, so a visual dissolve doesn't
+      // start from a black frame while the next file is still loading.
+      if (clip.transition_out_seconds > 0 && state.clips[index+1])
+        await prepareIncoming(state.clips[index+1],state.clips[index+1].timeline.start);
       await encoderVideo.play();
-      await syncExportSoundtrack(clip.timeline.start);
+      await syncExportSoundtrack(clip.timeline.start+skipped);
       while (encoderVideo.currentTime < clip.source.end - .015 && !encoderVideo.ended) {
         if(cancelExport) throw Error('Export cancelled.');
         if(document.hidden) throw Error('Keep this tab visible during R3 recording.');
         const timelinePosition = clip.timeline.start + Math.max(0, encoderVideo.currentTime - clip.source.start);
         await syncExportSoundtrack(timelinePosition);
-        if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition);
+        await syncExportCrossfade(timelinePosition);
+        const fade = crossfadeAt(state,timelinePosition);
+        if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition) *
+          (fade ? 1-fade.progress : 1);
         paint(timelinePosition);
         $('render-status').textContent = `Recording clip ${index+1}/${state.clips.length} · ${fmt(encoderVideo.currentTime - clip.source.start)}`;
         await new Promise(resolve => requestAnimationFrame(resolve));
       }
-      paint(clip.timeline.end - .001); encoderVideo.pause(); encoderAudio.pause();
+      paint(clip.timeline.end - .001);
+      encoderVideo.pause(); encoderIncoming.pause(); encoderAudio.pause();
     }
     recorder.stop(); await stopped;
     if (cancelExport) throw Error('Export cancelled.');
     const blob = new Blob(chunks,{type:mime});
     if(blob.size < 1000) throw Error('Encoder produced no usable video.');
     download((state.name.replace(/[^a-z0-9_-]+/ig,'-').slice(0,60) || 'paracut')+'.webm',blob);
-    state.receipts.push({receipt_id:uuid(),action:'render.webm.exported',at:new Date().toISOString(),source:'human',details:{bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,title_count:state.titles.length,mime,format:'browser-beta'}});
+    state.receipts.push({receipt_id:uuid(),action:'render.webm.exported',at:new Date().toISOString(),source:'human',details:{bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,title_count:state.titles.length,
+      crossfades:state.clips.filter(c=>c.transition_out_seconds>0).length,mime,format:'browser-beta'}});
     status('WebM downloaded ('+(blob.size/1048576).toFixed(1)+' MiB). Check the file before sharing.');
   } catch(err) { status('Export: '+err.message,true); }
   finally {
     if(recorder?.state==='recording') { recorder.onstop=null; recorder.stop(); }
     encoderVideo.pause(); encoderVideo.removeAttribute('src'); encoderVideo.load();
+    encoderIncoming.pause(); encoderIncoming.removeAttribute('src'); encoderIncoming.load();
     encoderAudio.pause(); encoderAudio.removeAttribute('src'); encoderAudio.load();
     stream?.getTracks().forEach(t=>t.stop()); videoStream?.getTracks().forEach(t=>t.stop());
     await ctx?.close();

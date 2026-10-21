@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎞️ ParaCut Studio R3.2 — Video Crossfades
+
+The browser editor now supports **true overlapping video dissolves** between adjacent V1 clips, including a second moving video decoder and WebM beta export blending with independent gain-controlled source audio. Select an outgoing clip in V1, set **Crossfade to next video**, and preview the blend. R1/R2/R3 drafts remain readable; source media stays local. [R3.2 guide and limitations](docs/STUDIO_R32.md).
+
+
 ## 🎨 ParaCut Studio R3.1 — Title Designer
 
 Customize timed T1 titles with placement (top/middle/bottom), size, color presets, and fade-in/out animations. Edit existing titles and export them in WebM; older R1/R2/R3 browser drafts still open. The original video/audio and Interop Room behavior remains unchanged. [Title Designer guide](docs/STUDIO_R31.md).
