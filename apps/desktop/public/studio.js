@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 
 const $ = id => document.getElementById(id);
@@ -81,7 +81,7 @@ function drawTimeline() {
       const asset = state.assets.find(a => a.asset_id === clip.asset_id);
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
-      item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '');
+      item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '');
       item.draggable = !exporting;
       item.style.flex = String(Math.max((clip.timeline.end - clip.timeline.start) / total, .04)) + ' 0 68px';
       item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
@@ -89,6 +89,12 @@ function drawTimeline() {
       const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
       const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
       item.append(label, time);
+      if (isSourceAudioMuted(clip)) {
+        const mutedLabel = document.createElement('small');
+        mutedLabel.className = 'muted-indicator';
+        mutedLabel.textContent = '🔇 Original muted';
+        item.append(mutedLabel);
+      }
       if (isAudio && waveforms.has(clip.asset_id)) {
         const canvas = document.createElement('canvas'); canvas.className = 'waveform'; item.append(canvas);
         requestAnimationFrame(() => paintWaveform(canvas, waveforms.get(clip.asset_id)));
@@ -134,6 +140,9 @@ function drawInspector() {
   $('out-time').value = String(clip.source.end);
   $('in-time').max = String(asset.duration);
   $('out-time').max = String(asset.duration);
+  $('source-audio-control').hidden = clip.track_id !== 'video-1';
+  $('mute-source-audio').checked = isSourceAudioMuted(clip);
+  $('mute-source-audio').disabled = exporting;
   $('selected-meta').innerHTML = '<dt>Track</dt><dd>' + (clip.track_id === 'audio-1' ? 'Audio 1' : 'Video 1') + '</dd><dt>Timeline start</dt><dd>' + fmt(clip.timeline.start) +
     '</dd><dt>Clip duration</dt><dd>' + fmt(clip.timeline.end - clip.timeline.start) +
     '</dd><dt>Source length</dt><dd>' + fmt(asset.duration) + '</dd>';
@@ -219,6 +228,8 @@ async function seekTo(seconds, { autoplay = false } = {}) {
       });
     }
     if (serial !== seekSerial) return;
+    // Apply on every seek, even when two clips share the same media asset.
+    video.muted = isSourceAudioMuted(clip);
     const time = Math.min(clip.source.end - .005, clip.source.start + Math.max(0, playhead - clip.timeline.start));
     if (Math.abs(video.currentTime - time) > .035) video.currentTime = Math.max(0,time);
     video.style.display = 'block'; $('empty-preview').hidden = true;
@@ -314,6 +325,9 @@ for (const kind of ['dragenter', 'dragover']) $('drop-zone').addEventListener(ki
 for (const kind of ['dragleave', 'drop']) $('drop-zone').addEventListener(kind, e => { e.preventDefault(); e.currentTarget.classList.remove('drag'); });
 $('drop-zone').addEventListener('drop', e => { void importVideos([...e.dataTransfer.files]); });
 $('apply-trim').addEventListener('click', () => edit({ type:'clip.trimmed', clip_id:selectedId, start:Number($('in-time').value), end:Number($('out-time').value) }));
+$('mute-source-audio').addEventListener('change', event => edit({
+  type: 'clip.source-audio.muted', clip_id: selectedId, muted: event.target.checked
+}));
 $('split').addEventListener('click', () => edit({ type:'clip.split', clip_id:selectedId, time:playhead }));
 $('remove').addEventListener('click', () => edit({ type:'clip.deleted', clip_id:selectedId }));
 $('move-left').addEventListener('click', () => edit({ type:'clip.moved', clip_id:selectedId, step:-1 }));
@@ -366,7 +380,7 @@ async function renderWebm() {
   const mime = supportedWebm();
   if (!mime) return status('This browser cannot record WebM. Try desktop Chrome/Edge.',true);
   stopPlayback(); exporting=true; cancelExport=false; $('export-webm').textContent='Cancel Export'; render();
-  let recorder, ctx, stream, videoStream;
+  let recorder, ctx, stream, videoStream, videoSourceGain;
   let encoderAudio = document.createElement('audio');
   encoderVideo = document.createElement('video');
   encoderVideo.playsInline = true;
@@ -390,7 +404,11 @@ async function renderWebm() {
       ctx=new AudioCtx();
       const source=ctx.createMediaElementSource(encoderVideo);
       const dest=ctx.createMediaStreamDestination();
-      source.connect(dest);
+      // Web Audio may ignore an HTMLMediaElement's muted property at this
+      // capture point. Mute original audio in the graph, NOT via the element.
+      videoSourceGain = ctx.createGain();
+      source.connect(videoSourceGain);
+      videoSourceGain.connect(dest);
       if (state.audioClips.length) {
         const music = ctx.createMediaElementSource(encoderAudio);
         music.connect(dest);
@@ -433,6 +451,9 @@ async function renderWebm() {
     for (let index=0; index<state.clips.length; index++) {
       if(cancelExport) throw Error('Export cancelled.');
       const clip=state.clips[index], ref=media.get(clip.asset_id);
+      // This branch reaches the recorder's actual mix, while the A1 audio
+      // source stays independently connected to the output destination.
+      if (videoSourceGain) videoSourceGain.gain.value = isSourceAudioMuted(clip) ? 0 : 1;
       encoderAudio.pause();
       encoderVideo.pause(); encoderVideo.src=ref.url; encoderVideo.load();
       await new Promise((resolve,reject)=>{
