@@ -13,7 +13,7 @@ assert.equal(formatDbfs(stats.dbfs),'-6.0 dBFS');
 assert.equal(formatDbfs(-Infinity),'−∞ dBFS');
 assert.equal(meterStats(new Float32Array([Number.NaN,2,-2])).peak,1);
 assert.throws(()=>createPreviewBusMeters(null,{a1:{},a2:{}}),/AudioContext/);
-assert.throws(()=>createPreviewBusMeters(class {},{a1:{},a2:{}}),/AudioContext/); // same absent element
+assert.throws(()=>createPreviewBusMeters(class {},{a1:{},a2:{}}),/Live bus meter setup failed/);
 class MockNode {
   constructor(label){this.label=label;this.targets=[];}
   connect(node){this.targets.push(node);}
