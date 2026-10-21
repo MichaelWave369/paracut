@@ -1,11 +1,17 @@
-import { newStudio, change, undo, redo, duration, activeClip, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, exportDraft, importDraft } from './studio-core.js';
+import { extractWaveform, paintWaveform } from './studio-waveform.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
-const encoderVideo = $('export-video');
+let encoderVideo = document.createElement('video'); // fresh element per WebM export
+const soundtrack = document.createElement('audio');
+soundtrack.preload = 'auto'; soundtrack.volume = .85;
+const waveforms = new Map();
+let soundSerial = 0;
+let draggedClipId = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
   const n = Math.max(0, Number(seconds) || 0);
@@ -23,7 +29,8 @@ function download(name, blob) {
 }
 function clearMedia() {
   for (const entry of media.values()) URL.revokeObjectURL(entry.url);
-  media.clear();
+  media.clear(); waveforms.clear();
+  soundtrack.pause(); soundtrack.removeAttribute('src'); soundtrack.load(); delete soundtrack.dataset.clip;
   video.pause(); video.removeAttribute('src'); video.load(); delete video.dataset.asset;
 }
 function updateTimeUI() {
@@ -42,43 +49,82 @@ function drawMedia() {
     const linked = media.has(asset.asset_id);
     const div = document.createElement('div'); div.className = 'media-item' + (linked ? '' : ' missing');
     const name = document.createElement('div');
-    name.innerHTML = '<strong>' + esc(asset.name) + '</strong><small>' + fmt(asset.duration) + ' · ' +
+    const isAudio = asset.type.startsWith('audio/');
+    name.innerHTML = '<strong>' + esc(asset.name) + '</strong><small>' +
+      (isAudio ? 'AUDIO · ' : 'VIDEO · ') + fmt(asset.duration) + ' · ' +
       (linked ? 'Ready' : 'Relink required') + '</small>';
+    if (isAudio && waveforms.has(asset.asset_id)) {
+      const canvas = document.createElement('canvas'); canvas.className = 'waveform';
+      name.append(canvas);
+      requestAnimationFrame(() => paintWaveform(canvas, waveforms.get(asset.asset_id)));
+    }
     const add = document.createElement('button');
-    add.textContent = '+'; add.className = 'add'; add.title = 'Append to video timeline';
+    add.textContent = '+'; add.className = 'add'; add.title = isAudio ? 'Append to soundtrack' : 'Append to video track';
     add.disabled = !linked || exporting;
     add.addEventListener('click', () => edit({ type:'clip.appended', asset_id: asset.asset_id }));
     div.append(name, add); list.append(div);
   }
 }
 function drawTimeline() {
-  const lane = $('timeline-track'); lane.replaceChildren();
-  if (!state.clips.length) {
-    const msg = document.createElement('div'); msg.className = 'empty-timeline';
-    msg.textContent = 'Your timeline is empty. Add clips from Media Shelf.'; lane.append(msg); return;
-  }
-  const total = Math.max(duration(state), .01);
-  for (const clip of state.clips) {
-    const asset = state.assets.find(a => a.asset_id === clip.asset_id);
-    const item = document.createElement('button');
-    item.type = 'button'; item.className = 'timeline-clip' + (clip.clip_id === selectedId ? ' selected' : '');
-    item.style.flex = `${Math.max((clip.timeline.end-clip.timeline.start) / total, .04)} 0 68px`;
-    item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
-    item.title = `${asset?.name || 'Missing file'} · ${fmt(clip.timeline.start)} to ${fmt(clip.timeline.end)}`;
-    const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
-    const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
-    item.append(label, time);
-    item.addEventListener('click', event => {
-      selectedId = clip.clip_id;
-      drawTimeline(); drawInspector();
-      // A click chooses both the clip and its start; no hidden edit mutation.
-      void seekTo(clip.timeline.start, { autoplay: playing });
-    });
-    lane.append(item);
+  const lanes = [
+    { el: $('timeline-track'), clips: state.clips, empty: 'Your video timeline is empty. Add video files.' },
+    { el: $('audio-track'), clips: state.audioClips, empty: 'Add audio files for soundtrack or voiceover.' },
+  ];
+  const total = Math.max(duration(state), state.audioClips.at(-1)?.timeline.end || 0, .01);
+  for (const lane of lanes) {
+    lane.el.replaceChildren();
+    if (!lane.clips.length) {
+      const msg = document.createElement('div'); msg.className = 'empty-timeline'; msg.textContent = lane.empty;
+      lane.el.append(msg); continue;
+    }
+    for (const clip of lane.clips) {
+      const asset = state.assets.find(a => a.asset_id === clip.asset_id);
+      const isAudio = clip.track_id === 'audio-1';
+      const item = document.createElement('button');
+      item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '');
+      item.draggable = !exporting;
+      item.style.flex = String(Math.max((clip.timeline.end - clip.timeline.start) / total, .04)) + ' 0 68px';
+      item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
+      item.title = (asset?.name || 'Missing file') + ' · ' + fmt(clip.timeline.start) + ' to ' + fmt(clip.timeline.end);
+      const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
+      const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
+      item.append(label, time);
+      if (isAudio && waveforms.has(clip.asset_id)) {
+        const canvas = document.createElement('canvas'); canvas.className = 'waveform'; item.append(canvas);
+        requestAnimationFrame(() => paintWaveform(canvas, waveforms.get(clip.asset_id)));
+      }
+      item.addEventListener('click', () => {
+        selectedId = clip.clip_id; drawTimeline(); drawInspector();
+        void seekTo(Math.min(clip.timeline.start, duration(state)), { autoplay: playing });
+      });
+      item.addEventListener('dragstart', event => {
+        draggedClipId = clip.clip_id;
+        event.dataTransfer?.setData('text/plain', clip.clip_id);
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragover', event => {
+        if (!draggedClipId || draggedClipId === clip.clip_id) return;
+        const source = lane.clips.find(c => c.clip_id === draggedClipId);
+        if (!source) return; // no accidental cross-track move
+        event.preventDefault(); item.classList.add('drag-target');
+      });
+      item.addEventListener('dragleave', () => item.classList.remove('drag-target'));
+      item.addEventListener('drop', event => {
+        event.preventDefault(); item.classList.remove('drag-target');
+        if (!draggedClipId || draggedClipId === clip.clip_id) return;
+        const after = event.clientX > item.getBoundingClientRect().left + item.clientWidth / 2;
+        const fromId = draggedClipId; draggedClipId = null;
+        edit({ type:'clip.reordered', clip_id:fromId, target_id:clip.clip_id, after });
+      });
+      item.addEventListener('dragend', () => {
+        draggedClipId = null; document.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+      });
+      lane.el.append(item);
+    }
   }
 }
 function drawInspector() {
-  const clip = state.clips.find(c => c.clip_id === selectedId);
+  const clip = [...state.clips, ...state.audioClips].find(c => c.clip_id === selectedId);
   $('inspector-fields').hidden = !clip;
   $('inspector-empty').hidden = Boolean(clip);
   if (!clip) return;
@@ -88,12 +134,13 @@ function drawInspector() {
   $('out-time').value = String(clip.source.end);
   $('in-time').max = String(asset.duration);
   $('out-time').max = String(asset.duration);
-  $('selected-meta').innerHTML = '<dt>Track</dt><dd>Video 1</dd><dt>Timeline start</dt><dd>' + fmt(clip.timeline.start) +
+  $('selected-meta').innerHTML = '<dt>Track</dt><dd>' + (clip.track_id === 'audio-1' ? 'Audio 1' : 'Video 1') + '</dd><dt>Timeline start</dt><dd>' + fmt(clip.timeline.start) +
     '</dd><dt>Clip duration</dt><dd>' + fmt(clip.timeline.end - clip.timeline.start) +
     '</dd><dt>Source length</dt><dd>' + fmt(asset.duration) + '</dd>';
-  const index = state.clips.findIndex(c => c.clip_id === selectedId);
+  const lane = clip.track_id === 'audio-1' ? state.audioClips : state.clips;
+  const index = lane.findIndex(c => c.clip_id === selectedId);
   $('move-left').disabled = index === 0 || exporting;
-  $('move-right').disabled = index === state.clips.length - 1 || exporting;
+  $('move-right').disabled = index === lane.length - 1 || exporting;
 }
 function drawReceipts() {
   $('receipt-count').textContent = String(state.receipts.length);
@@ -111,8 +158,8 @@ function render() {
   $('redo').disabled = !state.redo.length || exporting;
   $('split').disabled = !selectedId || exporting;
   $('remove').disabled = !selectedId || exporting;
-  $('export-webm').disabled = (!state.clips.length || state.clips.some(c => !media.has(c.asset_id))) && !exporting;
-  $('preview-label').textContent = selectedId ? 'Selected clip · ' + (state.clips.find(c=>c.clip_id===selectedId)?.clip_id?.slice(0,8) || '') : 'Program';
+  $('export-webm').disabled = (!state.clips.length || [...state.clips, ...state.audioClips].some(c => !media.has(c.asset_id))) && !exporting;
+  $('preview-label').textContent = selectedId ? 'Selected clip · ' + ([...state.clips, ...state.audioClips].find(c=>c.clip_id===selectedId)?.clip_id?.slice(0,8) || '') : 'Program';
 }
 async function seekTo(seconds, { autoplay = false } = {}) {
   const serial = ++seekSerial, d = duration(state);
@@ -154,7 +201,7 @@ function edit(command) {
   try {
     stopPlayback();
     state = change(state, command);
-    if (selectedId && !state.clips.some(c=>c.clip_id===selectedId)) selectedId = null;
+    if (selectedId && ![...state.clips, ...state.audioClips].some(c=>c.clip_id===selectedId)) selectedId = null;
     playhead = Math.min(playhead, duration(state));
     render(); void seekTo(playhead); status(command.type + ' ✓');
   } catch (e) { status(e.message, true); }
@@ -233,7 +280,7 @@ $('move-right').addEventListener('click', () => edit({ type:'clip.moved', clip_i
 for(const [name, method] of [['undo',undo],['redo',redo]]) $(name).addEventListener('click', () => {
   if (exporting) return;
   stopPlayback(); state = method(state);
-  if (selectedId && !state.clips.some(c=>c.clip_id===selectedId)) selectedId=null;
+  if (selectedId && ![...state.clips, ...state.audioClips].some(c=>c.clip_id===selectedId)) selectedId=null;
   playhead=Math.min(playhead,duration(state)); render(); void seekTo(playhead); status(name+' ✓');
 });
 $('project-name').addEventListener('change', e => edit({ type:'project.renamed', name:e.target.value }));
