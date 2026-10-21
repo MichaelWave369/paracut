@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 
 const $ = id => document.getElementById(id);
@@ -12,6 +12,7 @@ soundtrack.preload = 'auto'; soundtrack.volume = .85;
 const waveforms = new Map();
 let soundSerial = 0;
 let draggedClipId = null;
+let editingTitleId = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
   const n = Math.max(0, Number(seconds) || 0);
@@ -136,6 +137,12 @@ function showTitleAt(at) {
   const node = $('title-preview');
   node.hidden = !title;
   node.textContent = title?.text || '';
+  if (!title) return;
+  const style = titleStyle(title);
+  node.dataset.position = style.position;
+  node.dataset.size = style.size;
+  node.dataset.color = style.color;
+  node.style.opacity = String(titleOpacityAt(title, at));
 }
 function previewAudioAt(at) {
   const v = activeClip(state, Math.min(at, Math.max(0, duration(state) - .001)));
@@ -143,6 +150,32 @@ function previewAudioAt(at) {
   video.muted = isSourceAudioMuted(v);
   video.volume = Math.min(1, audioLevelAt(v, at));
   soundtrack.volume = Math.min(1, audioLevelAt(a, at));
+}
+function loadTitleForEdit(title) {
+  editingTitleId = title.title_id;
+  $('title-text').value = title.text;
+  $('title-start').value = String(title.start);
+  $('title-end').value = String(title.end);
+  const style = titleStyle(title);
+  $('title-position').value = style.position;
+  $('title-size').value = style.size;
+  $('title-color').value = style.color;
+  $('title-fade-in').value = String(style.fade_in);
+  $('title-fade-out').value = String(style.fade_out);
+  $('add-title').textContent = 'Save Title Changes';
+  $('cancel-title-edit').hidden = false;
+  drawTitles();
+}
+function resetTitleEditor() {
+  editingTitleId = null;
+  $('title-text').value = '';
+  $('title-position').value = 'bottom';
+  $('title-size').value = 'medium';
+  $('title-color').value = 'white';
+  $('title-fade-in').value = '0';
+  $('title-fade-out').value = '0';
+  $('add-title').textContent = '+ Add Text Overlay';
+  $('cancel-title-edit').hidden = true;
 }
 function drawTitles() {
   const list = $('title-list'), track = $('title-track');
@@ -153,14 +186,17 @@ function drawTitles() {
     track.append(empty);
   }
   for (const title of state.titles) {
-    const row = document.createElement('div'); row.className = 'title-item';
+    const row = document.createElement('div'); row.className = 'title-item' + (title.title_id === editingTitleId ? ' editing' : '');
     const label = document.createElement('span'); label.textContent = title.text;
     const times = document.createElement('small'); times.textContent = fmt(title.start) + ' → ' + fmt(title.end);
     label.append(times);
+    const editButton = document.createElement('button'); editButton.type = 'button'; editButton.textContent = 'Edit';
+    editButton.title = 'Edit title style and timing'; editButton.disabled = exporting;
+    editButton.addEventListener('click', () => loadTitleForEdit(title));
     const del = document.createElement('button'); del.type = 'button'; del.textContent = 'Delete';
     del.title = 'Delete title'; del.disabled = exporting;
     del.addEventListener('click', () => edit({type:'title.deleted',title_id:title.title_id}));
-    row.append(label,del); list.append(row);
+    row.append(label,editButton,del); list.append(row);
     const chip = document.createElement('button'); chip.type='button'; chip.className='title-chip';
     chip.textContent = title.text.length > 28 ? title.text.slice(0,28) + '…' : title.text;
     chip.title = 'Seek to ' + fmt(title.start); chip.disabled = exporting;
@@ -168,11 +204,18 @@ function drawTitles() {
     track.append(chip);
   }
 }
-function drawTitleOnCanvas(ctx, title) {
+function drawTitleOnCanvas(ctx, title, at) {
   if (!title) return;
+  const style = titleStyle(title);
+  const opacity = titleOpacityAt(title, at);
+  if (opacity <= 0) return;
+  const fontSizes = { small:36, medium:52, large:74 };
+  const colors = { white:'#ffffff', mint:'#87f0df', gold:'#ffdd8a' };
   const words = title.text.split(/\s+/);
   ctx.save();
-  ctx.font = 'bold 52px system-ui, sans-serif';
+  ctx.globalAlpha = opacity;
+  const size = fontSizes[style.size];
+  ctx.font = 'bold ' + size + 'px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
   const lines = [], maxWidth = 1100;
@@ -181,12 +224,14 @@ function drawTitleOnCanvas(ctx, title) {
     if (idx < 0 || ctx.measureText(lines[idx] + ' ' + word).width > maxWidth) lines.push(word);
     else lines[idx] += ' ' + word;
   }
-  const shown = lines.slice(0,4), base = 625 - (shown.length - 1) * 30;
+  const shown = lines.slice(0,4);
+  const center = style.position === 'top' ? 120 : style.position === 'middle' ? 360 : 620;
+  const start = center - (shown.length - 1) * (size * 1.08 / 2);
   shown.forEach((line,i) => {
-    const y = base + 59 * i;
+    const y = start + size * 1.08 * i;
     ctx.lineWidth = 8; ctx.strokeStyle = '#000d';
     ctx.strokeText(line, 640, y, maxWidth);
-    ctx.fillStyle = '#ffffff'; ctx.fillText(line,640,y,maxWidth);
+    ctx.fillStyle = colors[style.color]; ctx.fillText(line, 640, y, maxWidth);
   });
   ctx.restore();
 }
@@ -313,7 +358,7 @@ function stopPlayback() { playing = false; video.pause(); soundtrack.pause(); up
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','title.added','title.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
@@ -415,10 +460,20 @@ $('apply-audio').addEventListener('click', () => edit({
   fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
 }));
 $('add-title').addEventListener('click', () => {
-  const name = $('title-text').value.trim();
-  edit({type:'title.added',title:{text:name,start:Number($('title-start').value),end:Number($('title-end').value)}});
-  if (state.titles.some(t=>t.text === name)) $('title-text').value = '';
+  const title = {
+    text: $('title-text').value.trim(),
+    start: Number($('title-start').value), end: Number($('title-end').value),
+    position: $('title-position').value, size: $('title-size').value, color: $('title-color').value,
+    fade_in: Number($('title-fade-in').value), fade_out: Number($('title-fade-out').value)
+  };
+  const wasEditing = editingTitleId;
+  const beforeReceipts = state.receipts.length;
+  if (wasEditing) edit({type:'title.updated',title_id:wasEditing,title});
+  else edit({type:'title.added',title});
+  // Only clear editor following a committed, validated change.
+  if (state.receipts.length > beforeReceipts) { resetTitleEditor(); drawTitles(); }
 });
+$('cancel-title-edit').addEventListener('click', () => { resetTitleEditor(); drawTitles(); });
 $('mute-source-audio').addEventListener('change', event => edit({
   type: 'clip.source-audio.muted', clip_id: selectedId, muted: event.target.checked
 }));
@@ -435,7 +490,7 @@ for(const [name, method] of [['undo',undo],['redo',redo]]) $(name).addEventListe
 $('project-name').addEventListener('change', e => edit({ type:'project.renamed', name:e.target.value }));
 $('new-project').addEventListener('click', () => {
   if (exporting || !confirm('Start a new project? Export your draft first if you want to keep these edits.')) return;
-  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; render(); void seekTo(0); status('New project ready.');
+  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; resetTitleEditor(); render(); void seekTo(0); status('New project ready.');
 });
 $('save-draft').addEventListener('click', () => {
   const file = (state.name.replace(/[^a-z0-9_-]+/ig,'-').slice(0,60) || 'paracut') + '.paracut.json';
@@ -447,7 +502,7 @@ $('draft-input').addEventListener('change', async e => {
   const file = e.target.files?.[0]; e.target.value = ''; if(!file || exporting) return;
   try {
     const candidate=importDraft(await file.text());
-    stopPlayback(); clearMedia(); state=candidate; selectedId=null; playhead=0;
+    stopPlayback(); clearMedia(); state=candidate; selectedId=null; playhead=0; resetTitleEditor();
     render(); void seekTo(0); status('Draft opened. Import original video files to relink them.');
   } catch (err) { status('Could not open draft: ' + err.message,true); }
 });
@@ -488,7 +543,7 @@ async function renderWebm() {
       const vw=encoderVideo.videoWidth, vh=encoderVideo.videoHeight; if(!vw||!vh) return;
       const scale=Math.min(canvas.width/vw,canvas.height/vh), w=vw*scale,h=vh*scale;
       g.drawImage(encoderVideo,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
-      drawTitleOnCanvas(g, visibleTitle(state,at));
+      drawTitleOnCanvas(g, visibleTitle(state,at), at);
     };
     paint(); videoStream=canvas.captureStream(30);
     const tracks=[...videoStream.getVideoTracks()];
