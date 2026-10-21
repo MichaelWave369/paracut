@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎨 ParaCut Studio R3.1 — Title Designer
+
+Customize timed T1 titles with placement (top/middle/bottom), size, color presets, and fade-in/out animations. Edit existing titles and export them in WebM; older R1/R2/R3 browser drafts still open. The original video/audio and Interop Room behavior remains unchanged. [Title Designer guide](docs/STUDIO_R31.md).
+
+
 ## 🎬 ParaCut Studio R3 — Creative Timeline
 
 The browser video editor now adds **per-clip volume and fade-in/out**, plus **timed title overlays** in preview and beta WebM exports. R1/R2 browser drafts can still be opened; the original files remain local and the Interop Room is preserved. [R3 guide and current limits](docs/STUDIO_R3.md).
