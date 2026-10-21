@@ -50,6 +50,7 @@ export function overlayMotionAt(clip,time) {
   const intro=fi>0?1-Math.min(1,age/fi):0;
   const outro=fo>0?1-Math.min(1,remaining/fo):0;
   const progress=Math.max(0,Math.min(1,Math.max(intro,outro)));
+  if(progress===0)return {x:0,y:0};
   if(clip.overlay_motion==='slide-left')return {x:-progress*1.05,y:0};
   if(clip.overlay_motion==='rise')return {x:0,y:progress*.75};
   return {x:0,y:0};
