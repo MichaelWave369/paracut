@@ -14,3 +14,12 @@
 .timeline-clip.audio{padding:6px 7px;gap:3px}
 .media-item .kind{font-size:10px;color:#9db2c9;letter-spacing:.08em}
 @media(max-width:690px){.timeline-track{min-height:85px}}
+
+/* R2 source-audio toggle: video sound may be muted independently of A1. */
+.source-audio-control{margin:14px 0;padding:11px 12px;border:1px solid #365e65;border-radius:9px;background:#122932}
+.source-audio-control[hidden]{display:none}
+.source-audio-toggle{display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:700;font-size:12px;color:#c2f0e8}
+.source-audio-toggle input{width:17px;height:17px;accent-color:#53cfc5;cursor:pointer}
+.source-audio-control .tip{margin:8px 0 0;color:#a2c2cb}
+.timeline-clip.source-muted{border-color:#c1a159}
+.timeline-clip .muted-indicator{color:#ffe0a6;letter-spacing:.03em;font-size:10px}
