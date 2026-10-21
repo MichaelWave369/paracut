@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b111b">
+  <title>ParaCut Studio R1 · Edit Your Story</title>
+  <link rel="stylesheet" href="./studio.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R1 · LOCAL-FIRST EDITOR</small></span></a>
+    <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
+    <div class="top-actions">
+      <button id="new-project" title="Start a fresh project">New</button>
+      <button id="open-draft">Open Draft</button>
+      <button id="save-draft">Save Draft</button>
+      <button id="export-webm" class="primary">Export WebM β</button>
+      <a href="./index.html" class="muted-link">Interop Room ↗</a>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="media panel">
+      <div class="panel-title"><h2>Media Shelf</h2><span id="asset-count" class="tiny">0 files</span></div>
+      <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Import videos">
+        <span class="plus">＋</span><strong>Import video</strong><span>Drop files or click to browse</span>
+        <small>Local video files · R1</small>
+      </div>
+      <div id="media-list" class="media-list" aria-live="polite"></div>
+      <p class="tip">Add to timeline with the + button. Videos remain on your device.</p>
+    </aside>
+
+    <section class="center">
+      <div class="preview panel">
+        <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span></div>
+        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
+        <div class="transport">
+          <button id="backward" title="Go to start">⏮</button>
+          <button id="play" class="play" title="Play or pause (Space)">▶</button>
+          <button id="forward" title="Go to end">⏭</button>
+          <span id="current-time" class="mono">00:00.000</span>
+          <input id="seek" type="range" min="0" max="1" step="0.001" value="0" aria-label="Seek through timeline">
+          <span id="total-time" class="mono">00:00.000</span>
+        </div>
+      </div>
+      <div class="timeline panel">
+        <div class="panel-title"><h2>Timeline · V1</h2><div class="toolbar">
+          <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
+          <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
+          <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
+          <button id="remove" title="Remove selected clip (Delete)">✕ Delete</button>
+        </div></div>
+        <div class="timeline-ruler"><span>00:00</span><span>VIDEO 1 · RIPPLE SEQUENCE</span><span id="timeline-total">00:00</span></div>
+        <div id="timeline-track" class="timeline-track" aria-label="Video timeline"><div class="empty-timeline">Your timeline is empty. Add clips from Media Shelf.</div></div>
+        <p class="tip">Select a clip, edit In/Out on the right, or split at the playhead. Drag the playhead on the scrubber above.</p>
+      </div>
+    </section>
+
+    <aside class="inspector panel">
+      <div class="panel-title"><h2>Inspector</h2><span class="tiny">SELECTED CLIP</span></div>
+      <div id="inspector-empty" class="note">Select a timeline clip to trim, reorder, or inspect it.</div>
+      <div id="inspector-fields" hidden>
+        <div class="selected-title" id="selected-name"></div>
+        <div class="field-pair"><label>Source In (sec)<input id="in-time" type="number" min="0" step="0.001"></label><label>Source Out (sec)<input id="out-time" type="number" min="0" step="0.001"></label></div>
+        <button id="apply-trim" class="wide">Apply Trim</button>
+        <div class="field-pair"><button id="move-left">← Earlier</button><button id="move-right">Later →</button></div>
+        <dl id="selected-meta" class="metadata"></dl>
+      </div>
+      <hr>
+      <div class="panel-title"><h2>Edit Receipts</h2><span id="receipt-count" class="tiny">0</span></div>
+      <ol id="receipts" class="receipts"></ol>
+      <p class="tip">Draft receipts document changes. They are not cryptographic verification or publish approval.</p>
+    </aside>
+  </main>
+
+  <div class="statusbar"><span id="status" role="status" aria-live="polite">Ready. Choose local video files.</span><span id="render-status"></span></div>
+  <input id="video-input" type="file" accept="video/*" multiple hidden>
+  <input id="draft-input" type="file" accept=".json,application/json" hidden>
+  <video id="export-video" playsinline muted hidden></video>
+  <script type="module" src="./studio.js"></script>
+</body>
+</html>

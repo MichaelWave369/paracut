@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎬 ParaCut Studio R1 — usable browser editing slice
+
+Open [ParaCut Studio](apps/desktop/public/studio.html) on GitHub Pages (or a local HTTP server) to import video, build a sequential cut, trim/split/reorder clips, undo/redo, preview, save/reopen a draft, and try real-time **WebM beta** export on supported browsers. The original files remain local. See [Studio R1 scope and limitations](docs/STUDIO_R1.md). The original Interop Room remains available separately.
+
+
 ## ParaCut Interop Room v0.1
 
 The browser-facing Interop Room makes the Creative Interop v2 lineage path live:
