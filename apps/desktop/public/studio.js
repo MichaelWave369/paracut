@@ -385,6 +385,7 @@ async function renderWebm() {
     const tracks=[...videoStream.getVideoTracks()];
     // Audio is captured from the decoded source through Web Audio, not the user's microphone.
     const AudioCtx=window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx && state.audioClips.length) throw Error('This browser cannot mix audio. Try desktop Chrome/Edge.');
     if (AudioCtx) {
       ctx=new AudioCtx();
       const source=ctx.createMediaElementSource(encoderVideo);
