@@ -120,3 +120,17 @@
 .storyboard-canvas .title-chip:hover{z-index:7}
 .storyboard-canvas .timeline-clip.has-transition{border-right-width:5px}
 .storyboard-canvas .audio-track{min-height:114px}
+
+/* R5.2 local A1/A2 mixer and fixed V2 motion presets. */
+.track-mixer{margin:12px 0 18px;display:flex;flex-direction:column;gap:11px}
+.mixer-channel{padding:12px;border:1px solid #3c526b;border-radius:9px;background:#152132}
+.mixer-channel-top{display:flex;justify-content:space-between;gap:6px;align-items:center;color:#dceffc;font-size:11px}
+.mixer-channel-top span{color:#8bdcd6;font-variant-numeric:tabular-nums}
+.mixer-channel>input[type=range]{width:100%;margin:11px 0;accent-color:#85d8cd}
+.mixer-channel-actions{display:flex;gap:18px;color:#a5bbd2;font-size:11px}
+.mixer-channel-actions label,.duck-control{display:flex;align-items:center;gap:6px;cursor:pointer}
+.mixer-channel-actions input,.duck-control input{accent-color:#89e8d3}
+.mixer-channel[data-muted=true]{opacity:.7;border-color:#75586d}
+.mixer-channel[data-solo=true]{border-color:#e9ce7d}
+.duck-control{background:#222e40;border:1px solid #43536b;padding:10px;border-radius:8px;font-size:11px;color:#cee0ee}
+#overlay-motion{width:100%;color:#eaf6fa;background:#0a131f;border:1px solid #374d67;padding:8px;border-radius:6px}

@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, overlayMotionAt, isSourceAudioMuted, audioLevelAt, audioMixLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 
@@ -270,19 +270,19 @@ function previewAudioAt(at) {
   const a = activeAudioClip(state, at);
   const dissolve = crossfadeAt(state, at);
   video.muted = isSourceAudioMuted(v);
-  video.volume = Math.min(1, audioLevelAt(v, at) * (dissolve ? 1 - dissolve.progress : 1));
+  video.volume = Math.min(1, audioLevelAt(v, at) * audioMixLevelAt(state,'video-1',at) * (dissolve ? 1 - dissolve.progress : 1));
   crossfadeVideo.muted = isSourceAudioMuted(dissolve?.incoming);
-  crossfadeVideo.volume = Math.min(1, dissolve ? audioLevelAt(dissolve.incoming, at) * dissolve.progress : 0);
-  soundtrack.volume = Math.min(1, audioLevelAt(a, at));
-  audio2Player.volume = Math.min(1, audioLevelAt(activeAudio2Clip(state,at),at));
+  crossfadeVideo.volume = Math.min(1, dissolve ? audioLevelAt(dissolve.incoming, at) * audioMixLevelAt(state,'video-1',at) * dissolve.progress : 0);
+  soundtrack.volume = Math.min(1, audioLevelAt(a, at) * audioMixLevelAt(state,'audio-1',at));
+  audio2Player.volume = Math.min(1, audioLevelAt(activeAudio2Clip(state,at),at) * audioMixLevelAt(state,'audio-2',at));
   overlayVideo.muted = isSourceAudioMuted(activeOverlayClip(state,at));
-  overlayVideo.volume = Math.min(1, audioLevelAt(activeOverlayClip(state,at),at));
+  overlayVideo.volume = Math.min(1, audioLevelAt(activeOverlayClip(state,at),at) * audioMixLevelAt(state,'video-2',at));
 }
 // V2/A2 use independent timeline positions and decoder elements.
 async function syncLayerPlayer(el,clip,at,autoplay,kind) {
   if(!clip||at>=duration(state)){
     el.pause();
-    if(kind==='video')el.style.display='none';
+    if(kind==='video'){el.style.display='none';el.style.transform='none';}
     return;
   }
   const ref=media.get(clip.asset_id);
@@ -303,11 +303,13 @@ async function syncLayerPlayer(el,clip,at,autoplay,kind) {
   if(Math.abs(el.currentTime-expected)>.16) {
     try{el.currentTime=Math.max(0,expected)}catch{}
   }
-  el.volume=Math.min(1,audioLevelAt(clip,at));
+  el.volume=Math.min(1,audioLevelAt(clip,at)*audioMixLevelAt(state,clip.track_id,at));
   if(kind==='video'){
     el.muted=isSourceAudioMuted(clip);
     el.style.display='block';
     el.style.opacity=String(overlayOpacityAt(clip,at));
+    const motion=overlayMotionAt(clip,at);
+    el.style.transform='translate('+motion.x*100+'%,'+motion.y*100+'%)';
     el.classList.toggle('full-overlay',(clip.overlay_layout??'pip')==='full');
   }
   if(autoplay&&playing&&el.paused){
@@ -492,6 +494,7 @@ function drawInspector() {
   if(clip.track_id==='video-2'){
     $('overlay-layout').value=clip.overlay_layout??'pip';
     $('overlay-opacity').value=String(Math.round((clip.overlay_opacity??1)*100));
+    $('overlay-motion').value=clip.overlay_motion??'none';
     $('overlay-fade-in').value=String(clip.visual_fade_in??0);
     $('overlay-fade-out').value=String(clip.visual_fade_out??0);
   }
@@ -516,8 +519,27 @@ function drawReceipts() {
     list.append(li);
   }
 }
+function drawMixer() {
+  const mix=state.audioMix;
+  for(const lane of ['a1','a2']) {
+    const settings=mix[lane];
+    $('mixer-'+lane+'-gain').value=String(Math.round(settings.gain*100));
+    $('mixer-'+lane+'-value').textContent=Math.round(settings.gain*100)+'%';
+    $('mixer-'+lane+'-mute').checked=settings.muted;
+    $('mixer-'+lane+'-solo').checked=settings.solo;
+    $('mixer-'+lane+'-gain').disabled=exporting;
+    $('mixer-'+lane+'-mute').disabled=exporting;
+    $('mixer-'+lane+'-solo').disabled=exporting;
+    const el=document.querySelector('[data-mixer="'+lane+'"]');
+    el.dataset.muted=String(settings.muted);
+    el.dataset.solo=String(settings.solo);
+  }
+  $('mixer-duck').checked=mix.duckA1;
+  $('mixer-duck').disabled=exporting;
+}
 function render() {
   $('project-name').value = state.name;
+  drawMixer();
   drawMedia(); drawTimeline(); drawInspector(); drawTitles(); drawReceipts(); updateTimeUI();
   previewAudioAt(playhead);
   $('undo').disabled = !state.undo.length || exporting;
@@ -569,7 +591,7 @@ async function syncSoundtrack(at, autoplay) {
   if (Math.abs(soundtrack.currentTime - expected) > .15) {
     try { soundtrack.currentTime = Math.min(clip.source.end - .005, expected); } catch {}
   }
-  soundtrack.volume = Math.min(1, audioLevelAt(clip, at));
+  soundtrack.volume = Math.min(1, audioLevelAt(clip, at) * audioMixLevelAt(state,'audio-1',at));
   if (autoplay && playing && soundtrack.paused) {
     try { await soundtrack.play(); } catch (e) { status('Soundtrack preview: ' + e.message, true); }
   } else if (!autoplay) soundtrack.pause();
@@ -624,7 +646,7 @@ function stopPlayback() {
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
@@ -731,7 +753,23 @@ $('apply-layer-start').addEventListener('click',()=>placeOnLayer({type:'clip.lay
 $('apply-overlay-style').addEventListener('click',()=>edit({type:'clip.overlay.updated',
   clip_id:selectedId,layout:$('overlay-layout').value,
   opacity:Number($('overlay-opacity').value)/100,
-  fade_in:Number($('overlay-fade-in').value),fade_out:Number($('overlay-fade-out').value)}));
+  fade_in:Number($('overlay-fade-in').value),fade_out:Number($('overlay-fade-out').value),
+  motion:$('overlay-motion').value}));
+for(const lane of ['a1','a2']) {
+  const read=()=>({gain:Number($('mixer-'+lane+'-gain').value)/100,
+    muted:$('mixer-'+lane+'-mute').checked,
+    solo:$('mixer-'+lane+'-solo').checked});
+  // Sliders update their labels immediately, but commit once on change.
+  $('mixer-'+lane+'-gain').addEventListener('input',e=>{
+    $('mixer-'+lane+'-value').textContent=e.target.value+'%';
+  });
+  for(const suffix of ['gain','mute','solo']) {
+    $('mixer-'+lane+'-'+suffix).addEventListener('change',()=>
+      edit({type:'mixer.updated',lane,...read()}));
+  }
+}
+$('mixer-duck').addEventListener('change',e=>
+  edit({type:'mixer.duck.updated',enabled:e.target.checked}));
 $('apply-audio').addEventListener('click', () => edit({
   type:'clip.audio.updated',clip_id:selectedId,volume:Number($('clip-volume').value)/100,
   fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
@@ -862,11 +900,15 @@ async function renderVideo(format) {
       if(overlay && encoderOverlay.dataset.clip===overlay.clip_id && encoderOverlay.readyState>=2){
         const opacity=overlayOpacityAt(overlay,at);
         g.save();g.globalAlpha=opacity;
-        if((overlay.overlay_layout??'pip')==='full')drawVideoFrame(encoderOverlay,opacity);
-        else{
+        const motion=overlayMotionAt(overlay,at);
+        if((overlay.overlay_layout??'pip')==='full'){
+          g.translate(motion.x*canvas.width,motion.y*canvas.height);
+          drawVideoFrame(encoderOverlay,1);
+        } else {
           const vw=encoderOverlay.videoWidth,vh=encoderOverlay.videoHeight;
           if(vw&&vh){const ratio=Math.min(420/vw,220/vh);
             const w=vw*ratio,h=vh*ratio;
+            g.translate(motion.x*(w+12),motion.y*(h+12));
             g.fillStyle='#091321';g.fillRect(1210-w-12,35,w+12,h+12);
             g.drawImage(encoderOverlay,1210-w-6,41,w,h);}
         }
@@ -930,7 +972,7 @@ async function renderVideo(format) {
     // capture remains real-time beta and can drift by a few frames.
     async function syncExportSoundtrack(at) {
       const clip = activeAudioClip(state, at);
-      if (soundtrackGain) soundtrackGain.gain.value = audioLevelAt(clip, at);
+      if (soundtrackGain) soundtrackGain.gain.value = audioLevelAt(clip, at) * audioMixLevelAt(state,'audio-1',at);
       if (!clip) { encoderAudio.pause(); return; }
       const ref = media.get(clip.asset_id);
       if (!ref) throw Error('Missing audio source during export.');
@@ -948,7 +990,7 @@ async function renderVideo(format) {
       if (encoderAudio.paused) await encoderAudio.play();
     }
     async function syncExportLayer(el,clip,at,level) {
-      if(level)level.gain.value=audioLevelAt(clip,at);
+      if(level)level.gain.value=audioLevelAt(clip,at)*audioMixLevelAt(state,clip?.track_id,at);
       if(!clip||at>=duration(state)){el.pause();return;}
       const ref=media.get(clip.asset_id);
       if(!ref)throw Error('Layer source missing during export.');
@@ -1002,7 +1044,7 @@ async function renderVideo(format) {
       if (Math.abs(encoderIncoming.currentTime-expected) > .22)
         encoderIncoming.currentTime = Math.min(fade.incoming.source.end-.005,expected);
       if (incomingVideoGain) incomingVideoGain.gain.value =
-        audioLevelAt(fade.incoming,at) * fade.progress;
+        audioLevelAt(fade.incoming,at) * audioMixLevelAt(state,'video-1',at) * fade.progress;
       if (encoderIncoming.paused) await encoderIncoming.play();
     }
     for (let index=0; index<state.clips.length; index++) {
@@ -1010,7 +1052,7 @@ async function renderVideo(format) {
       const clip=state.clips[index], ref=media.get(clip.asset_id);
       // This branch reaches the recorder's actual mix, while the A1 audio
       // source stays independently connected to the output destination.
-      if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,clip.timeline.start);
+      if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,clip.timeline.start) * audioMixLevelAt(state,'video-1',clip.timeline.start);
       if (incomingVideoGain) incomingVideoGain.gain.value = 0;
       encoderIncoming.pause();
       encoderAudio.pause();
@@ -1040,7 +1082,7 @@ async function renderVideo(format) {
         await syncExportLayer(encoderOverlay,activeOverlayClip(state,timelinePosition),timelinePosition,overlayGain);
         await syncExportLayer(encoderAudio2,activeAudio2Clip(state,timelinePosition),timelinePosition,audio2Gain);
         const fade = crossfadeAt(state,timelinePosition);
-        if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition) *
+        if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition) * audioMixLevelAt(state,'video-1',timelinePosition) *
           (fade ? 1-fade.progress : 1);
         paint(timelinePosition);
         $('render-status').textContent = `Recording clip ${index+1}/${state.clips.length} · ${fmt(encoderVideo.currentTime - clip.source.start)}`;

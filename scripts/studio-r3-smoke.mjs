@@ -80,10 +80,10 @@ assert.throws(()=>importDraft(JSON.stringify(badGain)),/Audio settings/);
 // Guard the two output paths against feature regressions.
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
-assert.match(js,/video\.volume = Math\.min\(1, audioLevelAt\(v, at\) \* \(dissolve \? 1 - dissolve\.progress : 1\)\)/);
-assert.match(js,/soundtrack\.volume = Math\.min\(1, audioLevelAt\(a, at\)\)/);
-assert.match(js,/videoSourceGain\.gain\.value = audioLevelAt\(clip,timelinePosition\)/);
-assert.match(js,/soundtrackGain\.gain\.value = audioLevelAt\(clip, at\)/);
+assert.ok(js.includes("video.volume = Math.min(1, audioLevelAt(v, at) * audioMixLevelAt(state,'video-1',at)"));
+assert.ok(js.includes("soundtrack.volume = Math.min(1, audioLevelAt(a, at) * audioMixLevelAt(state,'audio-1',at)"));
+assert.ok(js.includes("videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition) * audioMixLevelAt(state,'video-1',timelinePosition)"));
+assert.ok(js.includes("soundtrackGain.gain.value = audioLevelAt(clip, at) * audioMixLevelAt(state,'audio-1',at)"));
 assert.match(js,/drawTitleOnCanvas\(g, visibleTitle\(state,at\), at\)/);
 assert.match(js,/node\.textContent = title\?\.text/);
 assert.match(html,/id="clip-volume"/);

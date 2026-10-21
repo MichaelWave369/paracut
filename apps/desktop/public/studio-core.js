@@ -8,8 +8,55 @@ const copy = value => JSON.parse(JSON.stringify(value));
 const round = n => Math.round(n * 1000) / 1000;
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 
+export function defaultAudioMix() {
+  return { a1:{gain:1,muted:false,solo:false},
+    a2:{gain:1,muted:false,solo:false}, duckA1:false };
+}
+function validateAudioMix(mix) {
+  if(!mix || typeof mix!=='object' || Array.isArray(mix) ||
+     typeof mix.duckA1!=='boolean') throw Error('Invalid track mixer settings.');
+  for(const lane of ['a1','a2']) {
+    const c=mix[lane];
+    if(!c || typeof c!=='object' || Array.isArray(c) || !finite(c.gain) ||
+      c.gain<0 || c.gain>1 || typeof c.muted!=='boolean' ||
+      typeof c.solo!=='boolean') throw Error('Invalid '+lane.toUpperCase()+' mixer settings.');
+  }
+}
+export function audioMixLevelAt(state,trackId,time) {
+  const mix=state.audioMix??defaultAudioMix();
+  const soloed=mix.a1.solo||mix.a2.solo;
+  const lane=trackId==='audio-1'?mix.a1:trackId==='audio-2'?mix.a2:null;
+  if(lane?.muted || (soloed && !(lane?.solo)))return 0;
+  let gain=lane?.gain??1;
+  if(trackId==='audio-1' && mix.duckA1 && !mix.a2.muted && !mix.a1.solo) {
+    // The A1 bed dips to 40% as A2 enters, and recovers after A2 ends.
+    // Evaluating this as a pure time curve keeps preview/export in agreement.
+    let envelope=0;
+    for(const c of state.audio2Clips) {
+      const start=c.timeline.start,end=c.timeline.end;
+      if(time>=start && time<end)envelope=Math.max(envelope,Math.min(1,(time-start)/.2));
+      else if(time>=end && time<end+.35)
+        envelope=Math.max(envelope,Math.max(0,1-(time-end)/.35));
+    }
+    gain*=1-.6*envelope;
+  }
+  return gain;
+}
+export const OVERLAY_MOTIONS=['none','slide-left','rise'];
+export function overlayMotionAt(clip,time) {
+  if(!clip || time<clip.timeline.start || time>=clip.timeline.end)return {x:0,y:0};
+  const fi=clip.visual_fade_in??0,fo=clip.visual_fade_out??0;
+  const age=time-clip.timeline.start,remaining=clip.timeline.end-time;
+  const intro=fi>0?1-Math.min(1,age/fi):0;
+  const outro=fo>0?1-Math.min(1,remaining/fo):0;
+  const progress=Math.max(0,Math.min(1,Math.max(intro,outro)));
+  if(progress===0)return {x:0,y:0};
+  if(clip.overlay_motion==='slide-left')return {x:-progress*1.05,y:0};
+  if(clip.overlay_motion==='rise')return {x:0,y:progress*.75};
+  return {x:0,y:0};
+}
 export function newStudio(name = 'Untitled Cut') {
-  return { schema: DRAFT_SCHEMA, name, assets: [], clips: [], audioClips: [], video2Clips: [], audio2Clips: [], titles: [], receipts: [], undo: [], redo: [] };
+  return { schema: DRAFT_SCHEMA, name, assets: [], clips: [], audioClips: [], video2Clips: [], audio2Clips: [], audioMix: defaultAudioMix(), titles: [], receipts: [], undo: [], redo: [] };
 }
 export function duration(state) {
   return state.clips.length ? state.clips[state.clips.length - 1].timeline.end : 0;
@@ -183,7 +230,7 @@ function fitFades(clip) {
 function checkpoint(state) {
   return { assets:copy(state.assets),clips:copy(state.clips),audioClips:copy(state.audioClips),
     video2Clips:copy(state.video2Clips),audio2Clips:copy(state.audio2Clips),
-    titles:copy(state.titles),name:state.name };
+    titles:copy(state.titles),audioMix:copy(state.audioMix),name:state.name };
 }
 function assertLayerPosition(lane, candidate, idToSkip=null) {
   if(!finite(candidate.timeline.start)||candidate.timeline.start<0||
@@ -197,6 +244,7 @@ function assertLayerPosition(lane, candidate, idToSkip=null) {
 }
 function assertOverlayStyle(c) {
   if(!['pip','full'].includes(c.overlay_layout??'pip')||
+     !OVERLAY_MOTIONS.includes(c.overlay_motion??'none')||
      !finite(c.overlay_opacity??1) || (c.overlay_opacity??1)<0 ||
      (c.overlay_opacity??1)>1 || !finite(c.visual_fade_in??0) ||
      !finite(c.visual_fade_out??0) || (c.visual_fade_in??0)<0||
@@ -210,7 +258,7 @@ function receipt(action, details = {}) {
 export function change(state, command) {
   validate(state);
   const before = checkpoint(state);
-  let assets = copy(state.assets), clips = copy(state.clips), audioClips = copy(state.audioClips), video2Clips=copy(state.video2Clips), audio2Clips=copy(state.audio2Clips), titles = copy(state.titles), name = state.name;
+  let assets = copy(state.assets), clips = copy(state.clips), audioClips = copy(state.audioClips), video2Clips=copy(state.video2Clips), audio2Clips=copy(state.audio2Clips), audioMix=copy(state.audioMix), titles = copy(state.titles), name = state.name;
   const { type } = command;
   const laneFor = clipId => [clips,audioClips,video2Clips,audio2Clips].find(
     lane => lane.some(c=>c.clip_id===clipId)) || null;
@@ -232,6 +280,13 @@ export function change(state, command) {
     lane.push({ clip_id: id(), asset_id: asset.asset_id, track_id: isAudio ? 'audio-1' : 'video-1',
       timeline: { start: 0, end: 0 }, source: { start: 0, end: asset.duration }, enabled: true, effects: [], volume: 1, fade_in: 0, fade_out: 0,
       ...(isAudio ? {} : { source_audio_muted: false }) });
+  } else if (type === 'mixer.updated') {
+    if(!['a1','a2'].includes(command.lane))throw Error('Mixer supports A1 and A2 only.');
+    audioMix[command.lane]={gain:command.gain,muted:command.muted,solo:command.solo};
+    validateAudioMix(audioMix);
+  } else if (type === 'mixer.duck.updated') {
+    if(typeof command.enabled!=='boolean')throw Error('Ducking must be enabled or disabled.');
+    audioMix.duckA1=command.enabled;
   } else if (type === 'clip.layer.added') {
     const asset=assets.find(a=>a.asset_id===command.asset_id);
     if (!asset) throw Error('Media not found.');
@@ -248,7 +303,7 @@ export function change(state, command) {
       timeline:{start:round(start),end},source:{start:0,end:asset.duration},
       enabled:true,effects:[],volume:1,fade_in:0,fade_out:0,
       ...(track==='video-2'?{source_audio_muted:true,overlay_layout:'pip',
-        overlay_opacity:1,visual_fade_in:0,visual_fade_out:0}:{})};
+        overlay_opacity:1,visual_fade_in:0,visual_fade_out:0,overlay_motion:'none'}:{})};
     assertLayerPosition(lane,clip);
     lane.push(clip);
     lane.sort((a,b)=>a.timeline.start-b.timeline.start);
@@ -269,7 +324,8 @@ export function change(state, command) {
     const clip=video2Clips.find(c=>c.clip_id===command.clip_id);
     if(!clip)throw Error('Overlay styling is only available for V2 clips.');
     Object.assign(clip,{overlay_layout:command.layout,overlay_opacity:command.opacity,
-      visual_fade_in:command.fade_in,visual_fade_out:command.fade_out});
+      visual_fade_in:command.fade_in,visual_fade_out:command.fade_out,
+      overlay_motion:command.motion??'none'});
     assertOverlayStyle(clip);
   } else if (type === 'clip.trimmed') {
     const c = laneFor(command.clip_id)?.find(item => item.clip_id === command.clip_id);
@@ -375,12 +431,14 @@ export function change(state, command) {
   } else throw Error('Unknown studio edit.');
   clips = reflow(normalizeTransitions(clips), 'video-1');
   audioClips = reflow(audioClips, 'audio-1');
-  const next = { ...state, assets, clips, audioClips, video2Clips, audio2Clips, titles, name, undo: [...state.undo.slice(-39), before], redo: [],
+  const next = { ...state, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, name, undo: [...state.undo.slice(-39), before], redo: [],
     receipts: [...state.receipts, receipt(type, { clip_id: command.clip_id || null,
       asset_id: command.asset_id || command.asset?.asset_id || null,
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
       ...(type === 'clip.transition.updated' ? {seconds:command.seconds} : {}),
+      ...(type==='mixer.updated'?{lane:command.lane,gain:command.gain,muted:command.muted,solo:command.solo}:{}),
+      ...(type==='mixer.duck.updated'?{enabled:command.enabled}:{}),
       ...(type==='clip.layer.added'||type==='clip.layer.moved'?{start:command.start,track_id:command.track_id||null}:{}),
       ...(type === 'title.added' || type === 'title.updated' ? { title: command.title.text.slice(0,100) } : {}) })] };
   validate(next);
@@ -403,6 +461,7 @@ export function validate(state) {
       || state.titles.length > 40 || state.assets.length > 200 || state.clips.length > 400 || state.audioClips.length > 400 || state.video2Clips.length > 80 || state.audio2Clips.length > 80) {
     throw Error('Invalid ParaCut draft.');
   }
+  validateAudioMix(state.audioMix);
   const ids = new Set();
   for (const a of state.assets) {
     if (!a || typeof a.asset_id !== 'string' || !a.asset_id || ids.has(a.asset_id)
@@ -459,8 +518,8 @@ export function validate(state) {
 }
 export function exportDraft(state) {
   validate(state);
-  const { name, assets, clips, audioClips, video2Clips, audio2Clips, titles, receipts } = state;
-  return JSON.stringify({ schema: DRAFT_SCHEMA, name, assets, clips, audioClips, video2Clips, audio2Clips, titles, receipts: receipts.slice(-500),
+  const { name, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, receipts } = state;
+  return JSON.stringify({ schema: DRAFT_SCHEMA, name, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, receipts: receipts.slice(-500),
     note: 'Media files are NOT embedded. Relink the originals when reopening.' }, null, 2);
 }
 export function importDraft(json) {
@@ -471,7 +530,8 @@ export function importDraft(json) {
     assets: input.assets, clips: input.clips, audioClips: input.schema === LEGACY_DRAFT_SCHEMA ? [] : input.audioClips,
     titles: input.schema === DRAFT_SCHEMA ? input.titles : [],
     video2Clips: input.video2Clips === undefined ? [] : input.video2Clips,
-    audio2Clips: input.audio2Clips === undefined ? [] : input.audio2Clips, receipts: Array.isArray(input.receipts) ? input.receipts.filter(r => r && typeof r === 'object' && typeof r.action === 'string').slice(-500) : [],
+    audio2Clips: input.audio2Clips === undefined ? [] : input.audio2Clips,
+    audioMix: input.audioMix === undefined ? defaultAudioMix() : input.audioMix, receipts: Array.isArray(input.receipts) ? input.receipts.filter(r => r && typeof r === 'object' && typeof r.action === 'string').slice(-500) : [],
     undo: [], redo: [] };
   validate(state);
   state.receipts.push(receipt('project.draft.opened', { imported_receipts_unverified: true }));
