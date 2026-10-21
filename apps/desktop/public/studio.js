@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 
@@ -9,6 +9,11 @@ let activeExportFormat = null;
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
 const crossfadeVideo = $('crossfade-video');
+const overlayVideo = $('overlay-video');
+overlayVideo.preload = 'auto';
+const audio2Player = document.createElement('audio');
+audio2Player.preload = 'auto';
+let layerVideoSerial=0,layerAudioSerial=0;
 crossfadeVideo.preload = 'auto';
 let previewTransitionSerial = 0, loadingTransition = null, transitionFrameHandle = 0;
 let encoderVideo = document.createElement('video'); // fresh element per export
@@ -41,6 +46,11 @@ function clearMedia() {
   ++previewTransitionSerial; loadingTransition = null;
   crossfadeVideo.pause(); crossfadeVideo.removeAttribute('src'); crossfadeVideo.load();
   delete crossfadeVideo.dataset.clip; crossfadeVideo.style.display='none';
+  ++layerVideoSerial; ++layerAudioSerial;
+  for(const el of [overlayVideo,audio2Player]){
+    el.pause(); el.removeAttribute('src');el.load();delete el.dataset.clip;
+  }
+  overlayVideo.style.display='none';
 }
 function updateTimeUI() {
   const d = duration(state);
@@ -72,7 +82,13 @@ function drawMedia() {
     add.textContent = '+'; add.className = 'add'; add.title = isAudio ? 'Append to soundtrack' : 'Append to video track';
     add.disabled = !linked || exporting;
     add.addEventListener('click', () => edit({ type:'clip.appended', asset_id: asset.asset_id }));
-    div.append(name, add); list.append(div);
+    const layer=document.createElement('button');
+    layer.className='add layer-add';layer.textContent=isAudio?'+A2':'+V2';
+    layer.title=isAudio?'Place audio on A2 at the playhead':'Place video overlay on V2 at the playhead';
+    layer.disabled=!linked||exporting;
+    layer.addEventListener('click',()=>edit({type:'clip.layer.added',
+      asset_id:asset.asset_id,track_id:isAudio?'audio-2':'video-2',start:playhead}));
+    div.append(name,add,layer);list.append(div);
   }
 }
 function drawTimeline() {
@@ -144,6 +160,37 @@ function drawTimeline() {
       lane.el.append(item);
     }
   }
+  const layerTotal=Math.max(duration(state),.01);
+  for(const [el,clips,kind] of [
+    [$('video2-track'),state.video2Clips,'video'],
+    [$('audio2-track'),state.audio2Clips,'audio']]){
+    el.replaceChildren();
+    if(!clips.length){const hint=document.createElement('span');
+      hint.className='empty-timeline';hint.textContent='No '+kind+' overlays yet. Add a clip with +'+(kind==='video'?'V2':'A2')+'.';el.append(hint);}
+    for(const clip of clips){
+      const asset=state.assets.find(a=>a.asset_id===clip.asset_id);
+      const item=document.createElement('button');
+      item.type='button';item.className='layer-clip '+kind+(selectedId===clip.clip_id?' selected':'');
+      item.style.left=String(Math.min(100,100*clip.timeline.start/layerTotal))+'%';
+      item.style.width=String(Math.max(2,Math.min(100,100*(clip.timeline.end-clip.timeline.start)/layerTotal)))+'%';
+      item.textContent=(asset?.name||'Missing media')+' · '+fmt(clip.timeline.start);
+      item.title='Start '+fmt(clip.timeline.start)+' · Select, adjust or drag on the storyboard';
+      item.addEventListener('click',()=>{selectedId=clip.clip_id;drawTimeline();drawInspector();
+        void seekTo(Math.min(clip.timeline.start,duration(state)),{autoplay:playing});});
+      item.draggable=!exporting;
+      item.addEventListener('dragstart',e=>{e.dataTransfer?.setData('text/plain',clip.clip_id);
+        if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
+      el.append(item);
+    }
+    el.addEventListener('dragover',event=>event.preventDefault());
+    el.addEventListener('drop',event=>{
+      event.preventDefault();const clip_id=event.dataTransfer?.getData('text/plain');
+      if(!clips.some(c=>c.clip_id===clip_id))return;
+      const rect=el.getBoundingClientRect();
+      const x=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));
+      edit({type:'clip.layer.moved',clip_id,start:Math.round(x*layerTotal*10)/10});
+    });
+  }
 }
 
 function showTitleAt(at) {
@@ -167,6 +214,50 @@ function previewAudioAt(at) {
   crossfadeVideo.muted = isSourceAudioMuted(dissolve?.incoming);
   crossfadeVideo.volume = Math.min(1, dissolve ? audioLevelAt(dissolve.incoming, at) * dissolve.progress : 0);
   soundtrack.volume = Math.min(1, audioLevelAt(a, at));
+  audio2Player.volume = Math.min(1, audioLevelAt(activeAudio2Clip(state,at),at));
+  overlayVideo.muted = isSourceAudioMuted(activeOverlayClip(state,at));
+  overlayVideo.volume = Math.min(1, audioLevelAt(activeOverlayClip(state,at),at));
+}
+// V2/A2 use independent timeline positions and decoder elements.
+async function syncLayerPlayer(el,clip,at,autoplay,kind) {
+  const serialKey=kind==='video'?'layerVideoSerial':'layerAudioSerial';
+  if(!clip||at>=duration(state)){
+    el.pause();
+    if(kind==='video')el.style.display='none';
+    return;
+  }
+  const ref=media.get(clip.asset_id);
+  if(!ref){el.pause();return;}
+  if(el.dataset.clip!==clip.clip_id){
+    const serial=kind==='video'?++layerVideoSerial:++layerAudioSerial;
+    el.pause();el.src=ref.url;el.dataset.clip=clip.clip_id;el.load();
+    try{
+      await new Promise((resolve,reject)=>{
+        if(el.readyState>=1)return resolve();
+        el.addEventListener('loadedmetadata',resolve,{once:true});
+        el.addEventListener('error',()=>reject(Error(kind+' layer could not be decoded.')),{once:true});
+      });
+    }catch(e){status(e.message,true);return;}
+    if(serial!==(kind==='video'?layerVideoSerial:layerAudioSerial))return;
+  }
+  const expected=Math.min(clip.source.end-.005,clip.source.start+at-clip.timeline.start);
+  if(Math.abs(el.currentTime-expected)>.16) {
+    try{el.currentTime=Math.max(0,expected)}catch{}
+  }
+  el.volume=Math.min(1,audioLevelAt(clip,at));
+  if(kind==='video'){
+    el.muted=isSourceAudioMuted(clip);
+    el.style.display='block';
+    el.style.opacity=String(overlayOpacityAt(clip,at));
+    el.classList.toggle('full-overlay',(clip.overlay_layout??'pip')==='full');
+  }
+  if(autoplay&&playing&&el.paused){
+    try{await el.play()}catch(e){status(kind+' layer preview: '+e.message,true);}
+  }else if(!autoplay)el.pause();
+}
+function syncLayers(at,autoplay) {
+  void syncLayerPlayer(overlayVideo,activeOverlayClip(state,at),at,autoplay,'video');
+  void syncLayerPlayer(audio2Player,activeAudio2Clip(state,at),at,autoplay,'audio');
 }
 function hideCrossfadePreview() {
   crossfadeVideo.pause();
@@ -217,6 +308,7 @@ function transitionFrame() {
     const fade=crossfadeAt(state,at);
     if (fade) { previewAudioAt(at); void syncCrossfadePreview(at,true); }
     else if (crossfadeVideo.style.display !== 'none') hideCrossfadePreview();
+    previewAudioAt(at); syncLayers(at,true);
   }
   transitionFrameHandle=requestAnimationFrame(transitionFrame);
 }
@@ -308,7 +400,7 @@ function drawTitleOnCanvas(ctx, title, at) {
   ctx.restore();
 }
 function drawInspector() {
-  const clip = [...state.clips, ...state.audioClips].find(c => c.clip_id === selectedId);
+  const clip = [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].find(c => c.clip_id === selectedId);
   $('inspector-fields').hidden = !clip;
   $('inspector-empty').hidden = Boolean(clip);
   if (!clip) return;
@@ -331,16 +423,28 @@ function drawInspector() {
   $('fade-in').value = String(clip.fade_in ?? 0);
   $('fade-out').value = String(clip.fade_out ?? 0);
   $('apply-audio').disabled = exporting;
-  $('source-audio-control').hidden = clip.track_id !== 'video-1';
+  const layerClip=['video-2','audio-2'].includes(clip.track_id);
+  $('layer-start-control').hidden=!layerClip;
+  $('layer-start').value=String(clip.timeline.start);
+  $('apply-layer-start').disabled=exporting||!layerClip;
+  $('overlay-style-control').hidden=clip.track_id!=='video-2';
+  if(clip.track_id==='video-2'){
+    $('overlay-layout').value=clip.overlay_layout??'pip';
+    $('overlay-opacity').value=String(Math.round((clip.overlay_opacity??1)*100));
+    $('overlay-fade-in').value=String(clip.visual_fade_in??0);
+    $('overlay-fade-out').value=String(clip.visual_fade_out??0);
+  }
+  $('apply-overlay-style').disabled=exporting;
+  $('source-audio-control').hidden = !clip.track_id.startsWith('video-');
   $('mute-source-audio').checked = isSourceAudioMuted(clip);
   $('mute-source-audio').disabled = exporting;
-  $('selected-meta').innerHTML = '<dt>Track</dt><dd>' + (clip.track_id === 'audio-1' ? 'Audio 1' : 'Video 1') + '</dd><dt>Timeline start</dt><dd>' + fmt(clip.timeline.start) +
+  $('selected-meta').innerHTML = '<dt>Track</dt><dd>' + ({'video-1':'Video 1','video-2':'Video 2','audio-1':'Audio 1','audio-2':'Audio 2'}[clip.track_id]) + '</dd><dt>Timeline start</dt><dd>' + fmt(clip.timeline.start) +
     '</dd><dt>Clip duration</dt><dd>' + fmt(clip.timeline.end - clip.timeline.start) +
     '</dd><dt>Source length</dt><dd>' + fmt(asset.duration) + '</dd>';
-  const lane = clip.track_id === 'audio-1' ? state.audioClips : state.clips;
+  const lane = {'video-1':state.clips,'video-2':state.video2Clips,'audio-1':state.audioClips,'audio-2':state.audio2Clips}[clip.track_id];
   const index = lane.findIndex(c => c.clip_id === selectedId);
-  $('move-left').disabled = index === 0 || exporting;
-  $('move-right').disabled = index === lane.length - 1 || exporting;
+  $('move-left').disabled = index === 0 || exporting || layerClip;
+  $('move-right').disabled = index === lane.length - 1 || exporting || layerClip;
 }
 function drawReceipts() {
   $('receipt-count').textContent = String(state.receipts.length);
@@ -360,7 +464,7 @@ function render() {
   $('split').disabled = !selectedId || exporting;
   $('remove').disabled = !selectedId || exporting;
   const canExport = Boolean(state.clips.length) &&
-    [...state.clips, ...state.audioClips].every(c => media.has(c.asset_id));
+    [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].every(c => media.has(c.asset_id));
   const recordingReady = Boolean(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream);
   const mp4Mime = recordingReady ? findRecorderMime('mp4') : null;
   const webmMime = recordingReady ? findRecorderMime('webm') : null;
@@ -373,7 +477,7 @@ function render() {
     : 'MP4 encoding is unavailable in this browser. Use WebM export.';
   $('mp4-support').textContent = mp4Mime ? '' :
     'MP4 unavailable here; WebM remains an option.';
-  $('preview-label').textContent = selectedId ? 'Selected clip · ' + ([...state.clips, ...state.audioClips].find(c=>c.clip_id===selectedId)?.clip_id?.slice(0,8) || '') : 'Program';
+  $('preview-label').textContent = selectedId ? 'Selected clip · ' + ([...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].find(c=>c.clip_id===selectedId)?.clip_id?.slice(0,8) || '') : 'Program';
 }
 // Playback uses the video playhead as the master clock and keeps the
 // independent music/voiceover element within ~150 ms. Browser beta, not frame sync.
@@ -446,19 +550,20 @@ async function seekTo(seconds, { autoplay = false } = {}) {
     } else { video.pause(); playing = false; }
     void syncSoundtrack(playhead, playing);
     void syncCrossfadePreview(playhead, playing);
+    syncLayers(playhead,playing);
     if (playing) startTransitionFrames();
     updateTimeUI();
   } catch (e) { playing = false; status('Preview failed: ' + e.message, true); updateTimeUI(); }
 }
 function stopPlayback() {
-  playing = false; video.pause(); soundtrack.pause(); hideCrossfadePreview();
+  playing = false; video.pause(); soundtrack.pause(); overlayVideo.pause(); audio2Player.pause(); hideCrossfadePreview();
   if (transitionFrameHandle) cancelAnimationFrame(transitionFrameHandle);
   transitionFrameHandle=0; updateTimeUI();
 }
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
@@ -472,7 +577,7 @@ function edit(command) {
     }
     stopPlayback();
     state = change(state, command);
-    if (selectedId && ![...state.clips, ...state.audioClips].some(c=>c.clip_id===selectedId)) selectedId = null;
+    if (selectedId && ![...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].some(c=>c.clip_id===selectedId)) selectedId = null;
     playhead = Math.min(playhead, duration(state));
     render(); void seekTo(playhead); status(command.type + ' ✓');
   } catch (e) { status(e.message, true); }
@@ -527,6 +632,7 @@ video.addEventListener('timeupdate', () => {
   previewAudioAt(playhead);
   void syncSoundtrack(playhead, true);
   void syncCrossfadePreview(playhead,true);
+  syncLayers(playhead,true);
   if (video.currentTime >= clip.source.end - .045 || video.ended) {
     if (clip.timeline.end >= duration(state) - .005) { stopPlayback(); playhead = duration(state); updateTimeUI(); }
     else void seekTo(clip.timeline.end + .001, { autoplay:true });
@@ -559,6 +665,12 @@ $('clip-volume').addEventListener('input', e => {
 $('apply-crossfade').addEventListener('click', () => edit({
   type:'clip.transition.updated',clip_id:selectedId,seconds:Number($('crossfade-seconds').value)
 }));
+$('apply-layer-start').addEventListener('click',()=>edit({type:'clip.layer.moved',
+  clip_id:selectedId,start:Number($('layer-start').value)}));
+$('apply-overlay-style').addEventListener('click',()=>edit({type:'clip.overlay.updated',
+  clip_id:selectedId,layout:$('overlay-layout').value,
+  opacity:Number($('overlay-opacity').value)/100,
+  fade_in:Number($('overlay-fade-in').value),fade_out:Number($('overlay-fade-out').value)}));
 $('apply-audio').addEventListener('click', () => edit({
   type:'clip.audio.updated',clip_id:selectedId,volume:Number($('clip-volume').value)/100,
   fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
@@ -588,7 +700,7 @@ $('move-right').addEventListener('click', () => edit({ type:'clip.moved', clip_i
 for(const [name, method] of [['undo',undo],['redo',redo]]) $(name).addEventListener('click', () => {
   if (exporting) return;
   stopPlayback(); state = method(state);
-  if (selectedId && ![...state.clips, ...state.audioClips].some(c=>c.clip_id===selectedId)) selectedId=null;
+  if (selectedId && ![...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].some(c=>c.clip_id===selectedId)) selectedId=null;
   playhead=Math.min(playhead,duration(state)); render(); void seekTo(playhead); status(name+' ✓');
 });
 $('project-name').addEventListener('change', e => edit({ type:'project.renamed', name:e.target.value }));
