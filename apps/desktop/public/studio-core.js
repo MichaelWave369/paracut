@@ -79,6 +79,10 @@ function validateTitle(title) {
   }
 }
 function titleFromInput(data, titleId) {
+  if (!data || typeof data.text !== 'string' || !data.text.trim() ||
+      data.text.length > 100 || !finite(data.start) || !finite(data.end) ||
+      data.start < 0 || data.end <= data.start || data.end > 86400)
+    throw Error('Title requires text and a positive timeline range.');
   const style = titleStyle(data);
   const title = { title_id:titleId, text: data?.text?.trim(), start:round(data?.start),
     end:round(data?.end), position:style.position, size:style.size, color:style.color,
