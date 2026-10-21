@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎚️ ParaCut Studio R5.2 — Audio Mixing & Overlay Motion
+
+The five-track browser storyboard gains **A1/A2 track gain, mute, solo and voiceover ducking**, plus V2 entrance/exit motion presets (dissolve, slide, rise). Preview and browser WebM/conditional MP4 export use shared mixer/motion math. Older project drafts remain supported; the opt-in local FFmpeg CLI refuses mixer settings it cannot represent. [R5.2 guide](docs/STUDIO_R52.md).
+
+
 ## 🎚️ ParaCut Studio R5.1 — Precision Timeline
 
 The browser editor now has **100–400% zoom**, a clickable time ruler, a shared scrolling scale for **V1/V2/A1/A2/T1**, and optional **smart snapping** for layered clips. V1 crossfades keep their actual overlapping positions, and A2 audio waveforms can be shown when decoded. No media upload or draft-format migration. [R5.1 usage and limits](docs/STUDIO_R51.md).
