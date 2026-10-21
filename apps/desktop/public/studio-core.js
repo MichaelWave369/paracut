@@ -45,6 +45,47 @@ export function audioLevelAt(clip, timelineTime) {
     fadeIn > 0 ? volume * Math.min(1, elapsed / fadeIn) : volume,
     fadeOut > 0 ? volume * Math.min(1, remaining / fadeOut) : volume));
 }
+export const TITLE_POSITION = ['top','middle','bottom'];
+export const TITLE_SIZE = ['small','medium','large'];
+export const TITLE_COLOR = ['white','mint','gold'];
+export function titleStyle(title) {
+  return {
+    position: title?.position ?? 'bottom',
+    size: title?.size ?? 'medium',
+    color: title?.color ?? 'white',
+    fade_in: title?.fade_in ?? 0,
+    fade_out: title?.fade_out ?? 0,
+  };
+}
+export function titleOpacityAt(title, time) {
+  if (!title || time < title.start || time >= title.end) return 0;
+  const style = titleStyle(title);
+  const age = time - title.start, remaining = title.end - time;
+  return Math.max(0, Math.min(1,
+    style.fade_in > 0 ? age / style.fade_in : 1,
+    style.fade_out > 0 ? remaining / style.fade_out : 1));
+}
+function validateTitle(title) {
+  if (!title || typeof title.title_id !== 'string' || !title.title_id ||
+      typeof title.text !== 'string' || !title.text.trim() || title.text.length > 100 ||
+      !finite(title.start) || !finite(title.end) || title.start < 0 || title.end <= title.start ||
+      title.end > 86400) throw Error('Invalid title overlay.');
+  const style = titleStyle(title);
+  if (!TITLE_POSITION.includes(style.position) || !TITLE_SIZE.includes(style.size) ||
+      !TITLE_COLOR.includes(style.color) || !finite(style.fade_in) ||
+      !finite(style.fade_out) || style.fade_in < 0 || style.fade_out < 0 ||
+      style.fade_in + style.fade_out > title.end - title.start + 0.002) {
+    throw Error('Invalid title style or fade duration.');
+  }
+}
+function titleFromInput(data, titleId) {
+  const style = titleStyle(data);
+  const title = { title_id:titleId, text: data?.text?.trim(), start:round(data?.start),
+    end:round(data?.end), position:style.position, size:style.size, color:style.color,
+    fade_in:round(style.fade_in), fade_out:round(style.fade_out) };
+  validateTitle(title);
+  return title;
+}
 export function visibleTitle(state, timelineTime) {
   return state.titles.find(title => timelineTime >= title.start && timelineTime < title.end) || null;
 }
@@ -112,12 +153,14 @@ export function change(state, command) {
     clip.fade_in = round(command.fade_in);
     clip.fade_out = round(command.fade_out);
   } else if (type === 'title.added') {
-    const label = command.title;
     if (titles.length >= 40) throw Error('R3 supports up to 40 title overlays.');
-    if (!label || typeof label.text !== 'string' || !label.text.trim() || label.text.length > 100 ||
-        !finite(label.start) || !finite(label.end) || label.start < 0 || label.end <= label.start ||
-        label.end > 86400 || label.start >= 86400) throw Error('Title requires text and a positive timeline range.');
-    titles.push({ title_id: id(), text: label.text.trim(), start: round(label.start), end: round(label.end) });
+    const fresh = titleFromInput(command.title, id());
+    titles.push(fresh);
+    titles.sort((a,b) => a.start - b.start);
+  } else if (type === 'title.updated') {
+    const index = titles.findIndex(t => t.title_id === command.title_id);
+    if (index < 0) throw Error('Title not found.');
+    titles[index] = titleFromInput(command.title, command.title_id);
     titles.sort((a,b) => a.start - b.start);
   } else if (type === 'title.deleted') {
     if (!titles.some(t => t.title_id === command.title_id)) throw Error('Title not found.');
@@ -163,7 +206,7 @@ export function change(state, command) {
       asset_id: command.asset_id || command.asset?.asset_id || null,
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
-      ...(type === 'title.added' ? { title: command.title.text.slice(0,100) } : {}) })] };
+      ...(type === 'title.added' || type === 'title.updated' ? { title: command.title.text.slice(0,100) } : {}) })] };
   validate(next);
   return next;
 }
@@ -216,10 +259,8 @@ export function validate(state) {
   }
   const titleIds = new Set();
   for (const title of state.titles) {
-    if (!title || typeof title.title_id !== 'string' || !title.title_id || titleIds.has(title.title_id) ||
-        typeof title.text !== 'string' || !title.text.trim() || title.text.length > 100 ||
-        !finite(title.start) || !finite(title.end) || title.start < 0 || title.end <= title.start ||
-        title.end > 86400) throw Error('Invalid title overlay.');
+    validateTitle(title);
+    if (titleIds.has(title.title_id)) throw Error('Duplicate title ID.');
     titleIds.add(title.title_id);
   }
   return true;
