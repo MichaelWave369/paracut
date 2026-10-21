@@ -1,5 +1,6 @@
 import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayOpacityAt, overlayMotionAt, isSourceAudioMuted, audioLevelAt, audioMixLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
+import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 
 const $ = id => document.getElementById(id);
@@ -54,6 +55,7 @@ const waveforms = new Map();
 let soundSerial = 0;
 let draggedClipId = null;
 let editingTitleId = null;
+let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
   const n = Math.max(0, Number(seconds) || 0);
@@ -369,7 +371,7 @@ function transitionFrame() {
     const fade=crossfadeAt(state,at);
     if (fade) { previewAudioAt(at); void syncCrossfadePreview(at,true); }
     else if (crossfadeVideo.style.display !== 'none') hideCrossfadePreview();
-    previewAudioAt(at); syncLayers(at,true);
+    previewAudioAt(at); syncLayers(at,true); updatePeakGuides(at);
   }
   transitionFrameHandle=requestAnimationFrame(transitionFrame);
 }
@@ -462,6 +464,47 @@ function drawTitleOnCanvas(ctx, title, at) {
   });
   ctx.restore();
 }
+function selectedAudioClip() {
+  return [...state.audioClips,...state.audio2Clips].find(c=>c.clip_id===selectedId) || null;
+}
+function drawTrimWaveform() {
+  const clip=selectedAudioClip();
+  $('waveform-trim-panel').hidden=!clip;
+  if(!clip)return;
+  const peaks=waveforms.get(clip.asset_id),asset=state.assets.find(a=>a.asset_id===clip.asset_id);
+  const canvas=$('waveform-trim-canvas');
+  const ready=Array.isArray(peaks)&&peaks.length>0&&asset?.duration>0;
+  canvas.hidden=!ready;
+  $('waveform-trim-note').textContent=ready
+    ? 'Drag near an IN or OUT marker, or edit the source seconds above. Press Apply Trim to save.'
+    : 'Waveform unavailable (large/unsupported audio or source not relinked). Use the numeric source times.';
+  if(!ready)return;
+  try{
+    paintTrimWaveform(canvas,peaks,asset.duration,
+      Number($('in-time').value),Number($('out-time').value));
+  }catch{ /* leave numeric invalid input visible for correction */ }
+}
+function updatePeakGuides(at) {
+  for(const [key,track] of [['a1','audio-1'],['a2','audio-2']]) {
+    const data=estimateTrackPeak(state,track,at,waveforms);
+    $('peak-'+key).value=data.peak;
+    $('peak-'+key+'-value').textContent=data.available
+      ? Math.round(data.peak*100)+'%' : '—';
+  }
+}
+function adjustTrimAtFraction(edge,fraction) {
+  const clip=selectedAudioClip();
+  if(!clip || exporting)return;
+  const asset=state.assets.find(a=>a.asset_id===clip.asset_id);
+  if(!asset)return;
+  const time=sourceTimeAtFraction(fraction,asset.duration);
+  const start=Number($('in-time').value),end=Number($('out-time').value);
+  const min=.08;
+  const value=edge==='in'?Math.min(time,end-min):Math.max(time,start+min);
+  if(edge==='in')$('in-time').value=String(Math.max(0,Math.round(value*1000)/1000));
+  else $('out-time').value=String(Math.min(asset.duration,Math.round(value*1000)/1000));
+  drawTrimWaveform();
+}
 function drawInspector() {
   const clip = [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].find(c => c.clip_id === selectedId);
   $('inspector-fields').hidden = !clip;
@@ -509,6 +552,7 @@ function drawInspector() {
   const index = lane.findIndex(c => c.clip_id === selectedId);
   $('move-left').disabled = index === 0 || exporting || layerClip;
   $('move-right').disabled = index === lane.length - 1 || exporting || layerClip;
+  drawTrimWaveform();
 }
 function drawReceipts() {
   $('receipt-count').textContent = String(state.receipts.length);
@@ -542,6 +586,7 @@ function render() {
   drawMixer();
   drawMedia(); drawTimeline(); drawInspector(); drawTitles(); drawReceipts(); updateTimeUI();
   previewAudioAt(playhead);
+  updatePeakGuides(playhead);
   $('undo').disabled = !state.undo.length || exporting;
   $('redo').disabled = !state.redo.length || exporting;
   $('split').disabled = !selectedId || exporting;
@@ -742,6 +787,38 @@ for (const kind of ['dragenter', 'dragover']) $('drop-zone').addEventListener(ki
 for (const kind of ['dragleave', 'drop']) $('drop-zone').addEventListener(kind, e => { e.preventDefault(); e.currentTarget.classList.remove('drag'); });
 $('drop-zone').addEventListener('drop', e => { void importVideos([...e.dataTransfer.files]); });
 $('apply-trim').addEventListener('click', () => edit({ type:'clip.trimmed', clip_id:selectedId, start:Number($('in-time').value), end:Number($('out-time').value) }));
+for(const id of ['in-time','out-time'])$(''+id).addEventListener('input',drawTrimWaveform);
+for(const edge of ['in','out']) {
+  $('waveform-'+edge+'-playhead').addEventListener('click',()=>{
+    const clip=selectedAudioClip();if(!clip)return;
+    const asset=state.assets.find(a=>a.asset_id===clip.asset_id);
+    if(!asset)return;
+    const sourceAt=clip.source.start+(playhead-clip.timeline.start);
+    adjustTrimAtFraction(edge,Math.max(0,Math.min(1,sourceAt/asset.duration)));
+  });
+}
+const trimCanvas=$('waveform-trim-canvas');
+function trimFraction(event) {
+  const r=trimCanvas.getBoundingClientRect();
+  return Math.max(0,Math.min(1,(event.clientX-r.left)/Math.max(1,r.width)));
+}
+trimCanvas.addEventListener('pointerdown',event=>{
+  if(exporting||!selectedAudioClip())return;
+  const clip=selectedAudioClip(),asset=state.assets.find(a=>a.asset_id===clip.asset_id);
+  if(!asset)return;
+  const f=trimFraction(event),start=Number($('in-time').value)/asset.duration;
+  const end=Number($('out-time').value)/asset.duration;
+  draggingTrimEdge=Math.abs(f-start)<=Math.abs(f-end)?'in':'out';
+  trimCanvas.setPointerCapture(event.pointerId);
+  adjustTrimAtFraction(draggingTrimEdge,f);
+  event.preventDefault();
+});
+trimCanvas.addEventListener('pointermove',event=>{
+  if(draggingTrimEdge&&trimCanvas.hasPointerCapture(event.pointerId))
+    adjustTrimAtFraction(draggingTrimEdge,trimFraction(event));
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])
+  trimCanvas.addEventListener(type,()=>{draggingTrimEdge=null;});
 $('clip-volume').addEventListener('input', e => {
   $('volume-number').textContent = e.target.value + '%';
 });
