@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎥 ParaCut Studio R5 — Layered Storyboard
+
+The browser editor now has **V2 video overlays** (picture-in-picture or full-frame, with opacity fades) and **A2 audio** for voiceover/FX, alongside the existing V1 cuts/crossfades and A1 soundtrack. Add at the playhead, position clips in independent storyboard lanes, preview and export in the browser. The old local FFmpeg companion refuses unsupported layered drafts rather than silently dropping tracks. [R5 guide and constraints](docs/STUDIO_R5.md).
+
+
 ## 🎬 ParaCut Studio R4.2 — Windows double-click MP4 companion
 
 **No terminal commands for everyday local exports:** on Windows, double-click **`ParaCut Export MP4.cmd`** in your local ParaCut repository folder. Pick a saved Studio draft, the folder of original media, and a new MP4 filename. It runs a dry-run validation, asks for explicit confirmation, then uses your installed Node.js + FFmpeg to render locally. No cloud upload, server, installation script, or silent overwrites. The existing browser MP4/WebM buttons remain separate. [Windows setup and limitations](docs/STUDIO_R42.md).
