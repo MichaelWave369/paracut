@@ -136,7 +136,7 @@ export function validate(state) {
     const normalized = reflow(lane, trackId);
     for (let i = 0; i < lane.length; i++) {
       const c = lane[i], a = state.assets.find(item => item.asset_id === c?.asset_id);
-      if (!a || !a.type.startsWith(kind) || c.track_id !== trackId) throw Error('Invalid ' + kind + ' reference.');
+      if (!a || !a.type.startsWith(kind) || c.track_id !== trackId) throw Error('Invalid ' + kind.slice(0, -1) + ' reference.');
       if (!c.clip_id || clipIds.has(c.clip_id)) throw Error('Duplicate clip ID.');
       clipIds.add(c.clip_id);
       if (!finite(c.source?.start) || !finite(c.source?.end) || c.source.start < 0
