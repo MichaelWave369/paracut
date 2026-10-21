@@ -23,7 +23,7 @@
 - R2 supports a **single sequential video lane and a single independent sequential soundtrack lane**. Each starts at zero with ripple order; no gaps, fades, overlaps, automation, volume envelope, titles or draggable playhead in the lane itself yet.
 - **Video remains the export master duration.** Any soundtrack portion beyond the video cut is not rendered.
 - Audio in the original video is mixed with the additional audio lane during browser recording when Web Audio is available. Mixer uses a fixed basic overlay gain, not loudness normalization.
-- Waveforms are generated **on-device** by the browser, sampling at most the first 32 MiB of a file (larger files show no waveform). Unsupported audio codecs can still be referenced if their metadata is readable, but waveform decoding may fail independently.
+- Waveforms are generated **on-device** by the browser, only for files no larger than 32 MiB (larger files show no waveform). Unsupported audio codecs can still be referenced if their metadata is readable, but waveform decoding may fail independently.
 - No content is uploaded. Blob URLs exist only while the page is open. Relinking uses name, byte size, media type and lastModified, **not a cryptographic fingerprint**.
 - R2 browser export still records **real-time WebM beta** via Canvas + MediaRecorder + Web Audio at 1280×720. Up to 5 minutes; visible tab required, unsupported codecs/browser behavior may cause dropouts or sync drift; **review results** before distribution.
 - No true frame accuracy, 4K rendering, MP4 export, backend, network access, auto publication or AI editing.
