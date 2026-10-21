@@ -41,3 +41,20 @@
 .title-track{min-height:48px;background:#191c30;border:1px solid #41456c;border-radius:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:7px}
 .titles-heading span{border-color:#6e6da3;background:#333153;color:#d8d6ff}
 .title-chip{padding:7px 9px;border-radius:6px;background:#373b67;color:#e3e2ff;border:1px solid #707cb6;font-size:10px}
+
+/* R3.1 title designer. Fixed, validated style presets: no raw CSS from drafts. */
+.title-editor select{display:block;width:100%;border:1px solid #374d67;border-radius:6px;background:#0a131f;color:#eef8ff;margin-top:5px;padding:9px}
+.title-editor>select{margin:7px 0 12px}
+.title-actions{display:flex;gap:7px}
+.title-actions .wide{flex:1}
+.title-actions button[hidden]{display:none}
+.title-item.editing{border-color:#82dcd0;background:#172f3d}
+.title-preview[data-position=top]{top:10%;bottom:auto;transform:none}
+.title-preview[data-position=middle]{top:50%;bottom:auto;transform:translateY(-50%)}
+.title-preview[data-position=bottom]{top:auto;bottom:9%;transform:none}
+.title-preview[data-size=small]{font-size:clamp(14px,2vw,28px)}
+.title-preview[data-size=medium]{font-size:clamp(18px,3vw,42px)}
+.title-preview[data-size=large]{font-size:clamp(24px,4.25vw,62px)}
+.title-preview[data-color=white]{color:#fff}
+.title-preview[data-color=mint]{color:#87f0df}
+.title-preview[data-color=gold]{color:#ffdd8a}
