@@ -84,7 +84,7 @@ assert.match(js,/video\.volume = Math\.min\(1, audioLevelAt\(v, at\)\)/);
 assert.match(js,/soundtrack\.volume = Math\.min\(1, audioLevelAt\(a, at\)\)/);
 assert.match(js,/videoSourceGain\.gain\.value = audioLevelAt\(clip,timelinePosition\)/);
 assert.match(js,/soundtrackGain\.gain\.value = audioLevelAt\(clip, at\)/);
-assert.match(js,/drawTitleOnCanvas\(g, visibleTitle\(state,at\)\)/);
+assert.match(js,/drawTitleOnCanvas\(g, visibleTitle\(state,at\), at\)/);
 assert.match(js,/node\.textContent = title\?\.text/);
 assert.match(html,/id="clip-volume"/);
 assert.match(html,/id="title-preview"/);
