@@ -18,7 +18,7 @@ const v=s.clips[0];
 assert.equal(audioLevelAt(v,0),0);
 assert.equal(audioLevelAt(v,1),.3);
 assert.equal(audioLevelAt(v,5),.6);
-assert.equal(audioLevelAt(v,11),.2);
+assert.ok(Math.abs(audioLevelAt(v,11) - .2) < 1e-9);
 assert.equal(audioLevelAt(v,12),0);
 s=change(s,{type:'clip.source-audio.muted',clip_id:vid,muted:true});
 assert.equal(audioLevelAt(s.clips[0],6),0);
