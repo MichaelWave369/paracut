@@ -5,7 +5,7 @@ import {
   activeClip, validate, exportDraft, importDraft
 } from '../apps/desktop/public/studio-core.js';
 const a=(asset_id,type,duration)=>({asset_id,name:asset_id,size:800,lastModified:123,type,duration});
-let s=newStudio('Escher's impossible movie');
+let s=newStudio("Escher’s impossible movie");
 for(const data of [a('one','video/mp4',9),a('two','video/mp4',6),
   a('three','video/mp4',12),a('music','audio/mpeg',24)])
   s=change(s,{type:'asset.added',asset:data});
