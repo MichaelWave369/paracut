@@ -108,7 +108,7 @@ export function validate(state) {
     if (clipIds.has(c.clip_id)) throw Error('Duplicate clip ID.');
     clipIds.add(c.clip_id);
     if (!finite(c.source?.start) || !finite(c.source?.end) || c.source.start < 0 || c.source.end > a.duration + 0.002 || c.source.end - c.source.start < 0.079) throw Error('Invalid clip source range.');
-    if (Math.abs(c.timeline?.start - normalized[i].timeline.start) > 0.003 || Math.abs(c.timeline?.end - normalized[i].timeline.end) > 0.003) throw Error('Timeline is not sequential.');
+    if (!finite(c.timeline?.start) || !finite(c.timeline?.end) || Math.abs(c.timeline.start - normalized[i].timeline.start) > 0.003 || Math.abs(c.timeline.end - normalized[i].timeline.end) > 0.003) throw Error('Timeline is not sequential.');
   }
   return true;
 }
@@ -123,7 +123,7 @@ export function importDraft(json) {
   const input = JSON.parse(json);
   if (input.schema !== DRAFT_SCHEMA) throw Error('Not a ParaCut Studio R1 draft.');
   const state = { schema: DRAFT_SCHEMA, name: String(input.name || 'Recovered Cut').slice(0, 100),
-    assets: input.assets, clips: input.clips, receipts: Array.isArray(input.receipts) ? input.receipts.slice(-500) : [],
+    assets: input.assets, clips: input.clips, receipts: Array.isArray(input.receipts) ? input.receipts.filter(r => r && typeof r === 'object' && typeof r.action === 'string').slice(-500) : [],
     undo: [], redo: [] };
   validate(state);
   state.receipts.push(receipt('project.draft.opened', { imported_receipts_unverified: true }));
