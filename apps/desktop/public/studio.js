@@ -161,18 +161,51 @@ function render() {
   $('export-webm').disabled = (!state.clips.length || [...state.clips, ...state.audioClips].some(c => !media.has(c.asset_id))) && !exporting;
   $('preview-label').textContent = selectedId ? 'Selected clip · ' + ([...state.clips, ...state.audioClips].find(c=>c.clip_id===selectedId)?.clip_id?.slice(0,8) || '') : 'Program';
 }
+// Playback uses the video playhead as the master clock and keeps the
+// independent music/voiceover element within ~150 ms. Browser beta, not frame sync.
+let loadingAudioClip = null;
+async function syncSoundtrack(at, autoplay) {
+  const clip = activeAudioClip(state, Math.min(at, Math.max(0, duration(state) - .001)));
+  if (!clip || at >= duration(state)) {
+    soundtrack.pause(); soundtrack.dataset.clip = ''; loadingAudioClip = null; ++soundSerial; return;
+  }
+  const ref = media.get(clip.asset_id);
+  if (!ref) { soundtrack.pause(); return; }
+  if (soundtrack.dataset.clip !== clip.clip_id) {
+    if (loadingAudioClip === clip.clip_id) return;
+    const serial = ++soundSerial;
+    loadingAudioClip = clip.clip_id;
+    soundtrack.pause(); soundtrack.src = ref.url; soundtrack.dataset.clip = clip.clip_id; soundtrack.load();
+    try {
+      await new Promise((resolve, reject) => {
+        if (soundtrack.readyState >= 1) return resolve();
+        soundtrack.addEventListener('loadedmetadata', resolve, { once: true });
+        soundtrack.addEventListener('error', () => reject(Error('Cannot decode soundtrack.')), { once: true });
+      });
+    } catch (e) { status(e.message, true); return; }
+    finally { if (serial === soundSerial) loadingAudioClip = null; }
+    if (serial !== soundSerial) return;
+  }
+  const expected = clip.source.start + Math.max(0, at - clip.timeline.start);
+  if (Math.abs(soundtrack.currentTime - expected) > .15) {
+    try { soundtrack.currentTime = Math.min(clip.source.end - .005, expected); } catch {}
+  }
+  if (autoplay && playing && soundtrack.paused) {
+    try { await soundtrack.play(); } catch (e) { status('Soundtrack preview: ' + e.message, true); }
+  } else if (!autoplay) soundtrack.pause();
+}
 async function seekTo(seconds, { autoplay = false } = {}) {
   const serial = ++seekSerial, d = duration(state);
   playhead = Math.max(0, Math.min(d, Number(seconds) || 0));
   updateTimeUI();
   let clip = activeClip(state, Math.min(playhead, Math.max(0,d-0.001)));
   if (!clip) {
-    playing = false; video.pause(); video.style.display = 'none';
+    playing = false; video.pause(); soundtrack.pause(); video.style.display = 'none';
     $('empty-preview').hidden = false; updateTimeUI(); return;
   }
   const ref = media.get(clip.asset_id);
   if (!ref) {
-    playing = false; video.pause(); video.style.display = 'none';
+    playing = false; video.pause(); soundtrack.pause(); video.style.display = 'none';
     $('empty-preview').hidden = false; status('Import the original video to relink the draft.', true);
     updateTimeUI(); return;
   }
@@ -192,10 +225,11 @@ async function seekTo(seconds, { autoplay = false } = {}) {
     if (autoplay && playhead < d - .005) {
       await video.play(); playing = true;
     } else { video.pause(); playing = false; }
+    void syncSoundtrack(playhead, playing);
     updateTimeUI();
   } catch (e) { playing = false; status('Preview failed: ' + e.message, true); updateTimeUI(); }
 }
-function stopPlayback() { playing = false; video.pause(); updateTimeUI(); }
+function stopPlayback() { playing = false; video.pause(); soundtrack.pause(); updateTimeUI(); }
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
@@ -208,25 +242,25 @@ function edit(command) {
 }
 async function probe(file) {
   const url = URL.createObjectURL(file);
-  const test = document.createElement('video'); test.preload = 'metadata'; test.src = url;
+  const test = document.createElement(file.type.startsWith('audio/') ? 'audio' : 'video'); test.preload = 'metadata'; test.src = url;
   try {
     const seconds = await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(Error('Timed out reading video metadata.')), 15_000);
+      const timer = setTimeout(() => reject(Error('Timed out reading media metadata.')), 15_000);
       test.addEventListener('loadedmetadata', () => { clearTimeout(timer); resolve(test.duration); }, { once:true });
-      test.addEventListener('error', () => { clearTimeout(timer); reject(Error('Unsupported video or broken file.')); }, { once:true });
+      test.addEventListener('error', () => { clearTimeout(timer); reject(Error('Unsupported media or broken file.')); }, { once:true });
       test.load();
     });
-    if (!Number.isFinite(seconds) || seconds < .1 || seconds > 86400) throw Error('Unsupported or unbounded video duration.');
+    if (!Number.isFinite(seconds) || seconds < .1 || seconds > 86400) throw Error('Unsupported or unbounded media duration.');
     return { url, seconds };
   } catch (err) { URL.revokeObjectURL(url); throw err; }
 }
 async function importVideos(files) {
   if (exporting) return;
   for (const file of files) {
-    if (!file.type.startsWith('video/')) { status('Only video files are supported in R1: ' + file.name, true); continue; }
+    if (!/^(audio|video)\//.test(file.type)) { status('Only audio/video files are supported: ' + file.name, true); continue; }
     try {
       const { url, seconds } = await probe(file);
-      const existing = state.assets.find(a => a.name === file.name && a.size === file.size && a.lastModified === file.lastModified && !media.has(a.asset_id));
+      const existing = state.assets.find(a => a.name === file.name && a.type === file.type && a.size === file.size && a.lastModified === file.lastModified && !media.has(a.asset_id));
       if (existing) {
         if (Math.abs(existing.duration - seconds) > .5) { URL.revokeObjectURL(url); throw Error('Duration differs from the draft reference.'); }
         media.set(existing.asset_id, { file, url });
@@ -236,6 +270,12 @@ async function importVideos(files) {
         state = change(state, { type: 'asset.added', asset: { asset_id, name: file.name,
           size:file.size, type:file.type, duration:seconds, lastModified:file.lastModified } });
         media.set(asset_id, { file, url }); status('Imported ' + file.name);
+      }
+      const waveId = existing?.asset_id || state.assets.at(-1).asset_id;
+      if (file.type.startsWith('audio/')) {
+        void extractWaveform(file).then(peaks => {
+          if (peaks && media.get(waveId)?.file === file) { waveforms.set(waveId, peaks); render(); }
+        }).catch(() => {});
       }
       render(); if (!video.src && state.clips.length) void seekTo(playhead);
     } catch (e) { status(file.name + ': ' + e.message, true); }
@@ -247,6 +287,7 @@ video.addEventListener('timeupdate', () => {
   if (!clip || video.dataset.asset !== clip.asset_id) return;
   playhead = Math.min(clip.timeline.end, clip.timeline.start + Math.max(0, video.currentTime - clip.source.start));
   updateTimeUI();
+  void syncSoundtrack(playhead, true);
   if (video.currentTime >= clip.source.end - .045 || video.ended) {
     if (clip.timeline.end >= duration(state) - .005) { stopPlayback(); playhead = duration(state); updateTimeUI(); }
     else void seekTo(clip.timeline.end + .001, { autoplay:true });
