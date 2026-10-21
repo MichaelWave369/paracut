@@ -58,7 +58,7 @@ assert.throws(()=>change(s,{type:'clip.layer.added',asset_id:'v2',track_id:'audi
 assert.throws(()=>change(s,{type:'clip.layer.added',asset_id:'voice',track_id:'audio-2',start:9}),/already has media/);
 assert.throws(()=>change(s,{type:'clip.layer.added',asset_id:'v2',track_id:'video-2',start:3}),/already has media/);
 const full=JSON.parse(exportDraft(s));full.video2Clips[0].timeline.start=1;
-assert.throws(()=>importDraft(JSON.stringify(full)),/Layer clip needs|source range|Invalid clip/);
+assert.throws(()=>importDraft(JSON.stringify(full)),/Layer clip needs|source range|Invalid clip|Timeline is not sequential/);
 const old=JSON.parse(exportDraft(s));delete old.video2Clips;delete old.audio2Clips;
 const past=importDraft(JSON.stringify(old));
 assert.equal(past.video2Clips.length,0);
