@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R3 · Creative Timeline</title>
+  <title>ParaCut Studio R3.1 · Title Designer</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R3 · CREATIVE TIMELINE</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R3.1 · TITLE DESIGNER</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -98,8 +98,18 @@
           <label>Start (sec)<input id="title-start" type="number" min="0" step="0.1" value="0"></label>
           <label>End (sec)<input id="title-end" type="number" min="0" step="0.1" value="3"></label>
         </div>
-        <button id="add-title" class="wide">+ Add Text Overlay</button>
-        <p class="tip">Titles appear in preview and WebM export, centered near the bottom of the frame.</p>
+        <div class="field-pair">
+          <label>Position<select id="title-position"><option value="bottom">Bottom</option><option value="middle">Center</option><option value="top">Top</option></select></label>
+          <label>Text Size<select id="title-size"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></label>
+        </div>
+        <label for="title-color">Color preset</label>
+        <select id="title-color"><option value="white">White</option><option value="mint">Phi Mint</option><option value="gold">Gold</option></select>
+        <div class="field-pair">
+          <label>Fade in (sec)<input id="title-fade-in" type="number" min="0" step="0.1" value="0"></label>
+          <label>Fade out (sec)<input id="title-fade-out" type="number" min="0" step="0.1" value="0"></label>
+        </div>
+        <div class="title-actions"><button id="add-title" class="wide">+ Add Text Overlay</button><button id="cancel-title-edit" hidden>Cancel Edit</button></div>
+        <p class="tip">Select Edit on a title to change it. Preview and WebM export use the same color, placement and fade timing.</p>
       </div>
       <div id="title-list" class="title-list"></div>
       <hr>
