@@ -1,4 +1,4 @@
-import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, exportDraft, importDraft } from './studio-core.js';
+import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, isSourceAudioMuted, audioLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 
 const $ = id => document.getElementById(id);
@@ -6,6 +6,9 @@ let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
+const crossfadeVideo = $('crossfade-video');
+crossfadeVideo.preload = 'auto';
+let previewTransitionSerial = 0, loadingTransition = null, transitionFrameHandle = 0;
 let encoderVideo = document.createElement('video'); // fresh element per WebM export
 const soundtrack = document.createElement('audio');
 soundtrack.preload = 'auto'; soundtrack.volume = .85;
@@ -32,7 +35,10 @@ function clearMedia() {
   for (const entry of media.values()) URL.revokeObjectURL(entry.url);
   media.clear(); waveforms.clear();
   soundtrack.pause(); soundtrack.removeAttribute('src'); soundtrack.load(); delete soundtrack.dataset.clip;
-  video.pause(); video.removeAttribute('src'); video.load(); delete video.dataset.asset;
+  video.pause(); video.removeAttribute('src'); video.load(); delete video.dataset.asset; delete video.dataset.clip;
+  ++previewTransitionSerial; loadingTransition = null;
+  crossfadeVideo.pause(); crossfadeVideo.removeAttribute('src'); crossfadeVideo.load();
+  delete crossfadeVideo.dataset.clip; crossfadeVideo.style.display='none';
 }
 function updateTimeUI() {
   const d = duration(state);
@@ -83,7 +89,7 @@ function drawTimeline() {
       const asset = state.assets.find(a => a.asset_id === clip.asset_id);
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
-      item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '');
+      item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '') + (clip.transition_out_seconds ? ' has-transition' : '');
       item.draggable = !exporting;
       item.style.flex = String(Math.max((clip.timeline.end - clip.timeline.start) / total, .04)) + ' 0 68px';
       item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
@@ -91,6 +97,12 @@ function drawTimeline() {
       const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
       const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
       item.append(label, time);
+      if (!isAudio && clip.transition_out_seconds > 0) {
+        const badge = document.createElement('small');
+        badge.className = 'transition-caption';
+        badge.textContent = '⇄ '+clip.transition_out_seconds.toFixed(2)+'s';
+        item.append(badge);
+      }
       if (isSourceAudioMuted(clip)) {
         const mutedLabel = document.createElement('small');
         mutedLabel.className = 'muted-indicator';
@@ -147,9 +159,67 @@ function showTitleAt(at) {
 function previewAudioAt(at) {
   const v = activeClip(state, Math.min(at, Math.max(0, duration(state) - .001)));
   const a = activeAudioClip(state, at);
+  const dissolve = crossfadeAt(state, at);
   video.muted = isSourceAudioMuted(v);
-  video.volume = Math.min(1, audioLevelAt(v, at));
+  video.volume = Math.min(1, audioLevelAt(v, at) * (dissolve ? 1 - dissolve.progress : 1));
+  crossfadeVideo.muted = isSourceAudioMuted(dissolve?.incoming);
+  crossfadeVideo.volume = Math.min(1, dissolve ? audioLevelAt(dissolve.incoming, at) * dissolve.progress : 0);
   soundtrack.volume = Math.min(1, audioLevelAt(a, at));
+}
+function hideCrossfadePreview() {
+  crossfadeVideo.pause();
+  crossfadeVideo.style.display = 'none';
+  crossfadeVideo.style.opacity = '0';
+}
+// Loads the next video independently. Its first frames play simultaneously
+// with the outgoing clip while the current V1 boundary dissolves.
+async function syncCrossfadePreview(at, autoplay) {
+  const fade = crossfadeAt(state,at);
+  if (!fade) { hideCrossfadePreview(); return; }
+  const ref = media.get(fade.incoming.asset_id);
+  if (!ref) { hideCrossfadePreview(); return; }
+  if (crossfadeVideo.dataset.clip !== fade.incoming.clip_id) {
+    if (loadingTransition === fade.incoming.clip_id) return;
+    const serial = ++previewTransitionSerial;
+    loadingTransition = fade.incoming.clip_id;
+    crossfadeVideo.pause(); crossfadeVideo.src = ref.url; crossfadeVideo.dataset.clip = fade.incoming.clip_id; crossfadeVideo.load();
+    try {
+      await new Promise((resolve, reject) => {
+        if (crossfadeVideo.readyState >= 1) return resolve();
+        crossfadeVideo.addEventListener('loadedmetadata',resolve,{once:true});
+        crossfadeVideo.addEventListener('error',()=>reject(Error('Crossfade video could not be decoded.')),{once:true});
+      });
+    } catch(e) { status(e.message,true); return; }
+    finally { if (serial === previewTransitionSerial) loadingTransition=null; }
+    if (serial !== previewTransitionSerial) return;
+  }
+  const expected = fade.incoming.source.start + at - fade.incoming.timeline.start;
+  if (Math.abs(crossfadeVideo.currentTime-expected) > .18) {
+    try { crossfadeVideo.currentTime = Math.min(fade.incoming.source.end-.005,expected); } catch {}
+  }
+  previewAudioAt(at);
+  crossfadeVideo.style.opacity=String(fade.progress);
+  crossfadeVideo.style.display='block';
+  if (autoplay && playing && crossfadeVideo.paused) {
+    try { await crossfadeVideo.play(); } catch(e) { status('Crossfade preview: '+e.message,true); }
+  } else if (!autoplay) crossfadeVideo.pause();
+}
+// Motion/opacity interpolates on animation frames, independently of the
+// browser's low-frequency video 'timeupdate' events.
+function transitionFrame() {
+  transitionFrameHandle=0;
+  if (!playing) return;
+  const current=state.clips.find(c=>c.clip_id===video.dataset.clip);
+  if (current) {
+    const at=Math.min(current.timeline.end, current.timeline.start + Math.max(0,video.currentTime-current.source.start));
+    const fade=crossfadeAt(state,at);
+    if (fade) { previewAudioAt(at); void syncCrossfadePreview(at,true); }
+    else if (crossfadeVideo.style.display !== 'none') hideCrossfadePreview();
+  }
+  transitionFrameHandle=requestAnimationFrame(transitionFrame);
+}
+function startTransitionFrames() {
+  if (!transitionFrameHandle) transitionFrameHandle=requestAnimationFrame(transitionFrame);
 }
 function loadTitleForEdit(title) {
   editingTitleId = title.title_id;
@@ -246,6 +316,14 @@ function drawInspector() {
   $('out-time').value = String(clip.source.end);
   $('in-time').max = String(asset.duration);
   $('out-time').max = String(asset.duration);
+  const nextBoundary = state.clips.findIndex(c => c.clip_id === clip.clip_id);
+  const transitionAllowed = clip.track_id === 'video-1' && nextBoundary >= 0 && nextBoundary < state.clips.length-1;
+  $('transition-control').hidden = !transitionAllowed;
+  $('crossfade-seconds').value = String(clip.transition_out_seconds || 0);
+  const allowedSeconds = transitionAllowed ? maxCrossfade(state.clips,nextBoundary) : 0;
+  $('crossfade-seconds').max = String(allowedSeconds);
+  $('apply-crossfade').disabled = exporting || !transitionAllowed;
+  $('crossfade-note').textContent = '0 = hard cut · up to '+allowedSeconds.toFixed(2)+' seconds with the next V1 clip.';
   $('clip-volume').value = String(Math.round((clip.volume ?? 1) * 100));
   $('volume-number').textContent = Math.round((clip.volume ?? 1) * 100) + '%';
   $('fade-in').value = String(clip.fade_in ?? 0);
@@ -341,6 +419,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
       });
     }
     if (serial !== seekSerial) return;
+    video.dataset.clip = clip.clip_id;
     // Apply on every seek, even when two clips share the same media asset.
     video.muted = isSourceAudioMuted(clip);
     previewAudioAt(playhead);
@@ -351,10 +430,16 @@ async function seekTo(seconds, { autoplay = false } = {}) {
       await video.play(); playing = true;
     } else { video.pause(); playing = false; }
     void syncSoundtrack(playhead, playing);
+    void syncCrossfadePreview(playhead, playing);
+    if (playing) startTransitionFrames();
     updateTimeUI();
   } catch (e) { playing = false; status('Preview failed: ' + e.message, true); updateTimeUI(); }
 }
-function stopPlayback() { playing = false; video.pause(); soundtrack.pause(); updateTimeUI(); }
+function stopPlayback() {
+  playing = false; video.pause(); soundtrack.pause(); hideCrossfadePreview();
+  if (transitionFrameHandle) cancelAnimationFrame(transitionFrameHandle);
+  transitionFrameHandle=0; updateTimeUI();
+}
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
@@ -426,6 +511,7 @@ video.addEventListener('timeupdate', () => {
   updateTimeUI();
   previewAudioAt(playhead);
   void syncSoundtrack(playhead, true);
+  void syncCrossfadePreview(playhead,true);
   if (video.currentTime >= clip.source.end - .045 || video.ended) {
     if (clip.timeline.end >= duration(state) - .005) { stopPlayback(); playhead = duration(state); updateTimeUI(); }
     else void seekTo(clip.timeline.end + .001, { autoplay:true });
@@ -455,6 +541,9 @@ $('apply-trim').addEventListener('click', () => edit({ type:'clip.trimmed', clip
 $('clip-volume').addEventListener('input', e => {
   $('volume-number').textContent = e.target.value + '%';
 });
+$('apply-crossfade').addEventListener('click', () => edit({
+  type:'clip.transition.updated',clip_id:selectedId,seconds:Number($('crossfade-seconds').value)
+}));
 $('apply-audio').addEventListener('click', () => edit({
   type:'clip.audio.updated',clip_id:selectedId,volume:Number($('clip-volume').value)/100,
   fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
