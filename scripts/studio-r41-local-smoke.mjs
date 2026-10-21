@@ -29,7 +29,7 @@ assert.match(plan.graph,/volume=0.75/);
 assert.match(plan.graph,/afade=t=in:st=0:d=1/);
 assert.match(plan.graph,/amix=inputs=1/);
 assert.match(plan.graph,/adelay=0:all=1/);
-assert.match(plan.ass,/\\an8\\fs74\\c&H DFF087&/.replace(' ','')); // fixed ASS syntax
+assert.ok(plan.ass.includes('\\an8\\fs74\\c&HDFF087&')); // fixed ASS syntax
 assert.match(plan.ass,/Enter ｛the｝ ＼ Field/);
 assert.ok(!plan.ass.includes('{the}'));
 assert.ok(plan.args.includes('libx264'));
@@ -38,10 +38,8 @@ assert.ok(plan.args.includes('-n'));
 assert.ok(!plan.args.some(s=>s.includes(';rm -rf')));
 assert.throws(()=>planLocalMp4(clean,{},'/example/done.mp4'),/Source media not relinked/);
 assert.throws(()=>planLocalMp4(clean,map,'/example/done.webm'),/end in .mp4/);
-const legacy=importDraft(exportDraft(state));
-for(const c of legacy.clips)delete c.transition_out_seconds;
-const noTitles=importDraft(exportDraft(legacy));
-noTitles.titles=[];
+const hard=change(state,{type:'clip.transition.updated',clip_id:state.clips[0].clip_id,seconds:0});
+const noTitles=change(hard,{type:'title.deleted',title_id:hard.titles[0].title_id});
 const simple=planLocalMp4(noTitles,map,'/tmp/x.mp4');
 assert.match(simple.graph,/concat=n=2/);
 assert.match(simple.graph,/null\[vout\]/);
