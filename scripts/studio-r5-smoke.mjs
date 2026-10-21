@@ -74,7 +74,7 @@ assert.match(ui,/activeOverlayClip\(state,timelinePosition\)/);
 assert.match(ui,/activeAudio2Clip\(state,timelinePosition\)/);
 assert.match(ui,/overlayGain\.gain\.value=0/);
 assert.match(ui,/audio2Gain\.gain\.value=0/);
-assert.match(ui,/audio2Gain\.gain\.value=audioLevelAt\(clip,at\)/); // if dynamic path changes, verify effect too
+assert.match(ui,/await syncExportLayer\(encoderAudio2,activeAudio2Clip\(state,timelinePosition\),timelinePosition,audio2Gain\)/);
 assert.match(ui,/drawVideoFrame\(encoderOverlay,opacity\)/);
 assert.match(ui,/syncLayers\(playhead,playing\)/);
 assert.match(ui,/clip\.layer\.added/);
