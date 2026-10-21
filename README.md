@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎬 ParaCut Studio R4.2 — Windows double-click MP4 companion
+
+**No terminal commands for everyday local exports:** on Windows, double-click **`ParaCut Export MP4.cmd`** in your local ParaCut repository folder. Pick a saved Studio draft, the folder of original media, and a new MP4 filename. It runs a dry-run validation, asks for explicit confirmation, then uses your installed Node.js + FFmpeg to render locally. No cloud upload, server, installation script, or silent overwrites. The existing browser MP4/WebM buttons remain separate. [Windows setup and limitations](docs/STUDIO_R42.md).
+
+
 ## 🎞️ ParaCut Studio R4.1 — Opt-in local H.264/AAC MP4 export
 
 For browsers without built-in MP4 encoding, R4.1 adds a **standalone local FFmpeg companion** that can render saved Studio drafts with real video transitions, soundtrack audio, source mute, fades and styled titles. It is a manual Node CLI, **not** an in-browser action or bundled encoder. Media stays local; the browser editor and WebM fallback stay unchanged. [Setup and limitations](docs/STUDIO_R41.md).
