@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.2 · Color Workflow</title>
+  <title>ParaCut Studio R6.3 · Precision Editing</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.2 · COLOR WORKFLOW</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.3 · PRECISION EDIT</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -83,7 +83,8 @@
         title="Temporarily show original color for selected V1/V2 clip (preview only)">Before/After</button></div>
         <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-incoming" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
         <div class="transport">
-          <button id="jog-back" title="Jog Program back one 30fps frame (J)">J ◀</button>
+          <button id="jog-back" title="Jog Program back one 30fps frame (J or comma)">J ◀</button>
+          <button id="jog-next" title="Jog Program forward one 30fps frame (period)">Frame ▶</button>
           <button id="jog-stop" title="Stop transport (K)">K ■</button>
           <button id="jog-forward" title="Play forward (L); press L again for 2×">L ▶</button>
           <button id="backward" title="Go to start">⏮</button>
@@ -101,7 +102,8 @@
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
-          <button id="remove" title="Remove selected clip (Delete)">✕ Delete</button>
+          <button id="remove" title="Delete selected clip on its own track (Delete)">✕ Delete</button>
+          <button id="ripple-delete" title="Synchronized Ripple Delete V1; shifts later V2/A2/T1, leaves A1 unchanged (Shift+Delete)" disabled>⇤ Sync Ripple <kbd>⇧Del</kbd></button>
         </div></div>
         <div class="edit-tools" role="toolbar" aria-label="Editing tool palette">
           <div class="edit-tool-group">
@@ -118,6 +120,16 @@
           </div>
           <span id="tool-feedback" role="status" aria-live="polite" class="tiny">Selection • V1 targeted</span>
         </div>
+        <details id="shortcut-reference" class="shortcut-reference">
+          <summary>⌨ Shortcuts</summary>
+          <div class="shortcut-reference-body">
+            <span>V Selection · C Razor · S Split</span>
+            <span>I / O Source marks · J / , Previous frame · . Next frame</span>
+            <span>K Stop · L Forward 1×/2× · Space Play/Pause</span>
+            <span>Delete Remove selected · Shift+Delete Sync Ripple V1</span>
+            <span>Ctrl/⌘ Z Undo · Ctrl/⌘ Y Redo</span>
+          </div>
+        </details>
         <div class="precision-toolbar">
           <label class="snap-label" for="snap-enabled"><input id="snap-enabled" type="checkbox" checked> ⌁ Snap boundaries</label>
           <label for="timeline-zoom">Timeline zoom <strong id="zoom-label">100%</strong></label>
