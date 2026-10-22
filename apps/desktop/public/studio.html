@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.6 · Effects Controls</title>
+  <title>ParaCut Studio R6.7 · Keyframes</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.6 · EFFECTS CONTROLS</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.7 · KEYFRAME ANIMATION</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -224,6 +224,18 @@
           <summary><span class="effects-section-name">Opacity</span><small id="effects-opacity-summary" class="effects-summary">V2 transparency</small></summary>
           <div class="effects-section-body">
             <label>Opacity (%)<input id="overlay-opacity" type="number" min="0" max="100" step="1" value="100"></label>
+            <fieldset class="keyframe-editor" id="opacity-keyframe-editor">
+              <legend>Opacity keyframes · linear Start → End</legend>
+              <div class="field-pair">
+                <label>Start (%)<input id="keyframe-opacity-start" type="number" min="0" max="100" step="1" value="100"></label>
+                <label>End (%)<input id="keyframe-opacity-end" type="number" min="0" max="100" step="1" value="100"></label>
+              </div>
+              <div class="keyframe-actions">
+                <button id="apply-opacity-keyframes" type="button">◆ Apply keyframes</button>
+                <button id="clear-opacity-keyframes" type="button">Clear animation</button>
+              </div>
+              <p class="tip">Two clip-relative points. Multiplies base opacity and existing fades; receipts and Undo/Redo supported.</p>
+            </fieldset>
           </div>
         </details>
           <button id="apply-overlay-style" class="wide">Apply Overlay Style</button>
@@ -270,6 +282,18 @@
             <label>Fade out (sec)<input id="fade-out" type="number" min="0" step="0.1" value="0"></label>
           </div>
           <button id="apply-audio" class="wide">Apply Audio Settings</button>
+          <fieldset class="keyframe-editor" id="volume-keyframe-editor">
+            <legend>Volume keyframes · linear Start → End</legend>
+            <div class="field-pair">
+              <label>Start (%)<input id="keyframe-volume-start" type="number" min="0" max="100" step="1" value="100"></label>
+              <label>End (%)<input id="keyframe-volume-end" type="number" min="0" max="100" step="1" value="100"></label>
+            </div>
+            <div class="keyframe-actions">
+              <button id="apply-volume-keyframes" type="button">◆ Apply keyframes</button>
+              <button id="clear-volume-keyframes" type="button">Clear animation</button>
+            </div>
+            <p class="tip">Animated gain multiplies base clip volume and fades. Source audio mute and lane mixer still apply.</p>
+          </fieldset>
           <p class="tip">Affects this clip's audio only. Fade times must fit inside its duration.</p>
         </div>
           </div>
