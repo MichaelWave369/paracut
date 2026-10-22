@@ -1,5 +1,10 @@
 # ParaCut
 
+## ✂️ ParaCut Studio R6.3 — Synchronized Ripple Delete
+
+A new **Sync Ripple** action (`Shift+Delete`) removes a V1 clip and moves later **V2 overlays, A2 audio, and T1 titles** earlier with it. Unlike ordinary Delete, it keeps downstream layers in step; it refuses ambiguous overlaps and touching V1 crossfades rather than silently destroying media. **A1 remains on its own soundtrack timeline.** Edits create receipts and support Undo/Redo. Program frame stepping now supports **comma/period**, with an in-editor shortcut reference. [R6.3 guide and limitations](docs/STUDIO_R63.md).
+
+
 ## 🎨 ParaCut Studio R6.2 — Color Looks + Before/After
 
 The Color workspace now offers four **receipt-backed looks** (Neutral, Warm, High Contrast and Phi Mint), **temporary live slider preview**, selected-clip **Before/After comparison** in Program Monitor, and **COLOR/FX timeline indicators**. Color-edit receipts display their exact correction values. Program comparison is preview-only and does **not** alter browser or local MP4 output. [R6.2 guide](docs/STUDIO_R62.md).
