@@ -10,7 +10,8 @@ import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {validateKeyframePair} from './studio-keyframes.js';
-import {renderVisualKeyframeLanes} from './studio-keyframe-view.js';
+import {renderMultiPointKeyframeLanes} from './studio-multipoint-view.js';
+import {keyframePointsFor,pointsField} from './studio-keyframe-points.js';
 import {EFFECTS_SECTIONS,readEffectsView,writeEffectsView,
   setEffectsSection,allEffectsSections,effectsVisibility,effectsSummaries}
   from './studio-effects-layout.js';
@@ -350,24 +351,26 @@ function applyTransportSpeed() {
     el.playbackRate=transportSpeed;
 }
 function appendKeyframeBadge(clip,item){
-  if(clip.opacity_keyframes===undefined&&clip.volume_keyframes===undefined)return;
+  if(clip.opacity_keyframes===undefined&&clip.volume_keyframes===undefined&&
+    clip.opacity_keyframe_points===undefined&&clip.volume_keyframe_points===undefined)return;
   const badge=document.createElement('small');
   badge.className='keyframe-indicator';
   badge.textContent='◆ KF';
-  badge.title=(clip.opacity_keyframes?'Opacity ':'')+
-    (clip.volume_keyframes?'Volume ':'')+'animation applied';
+  badge.title=(clip.opacity_keyframes||clip.opacity_keyframe_points?'Opacity ':'')+
+    (clip.volume_keyframes||clip.volume_keyframe_points?'Volume ':'')+'animation applied';
   item.append(badge);
 }
 function drawKeyframeLanes(){
   const clip=[...state.clips,...state.audioClips,...state.video2Clips,
     ...state.audio2Clips].find(c=>c.clip_id===selectedId);
-  renderVisualKeyframeLanes({
+  renderMultiPointKeyframeLanes({
     root:$('visual-keyframe-lanes'),
     opacityLane:$('keyframe-lane-opacity'),
     volumeLane:$('keyframe-lane-volume'),
     clip:showKeyframeLanes?clip:null,
-    total:timelineExtent(),editable:!exporting&&activeTool==='select',
-    onCommit:command=>edit(command)
+    total:timelineExtent(),playhead,getPlayhead:()=>playhead,
+    editable:!exporting&&activeTool==='select',
+    onCommit:command=>edit(command),onError:message=>status(message,true)
   });
 }
 function drawTimeline() {
@@ -967,11 +970,13 @@ for(const [property,field,allowed] of [
     ['opacity','opacity_keyframes',clip.track_id==='video-2'],
     ['volume','volume_keyframes',true]]){
     $('keyframe-'+property+'-editor').hidden=!allowed;
-    const values=clip[field]||{start:1,end:1};
+    const points=keyframePointsFor(clip,field);
+    const values={start:points[0].value,end:points.at(-1).value};
     for(const end of ['start','end'])
       $('keyframe-'+property+'-'+end).value=String(Math.round(values[end]*100));
     $('apply-'+property+'-keyframes').disabled=exporting||!allowed;
-    $('clear-'+property+'-keyframes').disabled=exporting||!allowed||!clip[field];
+    $('clear-'+property+'-keyframes').disabled=exporting||!allowed||
+      (!clip[field]&&!clip[pointsField(field)]);
   }
 
     const asset = state.assets.find(a => a.asset_id === clip.asset_id);
@@ -1185,7 +1190,7 @@ function stopPlayback() {
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','clip.keyframes.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted','marker.added','marker.updated','marker.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','clip.keyframes.updated','clip.keyframe.points.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted','marker.added','marker.updated','marker.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
@@ -1193,7 +1198,7 @@ function edit(command) {
       previewAudioAt(playhead);
       applyPreviewColor();
       render();
-      if(command.type==='clip.keyframes.updated')syncLayers(playhead,playing);
+      if(['clip.keyframes.updated','clip.keyframe.points.updated'].includes(command.type))syncLayers(playhead,playing);
       status(command.type === 'clip.source-audio.muted'
         ? (command.muted ? 'Original video audio muted. A1 stays on.' : 'Original video audio restored.')
         : command.type + ' ✓');
