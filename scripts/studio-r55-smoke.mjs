@@ -62,12 +62,12 @@ assert.equal(state.video2Clips[1].timeline.start,4);
 assert.equal(overlayCrossfadeAt(state,3.8),null);
 assert.equal(state.video2Clips[1].source.start,0);
 assert.equal(state.video2Clips[1].source.end,3);
-state=change(state,{type:'clip.layer.moved',clip_id:blue,start:8});
-assert.equal(state.video2Clips.find(c=>c.clip_id===blue).timeline.start,8);
+state=change(state,{type:'clip.layer.moved',clip_id:blue,start:10});
+assert.equal(state.video2Clips.find(c=>c.clip_id===blue).timeline.start,10);
 assert.throws(()=>change(state,{type:'clip.overlay.transition.updated',clip_id:red,seconds:0}),/requires two touching clips/);
 assert.equal(validate(state),true);
 // Original projects remain valid with no additional draft key.
-const legacy=JSON.parse(exportDraft(undo(undo(state))));
+const legacy=JSON.parse(exportDraft(state));
 for(const c of legacy.video2Clips)delete c.transition_out_seconds;
 assert.equal(validate(importDraft(JSON.stringify(legacy))),true);
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
