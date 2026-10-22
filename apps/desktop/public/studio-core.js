@@ -1,5 +1,6 @@
 // ParaCut Studio R3: local-first editor with video/audio automation and timed titles.
 import { validateClipColor } from './studio-color.js';
+import {validateKeyframePair,clipKeyframeAt} from './studio-keyframes.js';
 import { synchronizedRipplePlan } from './studio-ripple.js';
 import { validateMarker,markerFromInput,sortedMarkers,MARKER_LIMIT } from './studio-markers.js';
 // This is a browser draft format, NOT the canonical ParaCut project-core format.
@@ -103,7 +104,7 @@ export function activeAudio2Clip(state, time) {
 }
 export function overlayOpacityAt(clip, time) {
   if (!clip || time < clip.timeline.start || time >= clip.timeline.end) return 0;
-  const opacity=clip.overlay_opacity ?? 1;
+  const opacity=(clip.overlay_opacity ?? 1)*clipKeyframeAt(clip,'opacity_keyframes',time);
   const fi=clip.visual_fade_in ?? 0, fo=clip.visual_fade_out ?? 0;
   const age=time-clip.timeline.start, remaining=clip.timeline.end-time;
   return Math.max(0,Math.min(opacity,fi>0?opacity*age/fi:opacity,
@@ -187,7 +188,7 @@ function normalizeTransitions(clips) {
 // Browser clip audio automation; defaults preserve older R1/R2 project sound.
 export function audioLevelAt(clip, timelineTime) {
   if (!clip || isSourceAudioMuted(clip)) return 0;
-  const volume = clip.volume === undefined ? 1 : clip.volume;
+  const volume = (clip.volume === undefined ? 1 : clip.volume)*clipKeyframeAt(clip,'volume_keyframes',timelineTime);
   const fadeIn = clip.fade_in === undefined ? 0 : clip.fade_in;
   const fadeOut = clip.fade_out === undefined ? 0 : clip.fade_out;
   const elapsed = Math.max(0, timelineTime - clip.timeline.start);
@@ -489,6 +490,15 @@ export function change(state, command) {
     const clip=[...clips,...video2Clips].find(c=>c.clip_id===command.clip_id);
     if(!clip)throw Error('Color adjustments are available only for V1/V2 video clips.');
     clip.color=validateClipColor(command.color);
+  } else if (type === 'clip.keyframes.updated') {
+    const clip=laneFor(command.clip_id)?.find(c=>c.clip_id===command.clip_id);
+    if(!clip)throw Error('Select a clip for keyframes.');
+    const field=command.field;
+    if(!['volume_keyframes','opacity_keyframes'].includes(field)||
+      (field==='opacity_keyframes'&&clip.track_id!=='video-2'))
+      throw Error('Opacity keyframes require a V2 clip; volume applies to any media lane.');
+    if(command.values===null)delete clip[field];
+    else clip[field]=validateKeyframePair(command.values);
   } else if (type === 'clip.audio.updated') {
     const clip = laneFor(command.clip_id)?.find(c => c.clip_id === command.clip_id);
     if (!clip) throw Error('Select a clip first.');
@@ -612,6 +622,7 @@ export function change(state, command) {
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
       ...(type === 'clip.color.updated' ? { color:copy(command.color) } : {}),
+      ...(type === 'clip.keyframes.updated' ? {field:command.field,values:command.values===null?null:copy(command.values)} : {}),
       ...(type === 'clip.ripple.deleted' ? rippleDetails : {}),
       ...(type.startsWith('marker.') ? {
         marker_id:createdMarkerId??command.marker_id,
@@ -684,6 +695,11 @@ export function validate(state) {
       assertAudioValues(c.volume === undefined ? 1 : c.volume,
         c.fade_in === undefined ? 0 : c.fade_in,
         c.fade_out === undefined ? 0 : c.fade_out, seconds);
+      if(c.opacity_keyframes!==undefined){
+        if(trackId!=='video-2')throw Error('Opacity keyframes only apply to V2.');
+        validateKeyframePair(c.opacity_keyframes);
+      }
+      if(c.volume_keyframes!==undefined)validateKeyframePair(c.volume_keyframes);
       if(c.color!==undefined){
         if(!trackId.startsWith('video-'))throw Error('Audio tracks cannot have color effects.');
         validateClipColor(c.color);
