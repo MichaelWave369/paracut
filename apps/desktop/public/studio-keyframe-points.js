@@ -2,6 +2,20 @@
 // existing R6.7 Start/End pairs. All times are normalized clip progress.
 // Two fixed endpoints, up to six editable interior diamonds.
 export const KEYFRAME_POINT_LIMIT=8;
+export const KEYFRAME_EASES=Object.freeze(['linear','ease-in','ease-out','ease-in-out']);
+function easingAt(u,kind='linear'){
+  if(kind==='ease-in')return u*u;
+  if(kind==='ease-out')return 1-(1-u)*(1-u);
+  if(kind==='ease-in-out')return u*u*(3-2*u);
+  return u;
+}
+function easingExpression(u,kind='linear'){
+  if(kind==='ease-in')return '('+u+')*('+u+')';
+  if(kind==='ease-out')return '1-(1-('+u+'))*(1-('+u+'))';
+  if(kind==='ease-in-out')return '('+u+')*('+u+')*(3-2*('+u+'))';
+  return u;
+}
+
 const round=n=>Math.round(n*1000)/1000;
 const n=v=>String(Number(v.toFixed(5)));
 export function pointsField(field){
@@ -12,15 +26,18 @@ export function pointsField(field){
 export function validateKeyframePoints(raw){
   if(!Array.isArray(raw)||raw.length<2||raw.length>KEYFRAME_POINT_LIMIT)
     throw Error('Keyframe curve must contain 2–8 points.');
-  const points=raw.map(p=>{
+  const points=raw.map((p,index)=>{
     if(!p||typeof p!=='object'||Array.isArray(p)||
-      Object.keys(p).length!==2||
-      Object.keys(p).some(k=>!['at','value'].includes(k))||
+      (Object.keys(p).length<2||Object.keys(p).length>3)||
+      Object.keys(p).some(k=>!['at','value','ease'].includes(k))||
+      (p.ease!==undefined&&(!KEYFRAME_EASES.includes(p.ease)||
+        index===raw.length-1))||
       typeof p.at!=='number'||!Number.isFinite(p.at)||
       typeof p.value!=='number'||!Number.isFinite(p.value)||
       p.at<0||p.at>1||p.value<0||p.value>1)
       throw Error('Invalid keyframe curve point.');
-    return {at:round(p.at),value:round(p.value)};
+    return {at:round(p.at),value:round(p.value),
+      ...(p.ease!==undefined&&p.ease!=='linear'?{ease:p.ease}:{})};
   });
   if(points[0].at!==0||points.at(-1).at!==1)
     throw Error('Keyframe curve endpoints must be at 0 and 1.');
@@ -48,7 +65,8 @@ export function keyframeCurveAt(raw,progress){
   const u=Math.max(0,Math.min(1,progress));
   for(let i=1;i<points.length;i++){
     const a=points[i-1],b=points[i];
-    if(u<=b.at)return a.value+(b.value-a.value)*(u-a.at)/(b.at-a.at);
+    if(u<=b.at)return a.value+(b.value-a.value)*
+      easingAt((u-a.at)/(b.at-a.at),a.ease);
   }
   return points.at(-1).value;
 }
@@ -77,6 +95,15 @@ export function moveKeyframePoint(raw,index,at,value){
   points[index]=candidate;
   return validateKeyframePoints(points);
 }
+export function setKeyframeSegmentEase(raw,index,ease){
+  const points=validateKeyframePoints(raw);
+  if(!Number.isInteger(index)||index<0||index>=points.length-1)
+    throw Error('Invalid keyframe segment index.');
+  if(!KEYFRAME_EASES.includes(ease))throw Error('Invalid keyframe easing mode.');
+  const {ease:oldEase,...base}=points[index];
+  points[index]=ease==='linear'?base:{...base,ease};
+  return validateKeyframePoints(points);
+}
 export function removeKeyframePoint(raw,index){
   const points=validateKeyframePoints(raw);
   if(!Number.isInteger(index)||index<=0||index>=points.length-1)
@@ -94,7 +121,8 @@ export function keyframeCurveExpression(raw,duration,variable='t'){
     const left=a.at*duration,right=b.at*duration;
     const slope=n(b.value-a.value),width=n(right-left);
     const rel=left===0?variable:'('+variable+'-'+n(left)+')';
-    const line=n(a.value)+'+('+slope+')*min(1,max(0,'+rel+'/'+width+'))';
+    const u='min(1,max(0,'+rel+'/'+width+'))';
+    const line=n(a.value)+'+('+slope+')*('+easingExpression(u,a.ease)+')';
     expression='if(lt('+variable+','+n(right)+'),'+line+','+expression+')';
   }
   return expression;
