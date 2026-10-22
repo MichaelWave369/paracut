@@ -389,3 +389,17 @@
 .keyframe-diamond.keyframe-middle:hover:not(:disabled),
 .keyframe-diamond.keyframe-middle:focus-visible{outline:2px solid #ffd8fc}
 @media(max-width:760px){.keyframe-add{right:4px;top:2px;font-size:8px;padding:4px}}
+
+/* R7.0: accessible easing picker below the actual keyframe plot */
+.keyframe-lane{height:139px}
+.keyframe-easing-controls{position:absolute;left:8px;right:8px;bottom:5px;
+ display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:5;
+ color:#b9eae3;font-size:10px}
+.keyframe-easing-controls label{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.keyframe-easing-controls select{font:inherit;color:#e1fff9;background:#183847;
+ border:1px solid #618d9a;border-radius:5px;padding:4px 6px;max-width:135px}
+.keyframe-easing-controls select:focus-visible{outline:2px solid #a6f3e1;outline-offset:2px}
+.keyframe-easing-controls select:disabled{opacity:.5}
+@media(max-width:760px){.keyframe-lane{height:146px}
+ .keyframe-easing-controls{gap:6px;bottom:4px}
+ .keyframe-easing-controls select{max-width:112px;padding:4px 3px}}
