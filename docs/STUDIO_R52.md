@@ -1,5 +1,8 @@
 # ParaCut Studio R5.2 — A1/A2 Track Mixer & V2 Motion
 
+> **Current update (R5.6):** The local FFmpeg companion now supports V2/A2 layered rendering, V2 dissolves, track mixing, ducking and titles. The older limitation descriptions below document their original release scope. See [Studio R5.6](STUDIO_R56.md) for current requirements, fidelity limits and testing.
+
+
 R5.2 adds audio-bus controls and visual entrance/exit motion to the existing five-track local-first browser editor. V1 sequencing and crossfades, V2 overlays, A1/A2 audio clips, T1 title styling, snapping, undo/redo, and the browser recording path remain.
 
 ## Track Mixer
