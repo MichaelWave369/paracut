@@ -68,6 +68,30 @@ export function activeClip(state, time) {
 export function isSourceAudioMuted(clip) {
   return clip?.track_id?.startsWith('video-') && clip.source_audio_muted === true;
 }
+export function overlayCrossfadeAt(state,time) {
+  if(!state || !finite(time))return null;
+  const lane=state.video2Clips;
+  for(let i=0;i<lane.length-1;i++){
+    const outgoing=lane[i],incoming=lane[i+1];
+    const seconds=outgoing.transition_out_seconds??0;
+    if(seconds>0 && time>=incoming.timeline.start && time<outgoing.timeline.end) {
+      return {outgoing,incoming,seconds,progress:Math.max(0,Math.min(1,
+        (time-incoming.timeline.start)/seconds))};
+    }
+  }
+  return null;
+}
+export function maxOverlayCrossfade(lane,index) {
+  if(index<0 || index>=lane.length-1)return 0;
+  const a=lane[index],b=lane[index+1];
+  const aLength=a.source.end-a.source.start,bLength=b.source.end-b.source.start;
+  if(index>0 && (lane[index-1].transition_out_seconds??0)>0)return 0;
+  if((b.transition_out_seconds??0)>0)return 0;
+  // Restrict the first release to touching V2 clips (or a pair already linked).
+  const current=a.transition_out_seconds??0;
+  if(Math.abs(b.timeline.start+current-a.timeline.end)>.004)return 0;
+  return round(Math.max(0,Math.min(1.5,aLength/3,bLength/3)));
+}
 export function activeOverlayClip(state, time) {
   return state.video2Clips.find(c => time >= c.timeline.start && time < c.timeline.end) || null;
 }
@@ -242,6 +266,32 @@ function assertLayerPosition(lane, candidate, idToSkip=null) {
      candidate.timeline.end>c.timeline.start+0.001))
     throw Error('This layer already has media at that time; move it to an empty section.');
 }
+function validateVideo2Overlaps(lane) {
+  for(let i=0;i<lane.length;i++) {
+    const clip=lane[i],seconds=clip.transition_out_seconds??0;
+    if(!finite(seconds)||seconds<0||seconds>maxCrossfade(lane,i)+.002)
+      throw Error('Invalid V2 crossfade length.');
+    if(seconds>0 && ((i>0 && (lane[i-1].transition_out_seconds??0)>0) ||
+       (lane[i+1]?.transition_out_seconds??0)>0))
+      throw Error('Chained V2 crossfades are not supported yet.');
+    if(i>0){
+      const before=lane[i-1];
+      const overlap=Math.max(0,before.timeline.end-clip.timeline.start);
+      const expected=before.transition_out_seconds??0;
+      if(Math.abs(overlap-expected)>.003)
+        throw Error('V2 overlap must match an explicit crossfade.');
+      if(clip.timeline.start<before.timeline.start+0.079 ||
+         (i>1 && clip.timeline.start<lane[i-2].timeline.end-.001))
+        throw Error('V2 triple overlaps are not supported.');
+    } else if(lane.length===1 && seconds>0)
+      throw Error('Last V2 clip has no transition partner.');
+  }
+}
+function joinedOverlay(lane,clipId) {
+  const index=lane.findIndex(c=>c.clip_id===clipId);
+  return index>=0 && ((lane[index].transition_out_seconds??0)>0 ||
+    (index>0 && (lane[index-1].transition_out_seconds??0)>0));
+}
 function assertOverlayStyle(c) {
   if(!['pip','full'].includes(c.overlay_layout??'pip')||
      !OVERLAY_MOTIONS.includes(c.overlay_motion??'none')||
@@ -307,11 +357,26 @@ export function change(state, command) {
     assertLayerPosition(lane,clip);
     lane.push(clip);
     lane.sort((a,b)=>a.timeline.start-b.timeline.start);
+  } else if (type === 'clip.overlay.transition.updated') {
+    const index=video2Clips.findIndex(c=>c.clip_id===command.clip_id);
+    if(index<0||index>=video2Clips.length-1)
+      throw Error('Select a V2 clip with a following V2 clip.');
+    const max=maxOverlayCrossfade(video2Clips,index);
+    const seconds=command.seconds;
+    if(!finite(seconds)||seconds<0||seconds>max+.0001)
+      throw Error('V2 dissolve must fit two touching clips; maximum '+max+' seconds.');
+    const outgoing=video2Clips[index],incoming=video2Clips[index+1];
+    const start=round(outgoing.timeline.end-seconds);
+    incoming.timeline={start,end:round(start+incoming.source.end-incoming.source.start)};
+    outgoing.transition_out_seconds=round(seconds);
+    validateVideo2Overlaps(video2Clips);
   } else if (type === 'clip.layer.moved') {
     const lane=laneFor(command.clip_id);
     const clip=lane?.find(c=>c.clip_id===command.clip_id);
     if(!clip||!['video-2','audio-2'].includes(clip.track_id))
       throw Error('Only V2/A2 clips can be moved to absolute times.');
+    if(clip.track_id==='video-2'&&joinedOverlay(video2Clips,clip.clip_id))
+      throw Error('Remove the V2 dissolve before moving its clips.');
     const start=command.start;
     if(!finite(start)||start<0||start+clip.source.end-clip.source.start>86400)
       throw Error('Invalid layer start time.');
@@ -330,6 +395,8 @@ export function change(state, command) {
   } else if (type === 'clip.trimmed') {
     const c = laneFor(command.clip_id)?.find(item => item.clip_id === command.clip_id);
     if (!c) throw Error('Select a clip first.');
+    if(c.track_id==='video-2'&&joinedOverlay(video2Clips,c.clip_id))
+      throw Error('Remove the V2 dissolve before trimming its clips.');
     const asset = assets.find(a => a.asset_id === c.asset_id);
     const start = Number(command.start), end = Number(command.end);
     if (!finite(start) || !finite(end) || start < 0 || end > asset.duration + 0.001 || end - start < 0.08) {
@@ -385,6 +452,8 @@ export function change(state, command) {
     if (!lane) throw Error('Select a clip first.');
     const index = lane.findIndex(item => item.clip_id === command.clip_id);
     const c = lane[index], t = Number(command.time);
+    if(lane===video2Clips&&joinedOverlay(video2Clips,c.clip_id))
+      throw Error('Remove the V2 dissolve before splitting its clips.');
     const offset = t - c.timeline.start;
     if (!finite(t) || offset < 0.08 || c.timeline.end - t < 0.08) throw Error('Move the playhead inside the clip to split.');
     const at = round(c.source.start + offset);
@@ -421,6 +490,8 @@ export function change(state, command) {
     }
   } else if (type === 'clip.deleted') {
     if (!laneFor(command.clip_id)) throw Error('Clip not found.');
+    if(joinedOverlay(video2Clips,command.clip_id))
+      throw Error('Remove the V2 dissolve before deleting either clip.');
     clips = clips.filter(item => item.clip_id !== command.clip_id);
     audioClips = audioClips.filter(item => item.clip_id !== command.clip_id);
     video2Clips = video2Clips.filter(item => item.clip_id !== command.clip_id);
@@ -436,7 +507,7 @@ export function change(state, command) {
       asset_id: command.asset_id || command.asset?.asset_id || null,
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
-      ...(type === 'clip.transition.updated' ? {seconds:command.seconds} : {}),
+      ...(type === 'clip.transition.updated'||type === 'clip.overlay.transition.updated' ? {seconds:command.seconds} : {}),
       ...(type==='mixer.updated'?{lane:command.lane,gain:command.gain,muted:command.muted,solo:command.solo}:{}),
       ...(type==='mixer.duck.updated'?{enabled:command.enabled}:{}),
       ...(type==='clip.layer.added'||type==='clip.layer.moved'?{start:command.start,track_id:command.track_id||null}:{}),
@@ -494,7 +565,7 @@ export function validate(state) {
         c.fade_out === undefined ? 0 : c.fade_out, seconds);
       if(trackId==='video-2')assertOverlayStyle(c);
       if(trackId==='video-2'||trackId==='audio-2'){
-        assertLayerPosition(lane,c,c.clip_id);
+        if(trackId==='audio-2')assertLayerPosition(lane,c,c.clip_id);
         if(i>0&&lane[i-1].timeline.start>c.timeline.start)throw Error('Layer clips must be sorted.');
       }
       clipIds.add(c.clip_id);
@@ -508,6 +579,7 @@ export function validate(state) {
           Math.abs(c.timeline.end-c.timeline.start-(c.source.end-c.source.start))>0.003) throw Error('Timeline is not sequential.');
     }
   }
+  validateVideo2Overlaps(state.video2Clips);
   const titleIds = new Set();
   for (const title of state.titles) {
     validateTitle(title);
