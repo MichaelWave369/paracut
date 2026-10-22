@@ -173,9 +173,9 @@ assert.ok(point(2)); // new point at 25% time
 const addedCount=s.video2Clips[0].opacity_keyframe_points.length;
 let handle=point(1);
 handle.fire('pointerdown');
-handle.fire('pointermove',{clientX:70,clientY:50});
+handle.fire('pointermove',{clientX:30,clientY:50});
 assert.equal(changes,origChanges+1);
-handle.fire('pointerup',{clientX:70,clientY:50});
+handle.fire('pointerup',{clientX:30,clientY:50});
 assert.equal(changes,origChanges+2);
 assert.equal(point(1).focused,true);
 assert.equal(s.video2Clips[0].opacity_keyframe_points.length,addedCount);
