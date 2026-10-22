@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.1 — Editable Custom Bézier Easing
+
+R7.1 adds **Custom Bézier** as a fifth per-segment animation mode, with two orange vertical-control handles directly on the keyframe graph. Drag or keyboard-adjust the handles, then release to commit one validated receipt; Undo/Redo, saved drafts, Program preview, browser recording and local FFmpeg MP4 all retain bounded cubic easing behavior. Handles have fixed one-third/two-thirds horizontal placement for exact, secure render math; full 2D tangents are deferred. Older R7.0 easing presets and legacy linear projects are unchanged. [R7.1 guide](docs/STUDIO_R71.md).
+
+
 ## ◆ ParaCut Studio R7.0 — Segment Easing Curves
 
 The R6.9 2–8-point V2 opacity and clip volume automation now supports **per-segment Linear, Ease In, Ease Out, and Ease In/Out**. Select an interval and easing mode beneath the timeline curve: edits are validated, receipt-backed, Undo/Redo-safe and preserved in existing `draft.v3` projects. Preview, browser recording and local MP4 use the same bounded easing math; older linear projects render as before. No Bézier handles or new schema migration. [R7.0 guide](docs/STUDIO_R70.md).
