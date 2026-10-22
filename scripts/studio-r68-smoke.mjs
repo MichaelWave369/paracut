@@ -152,6 +152,9 @@ for(const id of ['visual-keyframe-lanes','keyframe-lane-opacity',
  'keyframe-lane-volume','show-keyframe-lanes'])
  assert.match(html,new RegExp('id="'+id+'"'));
 assert.match(js,/renderVisualKeyframeLanes\(/);
+assert.match(js,/function appendKeyframeBadge\(clip,item\)/);
+assert.match(js,/appendKeyframeBadge\(clip,item\)/);
+assert.match(css,/\.keyframe-indicator/);
 assert.match(js,/function drawKeyframeLanes\(\)/);
 assert.match(js,/drawKeyframeLanes\(\);\n}\n\nfunction showTitleAt/);
 assert.match(js,/showKeyframeLanes=event.target.checked/);
