@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.0 — Segment Easing Curves
+
+The R6.9 2–8-point V2 opacity and clip volume automation now supports **per-segment Linear, Ease In, Ease Out, and Ease In/Out**. Select an interval and easing mode beneath the timeline curve: edits are validated, receipt-backed, Undo/Redo-safe and preserved in existing `draft.v3` projects. Preview, browser recording and local MP4 use the same bounded easing math; older linear projects render as before. No Bézier handles or new schema migration. [R7.0 guide](docs/STUDIO_R70.md).
+
+
 ## ◆ ParaCut Studio R6.9 — Multi-Point Animation
 
 The selected clip's visual keyframe lanes now support **2–8 draggable points** per V2 Opacity or clip Volume curve. Double-click the graph or press **+ Point at Playhead**, drag interior diamonds in **time and value**, or use keyboard arrows and Delete. Every completed edit produces one validated receipt with Undo/Redo, and saved piecewise-linear curves flow through Program preview, browser recording and local FFmpeg MP4. Older two-point drafts still work; Inspector Start/End Apply intentionally resets that property to two points. [R6.9 guide](docs/STUDIO_R69.md).
