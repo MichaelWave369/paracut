@@ -1,5 +1,6 @@
 // ParaCut Studio R3: local-first editor with video/audio automation and timed titles.
 import { validateClipColor } from './studio-color.js';
+import { synchronizedRipplePlan } from './studio-ripple.js';
 // This is a browser draft format, NOT the canonical ParaCut project-core format.
 export const DRAFT_SCHEMA = 'paracut.studio.draft.v3';
 export const PREVIOUS_DRAFT_SCHEMA = 'paracut.studio.draft.v2';
@@ -311,6 +312,7 @@ export function change(state, command) {
   const before = checkpoint(state);
   let assets = copy(state.assets), clips = copy(state.clips), audioClips = copy(state.audioClips), video2Clips=copy(state.video2Clips), audio2Clips=copy(state.audio2Clips), audioMix=copy(state.audioMix), titles = copy(state.titles), name = state.name;
   const { type } = command;
+  let rippleDetails=null;
   const laneFor = clipId => [clips,audioClips,video2Clips,audio2Clips].find(
     lane => lane.some(c=>c.clip_id===clipId)) || null;
   if (type === 'asset.added') {
@@ -555,6 +557,23 @@ export function change(state, command) {
       const targetIndex = lane.findIndex(c => c.clip_id === command.target_id);
       lane.splice(targetIndex + (command.after ? 1 : 0), 0, clip);
     }
+  } else if (type === 'clip.ripple.deleted') {
+    const plan=synchronizedRipplePlan(state,command.clip_id);
+    // Atomic transaction: leave source timing and A1 soundtrack as-is,
+    // and shift only V2/A2/title elements strictly beyond the removed V1 span.
+    clips=clips.filter(c=>c.clip_id!==command.clip_id);
+    const shiftLane=(lane,ids,key)=>lane.map(c=>{
+      if(!ids.includes(c.clip_id))return c;
+      return {...c,timeline:{start:round(c.timeline.start-plan.span),
+        end:round(c.timeline.end-plan.span)}};
+    });
+    video2Clips=shiftLane(video2Clips,plan.affected.v2,'v2');
+    audio2Clips=shiftLane(audio2Clips,plan.affected.a2,'a2');
+    titles=titles.map(t=>plan.affected.titles.includes(t.title_id)?
+      {...t,start:round(t.start-plan.span),end:round(t.end-plan.span)}:t);
+    rippleDetails={start:plan.start,end:plan.end,seconds_removed:plan.span,
+      shifted_v2:plan.affected.v2.length,shifted_a2:plan.affected.a2.length,
+      shifted_titles:plan.affected.titles.length,a1_unchanged:true};
   } else if (type === 'clip.deleted') {
     if (!laneFor(command.clip_id)) throw Error('Clip not found.');
     if(joinedOverlay(video2Clips,command.clip_id))
@@ -577,6 +596,7 @@ export function change(state, command) {
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
       ...(type === 'clip.color.updated' ? { color:copy(command.color) } : {}),
+      ...(type === 'clip.ripple.deleted' ? rippleDetails : {}),
       ...(type === 'clip.transition.updated'||type === 'clip.overlay.transition.updated' ? {seconds:command.seconds} : {}),
       ...(type==='mixer.updated'?{lane:command.lane,gain:command.gain,muted:command.muted,solo:command.solo}:{}),
       ...(type==='mixer.duck.updated'?{enabled:command.enabled}:{}),

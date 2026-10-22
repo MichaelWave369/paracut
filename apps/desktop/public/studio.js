@@ -6,6 +6,7 @@ import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedM
 import { workspacePreset,loadWorkspace,saveWorkspace,resizeWorkspace } from './studio-workspaces.js';
 import { clipColor, hasColorAdjustment, COLOR_DEFAULTS } from './studio-color.js';
 import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } from './studio-color-workflow.js';
+import { synchronizedRipplePlan } from './studio-ripple.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
@@ -848,6 +849,17 @@ function render() {
   $('redo').disabled = !state.redo.length || exporting;
   $('split').disabled = !selectedId || exporting;
   $('remove').disabled = !selectedId || exporting;
+  try {
+    const plan=synchronizedRipplePlan(state,selectedId);
+    $('ripple-delete').disabled=exporting;
+    $('ripple-delete').title='Remove '+fmt(plan.span)+
+      ' from V1; move '+plan.affected.v2.length+' V2, '+
+      plan.affected.a2.length+' A2 and '+plan.affected.titles.length+
+      ' title(s). A1 is unchanged.';
+  }catch(e){
+    $('ripple-delete').disabled=true;
+    $('ripple-delete').title=e.message;
+  }
   const canExport = Boolean(state.clips.length) &&
     [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].every(c => media.has(c.asset_id));
   const recordingReady = Boolean(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream);
@@ -970,6 +982,7 @@ function edit(command) {
     }
     stopPlayback();
     state = change(state, command);
+    if(command.type==='clip.ripple.deleted')playhead=state.receipts.at(-1).details.start;
     if (selectedId && ![...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].some(c=>c.clip_id===selectedId)) selectedId = null;
     playhead = Math.min(playhead, duration(state));
     render(); void seekTo(playhead); status(command.type + ' ✓');
@@ -1047,11 +1060,15 @@ for(const [key,track] of [['v1','video-1'],['v2','video-2'],['a1','audio-1'],['a
     updateToolUI();
   });
 }
-$('jog-back').addEventListener('click',()=>{
+function frameJog(step) {
   if(exporting||!state.clips.length)return;
   stopPlayback();
-  void seekTo(Math.max(0,Math.round((playhead-1/30)*1000)/1000));
-});
+  const next=Math.max(0,Math.min(duration(state),
+    Math.round(playhead*30+step)/30));
+  void seekTo(Math.round(next*1000)/1000);
+}
+$('jog-back').addEventListener('click',()=>frameJog(-1));
+$('jog-next').addEventListener('click',()=>frameJog(1));
 $('jog-stop').addEventListener('click',()=>{if(!exporting)stopPlayback();});
 $('jog-forward').addEventListener('click',async()=>{
   if(exporting||!state.clips.length)return;
@@ -1250,6 +1267,18 @@ $('mute-source-audio').addEventListener('change', event => edit({
 }));
 $('split').addEventListener('click', () => edit({ type:'clip.split', clip_id:selectedId, time:playhead }));
 $('remove').addEventListener('click', () => edit({ type:'clip.deleted', clip_id:selectedId }));
+$('ripple-delete').addEventListener('click',()=>{
+  if(exporting)return;
+  try{
+    const plan=synchronizedRipplePlan(state,selectedId);
+    const msg='Synchronize Ripple Delete '+fmt(plan.span)+' of V1 footage?\n\n'+
+      'Later events shifted: '+plan.affected.v2.length+' V2, '+
+      plan.affected.a2.length+' A2, '+plan.affected.titles.length+' titles.\n'+
+      'A1 soundtrack remains independently timed. This can be undone.';
+    if(!confirm(msg))return;
+    edit({type:'clip.ripple.deleted',clip_id:selectedId});
+  }catch(e){status(e.message,true);}
+});
 $('move-left').addEventListener('click', () => edit({ type:'clip.moved', clip_id:selectedId, step:-1 }));
 $('move-right').addEventListener('click', () => edit({ type:'clip.moved', clip_id:selectedId, step:1 }));
 for(const [name, method] of [['undo',undo],['redo',redo]]) $(name).addEventListener('click', () => {
@@ -1386,9 +1415,13 @@ document.addEventListener('keydown', e => {
     const key=e.key.toLowerCase();
     if(key==='v'){e.preventDefault();setEditingTool('select');return;}
     if(key==='c'){e.preventDefault();setEditingTool('razor');return;}
-    if(key==='j'){e.preventDefault();$('jog-back').click();return;}
+    if(e.key===','||key==='j'){e.preventDefault();$('jog-back').click();return;}
+    if(e.key==='.'){e.preventDefault();$('jog-next').click();return;}
     if(key==='k'){e.preventDefault();$('jog-stop').click();return;}
     if(key==='l'){e.preventDefault();if(!e.repeat)$('jog-forward').click();return;}
+  }
+  if(e.shiftKey && (e.key==='Delete'||e.key==='Backspace')){
+    e.preventDefault();$('ripple-delete').click();return;
   }
   if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
   else if (e.key.toLowerCase() === 's') $('split').click();
