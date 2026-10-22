@@ -74,7 +74,7 @@ const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url
 for(const id of ['waveform-trim-panel','waveform-trim-canvas',
   'waveform-in-playhead','waveform-out-playhead','peak-a1','peak-a2'])
   assert.ok(html.includes('id="'+id+'"'),id);
-assert.match(html,/Not a calibrated or live signal meter/);
+assert.match(html,/not the combined master mix, a LUFS measurement or export-quality proof/);
 assert.match(js,/paintTrimWaveform\(canvas,peaks,asset\.duration/);
 assert.match(js,/trimCanvas\.addEventListener\('pointerdown'/);
 assert.match(js,/trimCanvas\.addEventListener\('pointermove'/);

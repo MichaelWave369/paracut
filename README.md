@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎚️ ParaCut Studio R5.4 — Live Audio Bus Meters
+
+During playback, **A1/A2 level indicators now read measured Web Audio sample peaks (dBFS)** after the existing clip volume/fades and track mixer. Paused/unsupported browsers retain clearly labeled R5.3 waveform *estimates*. These are A1/A2 preview-bus readings, **not a master meter or LUFS measurement**. Browser exports and drafts are unchanged. [R5.4 behavior and limitations](docs/STUDIO_R54.md).
+
+
 ## 🎧 ParaCut Studio R5.3 — Waveform Precision
 
 Audio clips on **A1/A2** now expose a source waveform with draggable IN/OUT trim markers, numeric timing and playhead-to-trim shortcuts. A clearly labeled **estimated level guide** shows coarse A1/A2 waveform levels with current track mixer/duck/solo effects. These are not calibrated live meters. No draft or export format changes. [R5.3 guide](docs/STUDIO_R53.md).

@@ -81,7 +81,7 @@ assert.throws(()=>importDraft(JSON.stringify(badGain)),/Audio settings/);
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 assert.ok(js.includes("video.volume = Math.min(1, audioLevelAt(v, at) * audioMixLevelAt(state,'video-1',at)"));
-assert.ok(js.includes("soundtrack.volume = Math.min(1, audioLevelAt(a, at) * audioMixLevelAt(state,'audio-1',at)"));
+assert.ok(js.includes("setPreviewBusGain('a1',soundtrack,audioLevelAt(a,at)*audioMixLevelAt(state,'audio-1',at))"));
 assert.ok(js.includes("videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition) * audioMixLevelAt(state,'video-1',timelinePosition)"));
 assert.ok(js.includes("soundtrackGain.gain.value = audioLevelAt(clip, at) * audioMixLevelAt(state,'audio-1',at)"));
 assert.match(js,/drawTitleOnCanvas\(g, visibleTitle\(state,at\), at\)/);
