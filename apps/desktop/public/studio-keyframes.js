@@ -1,5 +1,7 @@
 // R6.7: two linear endpoint keyframes over normalized clip duration.
 // Separate modifiers from legacy base opacity/volume and existing fades.
+import {pointsField,keyframePointsFor,keyframeCurveAt,keyframeCurveExpression}
+ from './studio-keyframe-points.js';
 export const KEYFRAME_FIELDS=Object.freeze(['opacity_keyframes','volume_keyframes']);
 export function validateKeyframePair(value) {
   if(!value||typeof value!=='object'||Array.isArray(value)||
@@ -17,10 +19,15 @@ export function keyframeAt(pair,relativeProgress){
   return p.start+(p.end-p.start)*u;
 }
 export function clipKeyframeAt(clip,field,timelineTime){
-  if(!clip||clip[field]===undefined)return 1;
+  if(!clip)return 1;
   if(!KEYFRAME_FIELDS.includes(field))throw Error('Unsupported keyframe property.');
+  const pointsKey=pointsField(field);
+  if(clip[field]===undefined&&clip[pointsKey]===undefined)return 1;
   const span=clip.timeline.end-clip.timeline.start;
-  return keyframeAt(clip[field],span>0?(timelineTime-clip.timeline.start)/span:0);
+  const progress=span>0?(timelineTime-clip.timeline.start)/span:0;
+  return clip[pointsKey]===undefined
+    ?keyframeAt(clip[field],progress)
+    :keyframeCurveAt(keyframePointsFor(clip,field),progress);
 }
 const n=value=>String(Number(value.toFixed(5)));
 export function keyframeTimeExpression(pair,duration,variable='t') {
@@ -33,17 +40,22 @@ export function keyframeTimeExpression(pair,duration,variable='t') {
     variable+'/'+n(duration)+'))';
 }
 export function audioKeyframeFilter(clip){
-  if(clip.volume_keyframes===undefined)return null;
+  if(clip.volume_keyframes===undefined&&clip.volume_keyframe_points===undefined)return null;
   const span=clip.source.end-clip.source.start;
-  return "volume='"+keyframeTimeExpression(clip.volume_keyframes,span,"t")+
+  const expr=clip.volume_keyframe_points===undefined
+    ?keyframeTimeExpression(clip.volume_keyframes,span,'t')
+    :keyframeCurveExpression(clip.volume_keyframe_points,span,'t');
+  return "volume='"+expr+
     "':eval=frame";
 }
 export function overlayKeyframeFilter(clip){
-  if(clip.opacity_keyframes===undefined)return null;
+  if(clip.opacity_keyframes===undefined&&clip.opacity_keyframe_points===undefined)return null;
   const duration=clip.source.end-clip.source.start;
   // FFmpeg geq alpha evaluates in source-local time before setpts timeline shift.
   // Commas in geq function calls require escaping at the filtergraph level.
-  const expr=keyframeTimeExpression(clip.opacity_keyframes,duration,'T')
+  const expr=(clip.opacity_keyframe_points===undefined
+    ?keyframeTimeExpression(clip.opacity_keyframes,duration,'T')
+    :keyframeCurveExpression(clip.opacity_keyframe_points,duration,'T'))
     .replace(/,/g,'\\,');
   return 'geq=r=r(X\\,Y):g=g(X\\,Y):b=b(X\\,Y):a=alpha(X\\,Y)*('+expr+')';
 }
