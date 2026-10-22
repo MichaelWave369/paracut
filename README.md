@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎬 ParaCut Studio R5.6 — Layered Local MP4
+
+The opt-in Windows/Node.js FFmpeg companion now supports the full **V1/V2 video and A1/A2 audio storyboard**, including moving V2 dissolves, PiP/full overlays, voiceover ducking, track gain/mute/solo, source audio and timed T1 titles. It still uses your own installed FFmpeg, with explicit dry-run validation, exact media relinking and no overwrites. [R5.6 local rendering guide](docs/STUDIO_R56.md).
+
+
 ## 🎞️ ParaCut Studio R5.5 — V2 overlay crossfades
 
 The five-track browser editor now supports **two moving V2 video sources dissolving together** in live preview and browser WebM / supported MP4 output. Select the first of two touching V2 clips, choose a dissolve duration, and ParaCut creates a controlled overlap with independently gain-weighted V2 original audio. Old drafts still work. The standalone Windows FFmpeg companion continues to refuse layered edits until its engine supports them. [R5.5 guide](docs/STUDIO_R55.md).
