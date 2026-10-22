@@ -1,5 +1,10 @@
 # ParaCut
 
+## ✂️ ParaCut Studio R5.9 — Razor Tools + JKL Editing
+
+The Source/Program studio adds **V/C Selection/Razor tools**, explicit V1/V2/A1/A2 **Razor target buttons**, and **J/K/L transport** (one-frame backward jog, stop, and 1×/2× forward playback). Click a targeted clip in Razor mode to split exactly where you click; cuts are validated, receipt-backed and undoable. All prior edits, drafts, browser export and local MP4 rendering are preserved. [R5.9 editing tools guide](docs/STUDIO_R59.md).
+
+
 ## 🎞️ ParaCut Studio R5.8 — Source + Program Editing
 
 Our first Premiere-style **dual-monitor workflow** has arrived: independently preview original footage in a **Source Monitor**, mark IN/OUT, then **Insert at the Program playhead** with V1 ripple or **Replace Selected V1**. The Project Media shelf now supports search and sorting. Every committed edit is validated, undoable and captured as a ledger receipt. Existing V1/V2/A1/A2/T1 browser and local MP4 exports remain unchanged. [R5.8 guide and limitations](docs/STUDIO_R58.md).
