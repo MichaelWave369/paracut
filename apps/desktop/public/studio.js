@@ -4,13 +4,15 @@ import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './st
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 import { workspacePreset,loadWorkspace,saveWorkspace,resizeWorkspace } from './studio-workspaces.js';
-import { clipColor, colorCSS, COLOR_DEFAULTS } from './studio-color.js';
+import { clipColor, hasColorAdjustment, COLOR_DEFAULTS } from './studio-color.js';
+import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } from './studio-color-workflow.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 let activeExportFormat = null;
 let activeTool='select'; // editor preference only; never stored in draft
+let colorCompareBefore=false, colorPreviewPending=false, lastColorSelectedId=null;
 const razorTargets=new Set(['video-1']);
 let transportSpeed=1;
 let timelineZoom=1; // local interface preference, not saved into media drafts
@@ -290,6 +292,12 @@ function drawTimeline() {
       const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
       const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
       item.append(label, time);
+      if(!isAudio&&hasColorAdjustment(clip)){
+        item.classList.add('graded-clip');
+        const grade=document.createElement('small');grade.className='grade-indicator';
+        grade.textContent='COLOR';grade.title='This clip has color corrections';
+        item.append(grade);
+      }
       if (!isAudio && clip.transition_out_seconds > 0) {
         const badge = document.createElement('small');
         badge.className = 'transition-caption';
@@ -348,6 +356,18 @@ function drawTimeline() {
       const name=document.createElement('span');
       name.textContent=(asset?.name||'Missing media')+' · '+fmt(clip.timeline.start);
       item.append(name);
+      if(kind==='video'&&hasColorAdjustment(clip)){
+        item.classList.add('graded-clip');
+        const grade=document.createElement('small');grade.className='grade-indicator';
+        grade.textContent='COLOR';grade.title='V2 color correction applied';
+        item.append(grade);
+      }
+      if(kind==='video'&&((clip.overlay_motion??'none')!=='none'||
+        (clip.overlay_opacity??1)!==1||(clip.visual_fade_in??0)>0||(clip.visual_fade_out??0)>0)){
+        const fx=document.createElement('small');fx.className='motion-indicator';
+        fx.textContent='FX';fx.title='Overlay motion, opacity or visual fades applied';
+        item.append(fx);
+      }
       if(kind==='video'&&(clip.transition_out_seconds??0)>0){
         item.classList.add('has-overlay-transition');
         const mark=document.createElement('small');
@@ -451,6 +471,7 @@ async function syncLayerPlayer(el,clip,at,autoplay,kind) {
   if(el.dataset.clip!==clip.clip_id){
     const serial=kind==='video'?++layerVideoSerial:kind==='incoming'?++layerIncomingSerial:++layerAudioSerial;
     el.pause();el.src=ref.url;el.dataset.clip=clip.clip_id;el.load();
+    if(kind==='video'||kind==='incoming')applyPreviewColor();
     try{
       await new Promise((resolve,reject)=>{
         if(el.readyState>=1)return resolve();
@@ -483,11 +504,20 @@ async function syncLayerPlayer(el,clip,at,autoplay,kind) {
     try{await el.play()}catch(e){status(kind+' layer preview: '+e.message,true);}
   }else if(!autoplay)el.pause();
 }
+function pendingColorValues(){
+  const values={};
+  for(const key of ['brightness','contrast','saturation','warmth'])
+    values[key]=Number($('color-'+key).value)/(key==='warmth'?1:100);
+  return values;
+}
 function applyPreviewColor() {
   const find=id=>[...state.clips,...state.video2Clips].find(c=>c.clip_id===id);
-  // Apply each source's own filter before it is crossfaded or overlaid.
+  const pending=colorPreviewPending?pendingColorValues():null;
+  // Before/After only affects the selected source's PROGRAM preview;
+  // exports and every other clip keep their fully committed grade.
   for(const el of [video,crossfadeVideo,overlayVideo,overlayIncoming])
-    el.style.filter=colorCSS(find(el.dataset.clip));
+    el.style.filter=previewColorFor(find(el.dataset.clip),selectedId,
+      {before:colorCompareBefore,pending});
 }
 function syncLayers(at,autoplay) {
   const dissolve=overlayCrossfadeAt(state,at);
@@ -512,6 +542,7 @@ async function syncCrossfadePreview(at, autoplay) {
     const serial = ++previewTransitionSerial;
     loadingTransition = fade.incoming.clip_id;
     crossfadeVideo.pause(); crossfadeVideo.src = ref.url; crossfadeVideo.dataset.clip = fade.incoming.clip_id; crossfadeVideo.load();
+    applyPreviewColor();
     try {
       await new Promise((resolve, reject) => {
         if (crossfadeVideo.readyState >= 1) return resolve();
@@ -695,11 +726,25 @@ function adjustTrimAtFraction(edge,fraction) {
 }
 function drawInspector() {
   const clip = [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].find(c => c.clip_id === selectedId);
+  if(lastColorSelectedId!==selectedId){
+    colorCompareBefore=false;colorPreviewPending=false;
+    lastColorSelectedId=selectedId;
+  }
+  const isVideo=Boolean(clip?.track_id.startsWith('video-'));
+  $('program-grade-compare').disabled=!isVideo||exporting;
+  $('program-grade-compare').setAttribute('aria-pressed',String(colorCompareBefore));
+  $('program-grade-compare').textContent=colorCompareBefore?'Showing Before':'Before/After';
+  $('program-grade-compare').title='Compare selected clip only; no export or ledger changes';
+  for(const look of Object.keys(COLOR_LOOK_NAMES)){
+    const button=document.querySelector('[data-color-look="'+look+'"]');
+    if(button)button.disabled=!isVideo||exporting;
+  }
   $('inspector-fields').hidden = !clip;
   $('inspector-empty').hidden = Boolean(clip);
   $('clip-color-control').hidden=!clip||!clip.track_id.startsWith('video-');
   if (!clip) return;
   if(clip.track_id.startsWith('video-')) {
+    colorPreviewPending=false;
     const values=clipColor(clip);
     for(const key of ['brightness','contrast','saturation','warmth']){
       const display=key==='warmth'?Math.round(values[key]):Math.round(values[key]*100);
@@ -769,7 +814,8 @@ function drawReceipts() {
   const list = $('receipts'); list.replaceChildren();
   for (const entry of state.receipts.slice(-12).reverse()) {
     const li = document.createElement('li');
-    li.textContent = String(entry.action || 'unknown').slice(0, 90) + ' · ' + String(entry.at || '').slice(11, 19);
+    li.textContent = String(entry.action || 'unknown').slice(0, 90) +
+      ' · ' + String(entry.at || '').slice(11, 19) + colorReceiptSummary(entry);
     list.append(li);
   }
 }
@@ -1127,18 +1173,38 @@ $('apply-layer-start').addEventListener('click',()=>placeOnLayer({type:'clip.lay
 for(const key of ['brightness','contrast','saturation','warmth']) {
   $('color-'+key).addEventListener('input',e=>{
     $('color-'+key+'-value').textContent=e.target.value+(key==='warmth'?'':'%');
+    colorPreviewPending=true;
+    applyPreviewColor();
   });
 }
 function submitColor() {
-  const values={};
-  for(const key of ['brightness','contrast','saturation','warmth'])
-    values[key]=Number($('color-'+key).value)/(key==='warmth'?1:100);
-  edit({type:'clip.color.updated',clip_id:selectedId,color:values});
+  colorCompareBefore=false;
+  colorPreviewPending=false;
+  edit({type:'clip.color.updated',clip_id:selectedId,color:pendingColorValues()});
 }
 $('apply-clip-color').addEventListener('click',submitColor);
+$('program-grade-compare').addEventListener('click',()=>{
+  const clip=[...state.clips,...state.video2Clips].find(c=>c.clip_id===selectedId);
+  if(!clip||exporting)return;
+  colorCompareBefore=!colorCompareBefore;
+  $('program-grade-compare').setAttribute('aria-pressed',String(colorCompareBefore));
+  $('program-grade-compare').textContent=colorCompareBefore?'Showing Before':'Before/After';
+  applyPreviewColor();
+});
+for(const key of Object.keys(COLOR_LOOK_NAMES)){
+  const button=document.querySelector('[data-color-look="'+key+'"]');
+  button.addEventListener('click',()=>{
+    const clip=[...state.clips,...state.video2Clips].find(c=>c.clip_id===selectedId);
+    if(!clip||exporting)return;
+    colorCompareBefore=false;colorPreviewPending=false;
+    edit({type:'clip.color.updated',clip_id:selectedId,color:colorLook(key)});
+    status(COLOR_LOOK_NAMES[key]+' look applied · edit receipt saved');
+  });
+}
 $('reset-clip-color').addEventListener('click',()=>{
   const clip=[...state.clips,...state.video2Clips].find(c=>c.clip_id===selectedId);
-  if(clip)edit({type:'clip.color.updated',clip_id:selectedId,color:{...COLOR_DEFAULTS}});
+  if(clip){colorCompareBefore=false;colorPreviewPending=false;
+    edit({type:'clip.color.updated',clip_id:selectedId,color:{...COLOR_DEFAULTS}});}
 });
 $('apply-overlay-style').addEventListener('click',()=>edit({type:'clip.overlay.updated',
   clip_id:selectedId,layout:$('overlay-layout').value,
@@ -1232,13 +1298,17 @@ function applyWorkspaceSettings({persist=true,focus=false}={}) {
   for(const [id,key] of [['resize-media','left'],['resize-inspector','right'],
     ['resize-monitors','monitor']])
     $(id).setAttribute('aria-valuenow',String(pref[key]));
-  const labels={editing:'Editing',audio:'Audio',color:'Color layout (no color effects yet)',titles:'Titles'};
+  const labels={editing:'Editing',audio:'Audio',color:'Color grading',titles:'Titles'};
   $('workspace-feedback').textContent=labels[pref.preset]+' · '+pref.left+'/'+pref.right+' px · monitor '+pref.monitor+' px';
   if(!pref.showSource)sourceVideo.pause();
   if(persist)saveWorkspace(availableWorkspaceStorage(),pref);
   if(focus && pref.preset==='audio')$('audio-workspace-anchor').scrollIntoView({block:'start',behavior:'smooth'});
   if(focus && pref.preset==='titles')$('titles-workspace-anchor').scrollIntoView({block:'start',behavior:'smooth'});
-  if(focus && pref.preset==='color')$('studio-inspector').scrollTop=0;
+  if(focus && pref.preset==='color'){
+    const panel=$('clip-color-control');
+    if(!panel.hidden)panel.scrollIntoView({block:'start',behavior:'smooth'});
+    else $('studio-inspector').scrollTop=0;
+  }
   // Ruler tick density and canvas width follow the actual workspace viewport.
   requestAnimationFrame(()=>{drawTimeline();drawTitles();updateStoryPlayhead();});
 }
