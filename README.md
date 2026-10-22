@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎛️ ParaCut Studio R6.6 — Organized Effects Controls
+
+The clip Inspector now provides collapsible, **context-aware Timing, Motion, Opacity, Color, Audio, Copy/Paste and Clip Information** sections. Expand/Collapse All and local section preferences make the studio easier to navigate; the Color workspace reopens its actual grading controls. Existing editing commands, receipts, Undo/Redo, saved drafts, browser recording, and local FFmpeg MP4 exports are preserved. [R6.6 Effects Controls guide](docs/STUDIO_R66.md).
+
+
 ## 📍 ParaCut Studio R6.5 — Timeline Review Markers
 
 Add **colored, named markers with review notes** at any Program playhead position. Navigate with **Shift+M / Alt+M**, click marker pins in the timeline, edit timing and comments in Inspector, and use marker positions as optional snapping anchors. Marker edits have ledger receipts and Undo/Redo, and persist in compatible Studio drafts; browser and local MP4 video renders ignore these annotations. [R6.5 marker guide](docs/STUDIO_R65.md).

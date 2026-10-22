@@ -9,6 +9,9 @@ import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } fro
 import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
+import {EFFECTS_SECTIONS,readEffectsView,writeEffectsView,
+  setEffectsSection,allEffectsSections,effectsVisibility,effectsSummaries}
+  from './studio-effects-layout.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
@@ -865,6 +868,41 @@ function adjustTrimAtFraction(edge,fraction) {
   else $('out-time').value=String(Math.min(asset.duration,Math.round(value*1000)/1000));
   drawTrimWaveform();
 }
+// R6.6 Effects Controls are UI preferences, not saved project edits.
+function effectsStorage(){
+  try{return window.localStorage;}catch{return null;}
+}
+let effectsView=readEffectsView(effectsStorage());
+function applyEffectsView(){
+  for(const name of EFFECTS_SECTIONS){
+    $('effects-'+name).open=effectsView[name];
+  }
+  const expanded=EFFECTS_SECTIONS.filter(name=>effectsView[name]).length;
+  $('effects-view-status').textContent=expanded+' / '+EFFECTS_SECTIONS.length+' sections open · local preference';
+}
+function refreshEffectsSections(clip){
+  const visible=effectsVisibility(clip),summaries=effectsSummaries(clip);
+  for(const name of EFFECTS_SECTIONS){
+    $('effects-'+name).hidden=!visible[name];
+    $('effects-'+name+'-summary').textContent=summaries[name];
+  }
+}
+for(const name of EFFECTS_SECTIONS){
+  const el=$('effects-'+name);
+  el.addEventListener('toggle',()=>{
+    if(effectsView[name]===el.open)return;
+    effectsView=setEffectsSection(effectsView,name,el.open);
+    writeEffectsView(effectsStorage(),effectsView);
+    applyEffectsView();
+  });
+}
+for(const [id,open] of [['effects-expand-all',true],['effects-collapse-all',false]]){
+  $(id).addEventListener('click',()=>{
+    effectsView=allEffectsSections(open);
+    applyEffectsView();
+    writeEffectsView(effectsStorage(),effectsView);
+  });
+}
 function drawInspector() {
   const clip = [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].find(c => c.clip_id === selectedId);
   if(lastColorSelectedId!==selectedId){
@@ -872,6 +910,7 @@ function drawInspector() {
     lastColorSelectedId=selectedId;
   }
   const isVideo=Boolean(clip?.track_id.startsWith('video-'));
+  refreshEffectsSections(clip);
   $('program-grade-compare').disabled=!isVideo||exporting;
   $('program-grade-compare').setAttribute('aria-pressed',String(colorCompareBefore));
   $('program-grade-compare').textContent=colorCompareBefore?'Showing Before':'Before/After';
@@ -1503,6 +1542,8 @@ function applyWorkspaceSettings({persist=true,focus=false}={}) {
   if(focus && pref.preset==='audio')$('audio-workspace-anchor').scrollIntoView({block:'start',behavior:'smooth'});
   if(focus && pref.preset==='titles')$('titles-workspace-anchor').scrollIntoView({block:'start',behavior:'smooth'});
   if(focus && pref.preset==='color'){
+    effectsView=setEffectsSection(effectsView,'color',true);
+    applyEffectsView();writeEffectsView(effectsStorage(),effectsView);
     const panel=$('clip-color-control');
     if(!panel.hidden)panel.scrollIntoView({block:'start',behavior:'smooth'});
     else $('studio-inspector').scrollTop=0;
@@ -1554,6 +1595,7 @@ installWorkspaceResize('resize-media','left',1,'x');
 installWorkspaceResize('resize-inspector','right',-1,'x');
 installWorkspaceResize('resize-monitors','monitor',1,'y');
 applyWorkspaceSettings({persist:false});
+applyEffectsView();
 render(); void seekTo(0); status('New project ready.');
 });
 $('save-draft').addEventListener('click', () => {

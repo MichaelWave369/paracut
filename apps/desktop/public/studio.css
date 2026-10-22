@@ -307,3 +307,31 @@
 .marker-item.selected{border-color:#91dccb;background:#1a3842}
 .marker-select{background:#172b3b;border:0;text-align:left;font-size:11px;font-weight:700;padding:6px;cursor:pointer}
 .marker-note{font-size:10px;color:#a9bdd0;white-space:pre-wrap;overflow-wrap:anywhere;padding:0 6px}
+
+/* R6.6 native, keyboard-accessible inspector accordions */
+.effects-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:12px 0 10px}
+.effects-toolbar button{padding:6px 10px;font-size:11px}
+.effects-toolbar .tiny{flex:1 1 100%;color:#95bdca;font-size:10px}
+.effects-section{border:1px solid #375165;background:#112231;border-radius:9px;margin:8px 0;overflow:clip}
+.effects-section[hidden],.effects-section-body [hidden]{display:none!important}
+.effects-section>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;list-style:none;
+  padding:11px 12px;background:#162c3c;color:#dfecf6;user-select:none}
+.effects-section>summary::-webkit-details-marker{display:none}
+.effects-section>summary::before{content:'▸';color:#85dfd3;font-size:13px;transition:transform .13s}
+.effects-section[open]>summary::before{transform:rotate(90deg)}
+.effects-section>summary:hover{background:#1b394b}
+.effects-section>summary:focus-visible{outline:2px solid #8de9df;outline-offset:-3px}
+.effects-section-name{flex:1;font-size:12px;font-weight:700;letter-spacing:.04em}
+.effects-summary{font-size:10px;font-weight:400;color:#a8c7d3;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.effects-section-body{padding:12px 11px}
+.effects-section-body>.clip-color-control,
+.effects-section-body>.attribute-clipboard{margin:0;border:0;background:transparent;padding:0}
+.effects-section-body>.transition-control{margin:6px 0}
+.effects-section-body>.audio-adjustments{margin:8px 0}
+.effects-section-body>.metadata{margin:0}
+.effects-section-body .tip{font-size:10px}
+#overlay-style-control{margin:8px 0}
+#overlay-style-control .effects-section{margin:8px 0}
+#overlay-style-control>button{margin-top:9px}
+#overlay-style-control>p{padding:0 8px}
+@media(max-width:760px){.effects-section>summary{padding:12px}.effects-toolbar{gap:5px}}
