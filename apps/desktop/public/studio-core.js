@@ -1,6 +1,7 @@
 // ParaCut Studio R3: local-first editor with video/audio automation and timed titles.
 import { validateClipColor } from './studio-color.js';
 import {validateKeyframePair,clipKeyframeAt} from './studio-keyframes.js';
+import {pointsField,validateKeyframePoints} from './studio-keyframe-points.js';
 import { synchronizedRipplePlan } from './studio-ripple.js';
 import { validateMarker,markerFromInput,sortedMarkers,MARKER_LIMIT } from './studio-markers.js';
 // This is a browser draft format, NOT the canonical ParaCut project-core format.
@@ -497,8 +498,20 @@ export function change(state, command) {
     if(!['volume_keyframes','opacity_keyframes'].includes(field)||
       (field==='opacity_keyframes'&&clip.track_id!=='video-2'))
       throw Error('Opacity keyframes require a V2 clip; volume applies to any media lane.');
+    // Inspector Start/End Apply or Clear intentionally replaces the richer curve.
+    delete clip[pointsField(field)];
     if(command.values===null)delete clip[field];
     else clip[field]=validateKeyframePair(command.values);
+  } else if (type === 'clip.keyframe.points.updated') {
+    const clip=laneFor(command.clip_id)?.find(c=>c.clip_id===command.clip_id);
+    if(!clip)throw Error('Select a clip for keyframe points.');
+    const field=command.field;
+    if(!['volume_keyframes','opacity_keyframes'].includes(field)||
+      (field==='opacity_keyframes'&&clip.track_id!=='video-2'))
+      throw Error('Opacity points require V2; volume points support all media lanes.');
+    // The optional point-array representation overrides a legacy pair, but
+    // retains the pair so older projects can fall back when points are reset.
+    clip[pointsField(field)]=validateKeyframePoints(command.points);
   } else if (type === 'clip.audio.updated') {
     const clip = laneFor(command.clip_id)?.find(c => c.clip_id === command.clip_id);
     if (!clip) throw Error('Select a clip first.');
@@ -623,6 +636,7 @@ export function change(state, command) {
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
       ...(type === 'clip.color.updated' ? { color:copy(command.color) } : {}),
       ...(type === 'clip.keyframes.updated' ? {field:command.field,values:command.values===null?null:copy(command.values)} : {}),
+      ...(type === 'clip.keyframe.points.updated' ? {field:command.field,points:copy(command.points)} : {}),
       ...(type === 'clip.ripple.deleted' ? rippleDetails : {}),
       ...(type.startsWith('marker.') ? {
         marker_id:createdMarkerId??command.marker_id,
@@ -700,6 +714,11 @@ export function validate(state) {
         validateKeyframePair(c.opacity_keyframes);
       }
       if(c.volume_keyframes!==undefined)validateKeyframePair(c.volume_keyframes);
+      if(c.opacity_keyframe_points!==undefined){
+        if(trackId!=='video-2')throw Error('Opacity points only apply to V2.');
+        validateKeyframePoints(c.opacity_keyframe_points);
+      }
+      if(c.volume_keyframe_points!==undefined)validateKeyframePoints(c.volume_keyframe_points);
       if(c.color!==undefined){
         if(!trackId.startsWith('video-'))throw Error('Audio tracks cannot have color effects.');
         validateClipColor(c.color);

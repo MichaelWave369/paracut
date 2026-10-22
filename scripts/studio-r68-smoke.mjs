@@ -151,7 +151,7 @@ const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.u
 for(const id of ['visual-keyframe-lanes','keyframe-lane-opacity',
  'keyframe-lane-volume','show-keyframe-lanes'])
  assert.match(html,new RegExp('id="'+id+'"'));
-assert.match(js,/renderVisualKeyframeLanes\(/);
+assert.match(js,/renderMultiPointKeyframeLanes\(/); // R6.9 extends the R6.8 UI without changing the original renderer test
 assert.match(js,/function appendKeyframeBadge\(clip,item\)/);
 assert.match(js,/appendKeyframeBadge\(clip,item\)/);
 assert.match(css,/\.keyframe-indicator/);

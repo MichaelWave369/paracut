@@ -377,3 +377,15 @@
 .keyframe-indicator{display:inline-block;margin-left:3px;padding:2px 5px;
  font-size:9px!important;font-weight:700;letter-spacing:.06em;
  border-radius:4px;background:#b2a8ff;color:#231f41!important;white-space:nowrap}
+
+/* R6.9 multi-point keyframe lanes: additive to the R6.8 timeline geometry */
+.keyframe-add{position:absolute;z-index:5;top:3px;right:7px;padding:3px 7px;
+ font-size:9px;background:#234b43;color:#ddfff6;border:1px solid #4ea790;
+ border-radius:5px}
+.keyframe-add:disabled{opacity:.4;cursor:default}
+.keyframe-lane-name{max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.keyframe-diamond.keyframe-middle{background:#744b7f;border:1px solid #e5bafa;
+ cursor:move;touch-action:none}
+.keyframe-diamond.keyframe-middle:hover:not(:disabled),
+.keyframe-diamond.keyframe-middle:focus-visible{outline:2px solid #ffd8fc}
+@media(max-width:760px){.keyframe-add{right:4px;top:2px;font-size:8px;padding:4px}}
