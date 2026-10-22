@@ -49,7 +49,7 @@ for(const re of [/activeTool='select'/,/razorTargets=new Set\(\['video-1'\]\)/,
  /if\(!razorTargets\.has\(clip\.track_id\)\)/,/function setEditingTool\(mode\)/,
  /actOnTimelineClip\(clip,event,item\)/,/function applyTransportSpeed\(\)/,
  /transportSpeed===1\?2:1/,/for\(const \[key,mode\] of \[\['tool-select'/,
- /if\(key==='j'\)/,/if\(key==='k'\)/,/if\(key==='l'\)/,
+ /if\(e\.key===','\|\|key==='j'\)/,/if\(key==='k'\)/,/if\(key==='l'\)/,
  /item\.draggable = !exporting && activeTool==='select'/,
  /item\.draggable=!exporting && activeTool==='select'/])
  assert.match(js,re);
