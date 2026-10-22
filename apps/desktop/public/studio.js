@@ -364,16 +364,6 @@ function drawTimeline() {
       lane.el.append(msg); continue;
     }
     for (const clip of lane.clips) {
-      for(const [property,field,allowed] of [
-    ['opacity','opacity_keyframes',clip.track_id==='video-2'],
-    ['volume','volume_keyframes',true]]){
-    $('keyframe-'+property+'-editor').hidden=!allowed;
-    const values=clip[field]||{start:1,end:1};
-    for(const end of ['start','end'])
-      $('keyframe-'+property+'-'+end).value=String(Math.round(values[end]*100));
-    $('apply-'+property+'-keyframes').disabled=exporting||!allowed;
-    $('clear-'+property+'-keyframes').disabled=exporting||!allowed||!clip[field];
-  }
   const asset = state.assets.find(a => a.asset_id === clip.asset_id);
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
@@ -947,7 +937,18 @@ function drawInspector() {
     $('apply-clip-color').disabled=exporting;
     $('reset-clip-color').disabled=exporting;
   }
-  const asset = state.assets.find(a => a.asset_id === clip.asset_id);
+for(const [property,field,allowed] of [
+    ['opacity','opacity_keyframes',clip.track_id==='video-2'],
+    ['volume','volume_keyframes',true]]){
+    $('keyframe-'+property+'-editor').hidden=!allowed;
+    const values=clip[field]||{start:1,end:1};
+    for(const end of ['start','end'])
+      $('keyframe-'+property+'-'+end).value=String(Math.round(values[end]*100));
+    $('apply-'+property+'-keyframes').disabled=exporting||!allowed;
+    $('clear-'+property+'-keyframes').disabled=exporting||!allowed||!clip[field];
+  }
+
+    const asset = state.assets.find(a => a.asset_id === clip.asset_id);
   $('selected-name').textContent = asset?.name || 'Unknown asset';
   $('in-time').value = String(clip.source.start);
   $('out-time').value = String(clip.source.end);
