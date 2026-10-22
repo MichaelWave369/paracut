@@ -18,7 +18,12 @@ export function validateMarker(marker) {
   return true;
 }
 export function markerFromInput(raw,markerId) {
-  const marker={marker_id:markerId,time:round(Number(raw?.time)),
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+    Object.keys(raw).some(k=>!['time','label','note','color'].includes(k)))
+    throw Error('Unsupported timeline marker field.');
+  if(typeof raw.time!=='number'||!Number.isFinite(raw.time))
+    throw Error('Invalid timeline marker time.');
+  const marker={marker_id:markerId,time:round(raw.time),
     label:raw?.label?.trim(),note:raw?.note??'',color:raw?.color??'mint'};
   validateMarker(marker);
   return marker;
