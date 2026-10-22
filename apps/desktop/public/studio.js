@@ -349,6 +349,15 @@ function applyTransportSpeed() {
   for(const el of [video,crossfadeVideo,overlayVideo,overlayIncoming,soundtrack,audio2Player])
     el.playbackRate=transportSpeed;
 }
+function appendKeyframeBadge(clip,item){
+  if(clip.opacity_keyframes===undefined&&clip.volume_keyframes===undefined)return;
+  const badge=document.createElement('small');
+  badge.className='keyframe-indicator';
+  badge.textContent='◆ KF';
+  badge.title=(clip.opacity_keyframes?'Opacity ':'')+
+    (clip.volume_keyframes?'Volume ':'')+'animation applied';
+  item.append(badge);
+}
 function drawKeyframeLanes(){
   const clip=[...state.clips,...state.audioClips,...state.video2Clips,
     ...state.audio2Clips].find(c=>c.clip_id===selectedId);
@@ -390,6 +399,7 @@ function drawTimeline() {
       const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
       const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
       item.append(label, time);
+      appendKeyframeBadge(clip,item);
       if(!isAudio&&hasColorAdjustment(clip)){
         item.classList.add('graded-clip');
         const grade=document.createElement('small');grade.className='grade-indicator';
@@ -456,6 +466,7 @@ function drawTimeline() {
       const name=document.createElement('span');
       name.textContent=(asset?.name||'Missing media')+' · '+fmt(clip.timeline.start);
       item.append(name);
+      appendKeyframeBadge(clip,item);
       if(kind==='video'&&hasColorAdjustment(clip)){
         item.classList.add('graded-clip');
         const grade=document.createElement('small');grade.className='grade-indicator';
