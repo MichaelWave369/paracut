@@ -273,3 +273,12 @@
 .shortcut-reference summary:hover{color:#ddf5ff}
 .shortcut-reference-body{padding:2px 12px 10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;font:10px ui-monospace,monospace;line-height:1.55}
 @media(max-width:720px){.shortcut-reference-body{grid-template-columns:minmax(0,1fr)}}
+
+/* R6.4 Match Frame and in-session attribute transfer */
+.attribute-clipboard{border:1px solid #3b6075;border-radius:9px;background:#102534;margin:12px 0;padding:12px}
+.attribute-clipboard[hidden]{display:none}
+.attribute-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}
+.attribute-actions button{font-size:10px;padding:7px 8px;white-space:normal}
+.attribute-actions button:disabled{opacity:.4}
+#source-match-frame{border-color:#568b90;background:#173a41;color:#d6fff7}
+#source-match-frame kbd{font:9px ui-monospace,monospace;margin-left:5px;color:#a5d3db}
