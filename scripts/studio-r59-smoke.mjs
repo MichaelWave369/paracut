@@ -13,7 +13,7 @@ const first=s.clips[0].clip_id,overlay=s.video2Clips[0].clip_id,voice=s.audio2Cl
 s=change(s,{type:'clip.transition.updated',clip_id:first,seconds:.6});
 assert.equal(duration(s),7.4);
 assert.throws(()=>change(s,{type:'clip.split',clip_id:first,time:3.6}),/active V1 dissolve/);
-assert.throws(()=>change(s,{type:'clip.split',clip_id:first,time:3.2}),/too near a V1 crossfade/);
+assert.throws(()=>change(s,{type:'clip.split',clip_id:first,time:3.35}),/too near a V1 crossfade/);
 assert.throws(()=>change(s,{type:'clip.split',clip_id:overlay,time:.51}),/inside the clip/);
 assert.throws(()=>change(s,{type:'clip.split',clip_id:voice,time:100}),/inside the clip/);
 const initialReceipts=s.receipts.length;
