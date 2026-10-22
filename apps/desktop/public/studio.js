@@ -982,6 +982,7 @@ function edit(command) {
     }
     stopPlayback();
     state = change(state, command);
+    if(command.type==='clip.ripple.deleted')playhead=state.receipts.at(-1).details.start;
     if (selectedId && ![...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].some(c=>c.clip_id===selectedId)) selectedId = null;
     playhead = Math.min(playhead, duration(state));
     render(); void seekTo(playhead); status(command.type + ' ✓');
@@ -1275,7 +1276,6 @@ $('ripple-delete').addEventListener('click',()=>{
       plan.affected.a2.length+' A2, '+plan.affected.titles.length+' titles.\n'+
       'A1 soundtrack remains independently timed. This can be undone.';
     if(!confirm(msg))return;
-    playhead=plan.start;
     edit({type:'clip.ripple.deleted',clip_id:selectedId});
   }catch(e){status(e.message,true);}
 });
