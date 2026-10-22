@@ -352,7 +352,9 @@ async function syncLayerPlayer(el,clip,at,autoplay,kind) {
   if(Math.abs(el.currentTime-expected)>.16) {
     try{el.currentTime=Math.max(0,expected)}catch{}
   }
-  const effectiveGain=audioLevelAt(clip,at)*audioMixLevelAt(state,clip.track_id,at);
+  const dissolveForAudio=kind==='video'||kind==='incoming'?overlayCrossfadeAt(state,at):null;
+  const audioWeight=dissolveForAudio?(kind==='incoming'?dissolveForAudio.progress:1-dissolveForAudio.progress):1;
+  const effectiveGain=audioLevelAt(clip,at)*audioMixLevelAt(state,clip.track_id,at)*audioWeight;
   if(el===audio2Player)setPreviewBusGain('a2',el,effectiveGain);
   else el.volume=Math.min(1,effectiveGain);
   if(kind==='video'||kind==='incoming'){
@@ -1032,7 +1034,7 @@ async function renderVideo(format) {
   exporting=true; activeExportFormat=format; cancelExport=false;
   $(format === 'mp4' ? 'export-mp4' : 'export-webm').textContent='Cancel Export';
   render();
-  let recorder, ctx, stream, videoStream, videoSourceGain, incomingVideoGain, soundtrackGain, overlayGain, audio2Gain;
+  let recorder, ctx, stream, videoStream, videoSourceGain, incomingVideoGain, soundtrackGain, overlayGain, overlayIncomingGain, audio2Gain;
   let encoderAudio = document.createElement('audio');
   encoderVideo = document.createElement('video');
   encoderVideo.playsInline = true;
@@ -1040,6 +1042,8 @@ async function renderVideo(format) {
   encoderIncoming.playsInline = true;
   const encoderOverlay=document.createElement('video');
   encoderOverlay.playsInline=true;
+  const encoderOverlayIncoming=document.createElement('video');
+  encoderOverlayIncoming.playsInline=true;
   const encoderAudio2=document.createElement('audio');
   const chunks=[];
   try {
@@ -1059,24 +1063,28 @@ async function renderVideo(format) {
       const fade=crossfadeAt(state,at);
       if (fade && encoderIncoming.dataset.clip === fade.incoming.clip_id)
         drawVideoFrame(encoderIncoming,fade.progress);
-      const overlay=activeOverlayClip(state,at);
-      if(overlay && encoderOverlay.dataset.clip===overlay.clip_id && encoderOverlay.readyState>=2){
-        const opacity=overlayOpacityAt(overlay,at);
+      const overlayFade=overlayCrossfadeAt(state,at);
+      const paintOverlay=(el,clip,weight)=>{
+        if(!clip || el.dataset.clip!==clip.clip_id || el.readyState<2)return;
+        const opacity=overlayOpacityAt(clip,at)*weight;
+        if(opacity<=0)return;
         g.save();g.globalAlpha=opacity;
-        const motion=overlayMotionAt(overlay,at);
-        if((overlay.overlay_layout??'pip')==='full'){
+        const motion=overlayMotionAt(clip,at);
+        if((clip.overlay_layout??'pip')==='full'){
           g.translate(motion.x*canvas.width,motion.y*canvas.height);
-          drawVideoFrame(encoderOverlay,1);
+          drawVideoFrame(el,1);
         } else {
-          const vw=encoderOverlay.videoWidth,vh=encoderOverlay.videoHeight;
+          const vw=el.videoWidth,vh=el.videoHeight;
           if(vw&&vh){const ratio=Math.min(420/vw,220/vh);
             const w=vw*ratio,h=vh*ratio;
             g.translate(motion.x*(w+12),motion.y*(h+12));
             g.fillStyle='#091321';g.fillRect(1210-w-12,35,w+12,h+12);
-            g.drawImage(encoderOverlay,1210-w-6,41,w,h);}
+            g.drawImage(el,1210-w-6,41,w,h);}
         }
         g.restore();
-      }
+      };
+      paintOverlay(encoderOverlay,activeOverlayClip(state,at),overlayFade?1-overlayFade.progress:1);
+      if(overlayFade)paintOverlay(encoderOverlayIncoming,overlayFade.incoming,overlayFade.progress);
       drawTitleOnCanvas(g, visibleTitle(state,at), at);
     };
     paint(); videoStream=canvas.captureStream(30);
@@ -1101,6 +1109,9 @@ async function renderVideo(format) {
       const overlaySource=ctx.createMediaElementSource(encoderOverlay);
       overlayGain=ctx.createGain();overlayGain.gain.value=0;
       overlaySource.connect(overlayGain);overlayGain.connect(dest);
+      const overlaySecondSource=ctx.createMediaElementSource(encoderOverlayIncoming);
+      overlayIncomingGain=ctx.createGain();overlayIncomingGain.gain.value=0;
+      overlaySecondSource.connect(overlayIncomingGain);overlayIncomingGain.connect(dest);
       if (state.audio2Clips.length) {
         const secondSource=ctx.createMediaElementSource(encoderAudio2);
         audio2Gain=ctx.createGain();audio2Gain.gain.value=0;
@@ -1127,6 +1138,7 @@ async function renderVideo(format) {
     encoderVideo.muted = false;
     encoderIncoming.muted = false;
     encoderOverlay.muted=false;
+    encoderOverlayIncoming.muted=false;
     encoderAudio2.muted=false;
     encoderAudio.muted = false;
     encoderAudio.volume = 1;
@@ -1152,8 +1164,8 @@ async function renderVideo(format) {
       if (Math.abs(encoderAudio.currentTime - position) > .16) encoderAudio.currentTime = position;
       if (encoderAudio.paused) await encoderAudio.play();
     }
-    async function syncExportLayer(el,clip,at,level) {
-      if(level)level.gain.value=audioLevelAt(clip,at)*audioMixLevelAt(state,clip?.track_id,at);
+    async function syncExportLayer(el,clip,at,level,weight=1) {
+      if(level)level.gain.value=audioLevelAt(clip,at)*audioMixLevelAt(state,clip?.track_id,at)*weight;
       if(!clip||at>=duration(state)){el.pause();return;}
       const ref=media.get(clip.asset_id);
       if(!ref)throw Error('Layer source missing during export.');
@@ -1242,7 +1254,11 @@ async function renderVideo(format) {
         const timelinePosition = clip.timeline.start + Math.max(0, encoderVideo.currentTime - clip.source.start);
         await syncExportSoundtrack(timelinePosition);
         await syncExportCrossfade(timelinePosition);
-        await syncExportLayer(encoderOverlay,activeOverlayClip(state,timelinePosition),timelinePosition,overlayGain);
+        const v2Fade=overlayCrossfadeAt(state,timelinePosition);
+        await syncExportLayer(encoderOverlay,activeOverlayClip(state,timelinePosition),
+          timelinePosition,overlayGain,v2Fade?1-v2Fade.progress:1);
+        await syncExportLayer(encoderOverlayIncoming,v2Fade?.incoming||null,
+          timelinePosition,overlayIncomingGain,v2Fade?v2Fade.progress:0);
         await syncExportLayer(encoderAudio2,activeAudio2Clip(state,timelinePosition),timelinePosition,audio2Gain);
         const fade = crossfadeAt(state,timelinePosition);
         if (videoSourceGain) videoSourceGain.gain.value = audioLevelAt(clip,timelinePosition) * audioMixLevelAt(state,'video-1',timelinePosition) *
@@ -1252,7 +1268,7 @@ async function renderVideo(format) {
         await new Promise(resolve => requestAnimationFrame(resolve));
       }
       paint(clip.timeline.end - .001);
-      encoderVideo.pause(); encoderIncoming.pause(); encoderAudio.pause(); encoderOverlay.pause();encoderAudio2.pause();
+      encoderVideo.pause(); encoderIncoming.pause(); encoderAudio.pause(); encoderOverlay.pause();encoderOverlayIncoming.pause();encoderAudio2.pause();
     }
     recorder.stop(); await stopped;
     if (cancelExport) throw Error('Export cancelled.');
@@ -1264,7 +1280,8 @@ async function renderVideo(format) {
     state.receipts.push({receipt_id:uuid(),action:'render.'+format+'.exported',at:new Date().toISOString(),source:'human',details:{
       bytes:blob.size,duration_seconds:duration(state),audio_clips:state.audioClips.length,
       audio2_clips:state.audio2Clips.length,video2_clips:state.video2Clips.length,title_count:state.titles.length,
-      crossfades:state.clips.filter(c=>c.transition_out_seconds>0).length,mime:recordedMime,
+      crossfades:state.clips.filter(c=>c.transition_out_seconds>0).length,
+      overlay_crossfades:state.video2Clips.filter(c=>c.transition_out_seconds>0).length,mime:recordedMime,
       container_signature_verified:true,format:'browser-beta'}});
     status(format.toUpperCase()+' downloaded ('+(blob.size/1048576).toFixed(1)+' MiB). Watch and listen before sharing.');
   } catch(err) { status('Export: '+err.message,true); }
@@ -1274,6 +1291,7 @@ async function renderVideo(format) {
     encoderIncoming.pause(); encoderIncoming.removeAttribute('src'); encoderIncoming.load();
     encoderAudio.pause(); encoderAudio.removeAttribute('src'); encoderAudio.load();
     encoderOverlay.pause();encoderOverlay.removeAttribute('src');encoderOverlay.load();
+    encoderOverlayIncoming.pause();encoderOverlayIncoming.removeAttribute('src');encoderOverlayIncoming.load();
     encoderAudio2.pause();encoderAudio2.removeAttribute('src');encoderAudio2.load();
     stream?.getTracks().forEach(t=>t.stop()); videoStream?.getTracks().forEach(t=>t.stop());
     await ctx?.close();
