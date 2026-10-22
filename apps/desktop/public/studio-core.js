@@ -330,6 +330,57 @@ export function change(state, command) {
     lane.push({ clip_id: id(), asset_id: asset.asset_id, track_id: isAudio ? 'audio-1' : 'video-1',
       timeline: { start: 0, end: 0 }, source: { start: 0, end: asset.duration }, enabled: true, effects: [], volume: 1, fade_in: 0, fade_out: 0,
       ...(isAudio ? {} : { source_audio_muted: false }) });
+  } else if (type === 'clip.source.inserted') {
+    // Three-point source edit: Source IN + OUT, and Program playhead as V1 insertion.
+    // A cut in an existing V1 clip is split into source-contiguous halves.
+    const asset=assets.find(a=>a.asset_id===command.asset_id);
+    if(!asset?.type.startsWith('video/'))throw Error('Source insertion requires a video asset.');
+    const from=Number(command.start),to=Number(command.end),at=Number(command.at);
+    if(!finite(from)||!finite(to)||from<0||to>asset.duration+.001||to-from<.08)
+      throw Error('Select a valid Source IN/OUT range of at least 0.08 seconds.');
+    if(!finite(at)||at<0||at>duration(state)+.002)throw Error('Insert playhead must be inside V1.');
+    if(crossfadeAt(state,at))throw Error('Insert cannot split an active crossfade. Seek outside the dissolve.');
+    if(clips.length>=398)throw Error('V1 needs room to insert or split clips.');
+    const insertion={clip_id:id(),asset_id:asset.asset_id,track_id:'video-1',
+      timeline:{start:0,end:0},source:{start:round(from),end:round(to)},
+      enabled:true,effects:[],volume:1,fade_in:0,fade_out:0,source_audio_muted:false,
+      transition_out_seconds:0};
+    const t=round(at);
+    const index=clips.findIndex(clip=>Math.abs(clip.timeline.start-t)<.004);
+    if(index>=0)clips.splice(index,0,insertion);
+    else if(Math.abs(t-duration(state))<.004)clips.push(insertion);
+    else {
+      const n=clips.findIndex(clip=>t>clip.timeline.start+.079&&t<clip.timeline.end-.079);
+      if(n<0)throw Error('Place V1 playhead at a cut or safely inside a clip.');
+      const original=clips[n],sourceAt=round(original.source.start+t-original.timeline.start);
+      const inFade=n>0?(clips[n-1].transition_out_seconds||0):0;
+      const outFade=original.transition_out_seconds||0;
+      if(sourceAt-original.source.start<inFade+.079 ||
+        original.source.end-sourceAt<outFade+.079)
+        throw Error('Insert is too close to a V1 transition; move playhead away.');
+      const left={...original,clip_id:id(),
+        source:{start:original.source.start,end:sourceAt},transition_out_seconds:0};
+      const right={...original,clip_id:id(),
+        source:{start:sourceAt,end:original.source.end}};
+      clips.splice(n,1,fitFades(left),insertion,fitFades(right));
+    }
+  } else if (type === 'clip.source.replaced') {
+    // Explicit selected-clip source replacement. Ripple downstream as necessary;
+    // not a general four-point Premiere overwrite across multiple clips.
+    const asset=assets.find(a=>a.asset_id===command.asset_id);
+    if(!asset?.type.startsWith('video/'))throw Error('Source replacement requires video.');
+    const clip=clips.find(c=>c.clip_id===command.clip_id);
+    if(!clip)throw Error('Select a V1 clip to replace.');
+    const from=Number(command.start),to=Number(command.end);
+    if(!finite(from)||!finite(to)||from<0||to>asset.duration+.001||to-from<.08)
+      throw Error('Select valid Source IN/OUT for replacement.');
+    clip.asset_id=asset.asset_id;
+    clip.source={start:round(from),end:round(to)};
+    clip.volume=1;clip.fade_in=0;clip.fade_out=0;clip.source_audio_muted=false;
+    clip.transition_out_seconds=0;
+    // Adjacent crossfades are cleared explicitly rather than silently clamped.
+    const n=clips.indexOf(clip);
+    if(n>0)clips[n-1].transition_out_seconds=0;
   } else if (type === 'mixer.updated') {
     if(!['a1','a2'].includes(command.lane))throw Error('Mixer supports A1 and A2 only.');
     audioMix[command.lane]={gain:command.gain,muted:command.muted,solo:command.solo};
@@ -508,6 +559,8 @@ export function change(state, command) {
   const next = { ...state, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, name, undo: [...state.undo.slice(-39), before], redo: [],
     receipts: [...state.receipts, receipt(type, { clip_id: command.clip_id || null,
       asset_id: command.asset_id || command.asset?.asset_id || null,
+      ...(type === 'clip.source.inserted'||type === 'clip.source.replaced' ?
+        {source_in:command.start,source_out:command.end,at:command.at??null,source_edit:'video-1'} : {}),
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
       ...(type === 'clip.transition.updated'||type === 'clip.overlay.transition.updated' ? {seconds:command.seconds} : {}),

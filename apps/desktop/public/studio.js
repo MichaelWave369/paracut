@@ -41,6 +41,8 @@ function placeOnLayer(command) {
 }
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 const video = $('preview-video');
+const sourceVideo=$('source-video');
+let sourceAssetId=null, sourceIn=0, sourceOut=0;
 const crossfadeVideo = $('crossfade-video');
 const overlayVideo = $('overlay-video');
 overlayVideo.preload = 'auto';
@@ -76,6 +78,8 @@ function download(name, blob) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 function clearMedia() {
+  sourceVideo.pause(); sourceVideo.removeAttribute('src');sourceVideo.load();
+  sourceAssetId=null;sourceIn=0;sourceOut=0;
   for (const entry of media.values()) URL.revokeObjectURL(entry.url);
   media.clear(); waveforms.clear();
   soundtrack.pause(); soundtrack.removeAttribute('src'); soundtrack.load(); delete soundtrack.dataset.clip;
@@ -100,10 +104,70 @@ function updateTimeUI() {
   showTitleAt(playhead);
   updateStoryPlayhead();
 }
+function currentSource() {
+  const asset=state.assets.find(a=>a.asset_id===sourceAssetId);
+  return asset?.type?.startsWith('video/')?asset:null;
+}
+function refreshSourceMonitor() {
+  const asset=currentSource(),ref=asset&&media.get(asset.asset_id);
+  const linked=Boolean(ref);
+  $('source-label').textContent=asset?asset.name+' · '+(linked?'Ready':'Relink original'):'Choose a video in Project Media';
+  $('source-empty').hidden=linked;
+  sourceVideo.style.display=linked?'block':'none';
+  if(linked && sourceVideo.dataset.asset!==asset.asset_id) {
+    sourceVideo.pause();sourceVideo.src=ref.url;sourceVideo.dataset.asset=asset.asset_id;
+    sourceVideo.load();
+  } else if(!linked && sourceVideo.src){
+    sourceVideo.pause();sourceVideo.removeAttribute('src');delete sourceVideo.dataset.asset;sourceVideo.load();
+  }
+  const max=asset?.duration||0;
+  $('source-seek').max=String(Math.max(.001,max));
+  $('source-seek').value=String(Math.min(sourceVideo.currentTime||0,max));
+  $('source-time').textContent=fmt(Math.min(sourceVideo.currentTime||0,max));
+  $('source-total').textContent=fmt(max);
+  for(const key of ['source-seek','source-play','source-mark-in','source-mark-out','source-in','source-out'])
+    $(key).disabled=!linked||exporting;
+  $('source-in').value=String(sourceIn);
+  $('source-out').value=String(sourceOut);
+  $('source-play').textContent=!sourceVideo.paused?'❚❚':'▶';
+  $('source-insert').disabled=!linked||exporting;
+  const sel=state.clips.find(c=>c.clip_id===selectedId);
+  $('source-replace').disabled=!linked||!sel||exporting;
+}
+function chooseSource(assetId) {
+  const asset=state.assets.find(a=>a.asset_id===assetId);
+  if(!asset?.type.startsWith('video/')||!media.has(assetId))return status('Relink the video before opening Source.',true);
+  stopPlayback();sourceVideo.pause();
+  sourceAssetId=assetId;sourceIn=0;sourceOut=asset.duration;
+  refreshSourceMonitor();
+  status('Source ready: '+asset.name+'. Mark IN and OUT, then insert at V1 playhead.');
+}
+function applySourceEdit(type) {
+  const asset=currentSource();
+  if(!asset||!media.has(asset.asset_id))return status('Open a linked video in Source Monitor.',true);
+  const start=Number($('source-in').value),end=Number($('source-out').value);
+  if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||
+    end>asset.duration+.001||end-start<.08)
+    return status('Source OUT must be after IN by at least 0.08 seconds.',true);
+  const clip=state.clips.find(c=>c.clip_id===selectedId);
+  if(type==='clip.source.replaced'&&!clip)return status('Select a V1 clip to replace.',true);
+  sourceIn=start;sourceOut=end;
+  const before=state.receipts.length;
+  edit({type,asset_id:asset.asset_id,start,end,
+    ...(type==='clip.source.inserted'?{at:playhead}:{clip_id:clip.clip_id})});
+  if(state.receipts.length>before)status((type==='clip.source.inserted'?'Inserted':'Replaced')+
+    ' '+fmt(end-start)+' of '+asset.name+' · edit receipt saved');
+}
 function drawMedia() {
   const list = $('media-list'); list.replaceChildren();
   $('asset-count').textContent = state.assets.length + ' files';
-  for (const asset of state.assets) {
+  const filter=$('media-search').value.trim().toLowerCase();
+  const sort=$('media-sort').value;
+  const assets=state.assets.filter(a=>a.name.toLowerCase().includes(filter));
+  if(sort==='name')assets.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(sort==='duration')assets.sort((a,b)=>a.duration-b.duration);
+  else if(sort==='type')assets.sort((a,b)=>a.type.localeCompare(b.type)||a.name.localeCompare(b.name));
+  for (const asset of assets) {
     const linked = media.has(asset.asset_id);
     const div = document.createElement('div'); div.className = 'media-item' + (linked ? '' : ' missing');
     const name = document.createElement('div');
@@ -126,8 +190,15 @@ function drawMedia() {
     layer.disabled=!linked||exporting;
     layer.addEventListener('click',()=>placeOnLayer({type:'clip.layer.added',
       asset_id:asset.asset_id,track_id:isAudio?'audio-2':'video-2',start:playhead}));
-    div.append(name,add,layer);list.append(div);
+    const select=document.createElement('button');
+    select.className='source-load';select.textContent='Source';
+    select.title='Open video in Source Monitor';
+    select.disabled=isAudio||!linked||exporting;
+    select.addEventListener('click',()=>chooseSource(asset.asset_id));
+    if(asset.asset_id===sourceAssetId)div.classList.add('source-active');
+    div.append(name,select,add,layer);list.append(div);
   }
+  refreshSourceMonitor();
 }
 function drawPrecisionRuler(total,width) {
   const el=$('precision-ruler'); el.replaceChildren();
@@ -859,11 +930,53 @@ $('play').addEventListener('click', async () => {
   if (!state.clips.length) return;
   if (playing) return stopPlayback();
   if (playhead >= duration(state) - .005) playhead = 0;
+  sourceVideo.pause();
   await seekTo(playhead, { autoplay:true });
 });
 $('backward').addEventListener('click', () => { stopPlayback(); void seekTo(0); });
 $('forward').addEventListener('click', () => { stopPlayback(); void seekTo(duration(state)); });
 $('seek').addEventListener('input', event => { const autoplay = playing; stopPlayback(); void seekTo(Number(event.target.value), { autoplay }); });
+$('media-search').addEventListener('input',drawMedia);
+$('media-sort').addEventListener('change',drawMedia);
+sourceVideo.addEventListener('timeupdate',refreshSourceMonitor);
+sourceVideo.addEventListener('play',()=>{
+  if(playing)stopPlayback();
+  refreshSourceMonitor();
+});
+sourceVideo.addEventListener('pause',refreshSourceMonitor);
+$('source-play').addEventListener('click',async()=>{
+  if(!currentSource()||exporting)return;
+  if(!sourceVideo.paused){sourceVideo.pause();return;}
+  stopPlayback();
+  try{await sourceVideo.play();}catch(e){status('Source playback: '+e.message,true);}
+});
+$('source-seek').addEventListener('input',e=>{
+  if(!currentSource())return;
+  sourceVideo.pause();
+  const max=currentSource().duration;
+  try{sourceVideo.currentTime=Math.max(0,Math.min(max,Number(e.target.value)));}
+  catch(e){status('Source seek: '+e.message,true);}
+  refreshSourceMonitor();
+});
+$('source-mark-in').addEventListener('click',()=>{
+  const asset=currentSource();if(!asset)return;
+  sourceIn=Math.min(asset.duration,Math.max(0,Math.round(sourceVideo.currentTime*1000)/1000));
+  refreshSourceMonitor();
+});
+$('source-mark-out').addEventListener('click',()=>{
+  const asset=currentSource();if(!asset)return;
+  sourceOut=Math.min(asset.duration,Math.max(0,Math.round(sourceVideo.currentTime*1000)/1000));
+  refreshSourceMonitor();
+});
+for(const [field,prop] of [['source-in','in'],['source-out','out']])
+  $(field).addEventListener('change',e=>{
+    if(!currentSource())return;
+    const val=Number(e.target.value);
+    if(prop==='in')sourceIn=val;else sourceOut=val;
+    refreshSourceMonitor();
+  });
+$('source-insert').addEventListener('click',()=>applySourceEdit('clip.source.inserted'));
+$('source-replace').addEventListener('click',()=>applySourceEdit('clip.source.replaced'));
 $('drop-zone').addEventListener('click', () => $('video-input').click());
 $('drop-zone').addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('video-input').click(); } });
 $('video-input').addEventListener('change', async e => { await importVideos([...e.target.files]); e.target.value=''; });
@@ -1010,6 +1123,12 @@ document.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA'].includes(document.activeElement?.tagName) || exporting) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); $('undo').click(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); $('redo').click(); return; }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey && e.key.toLowerCase()==='i' && sourceAssetId){
+    e.preventDefault();$('source-mark-in').click();return;
+  }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey && e.key.toLowerCase()==='o' && sourceAssetId){
+    e.preventDefault();$('source-mark-out').click();return;
+  }
   if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
   else if (e.key.toLowerCase() === 's') $('split').click();
   else if (e.key === 'Delete' || e.key === 'Backspace') $('remove').click();
