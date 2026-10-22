@@ -2,13 +2,30 @@
 // creates one receipt through the existing validated change() pipeline.
 import {pointsField,keyframePointsFor,keyframeCurveAt,addKeyframePoint,
   moveKeyframePoint,removeKeyframePoint,validateKeyframePoints,
-  KEYFRAME_POINT_LIMIT} from './studio-keyframe-points.js';
+  KEYFRAME_POINT_LIMIT,KEYFRAME_EASES,setKeyframeSegmentEase} from './studio-keyframe-points.js';
 import {keyframeLanePlan,keyframePercentFromY}
   from './studio-keyframe-lanes.js';
 
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const round=n=>Math.round(n*1000)/1000;
-const pathFor=points=>'M '+points.map(p=>(p.at*100)+' '+(100-p.value*100)).join(' L ');
+const selectedEaseSegments=new Map(); // view preference only; never part of the draft
+export function curvePathFor(points){
+  // Linear curves retain their original path. Eased sections are sampled for
+  // SVG only; the actual Program/export values use the shared curve math.
+  if(points.every(p=>!p.ease))return 'M '+points.map(
+    p=>(p.at*100)+' '+(100-p.value*100)).join(' L ');
+  const xy=(at,value)=>(Math.round(at*100000)/1000)+' '+
+    (Math.round((1-value)*100000)/1000);
+  let path='M '+xy(points[0].at,points[0].value);
+  for(let i=0;i<points.length-1;i++){
+    const a=points[i],b=points[i+1],steps=a.ease?20:1;
+    for(let step=1;step<=steps;step++){
+      const at=a.at+(b.at-a.at)*step/steps;
+      path+=' L '+xy(at,keyframeCurveAt(points,at));
+    }
+  }
+  return path;
+}
 export function renderMultiPointKeyframeLanes({
   root,opacityLane,volumeLane,clip,total,playhead,getPlayhead=()=>playhead,editable,onCommit,onError=()=>{},
   document:doc=document
@@ -35,10 +52,10 @@ export function renderMultiPointKeyframeLanes({
     svg.setAttribute('preserveAspectRatio','none');
     svg.classList.add('keyframe-svg');
     const path=doc.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d',pathFor(points));svg.append(path);plot.append(svg);
+    path.setAttribute('d',curvePathFor(points));svg.append(path);plot.append(svg);
     const handles=[];
     function preview(next){
-      path.setAttribute('d',pathFor(next));
+      path.setAttribute('d',curvePathFor(next));
       next.forEach((p,i)=>{
         handles[i].style.left=(p.at*100)+'%';
         handles[i].style.top=(100-p.value*100)+'%';
@@ -77,6 +94,56 @@ export function renderMultiPointKeyframeLanes({
       add(at,round(keyframeCurveAt(points,at)));
     });
     lane.append(addButton);
+    // One compact editor for the outgoing segment selected by the user.
+    // Each dropdown change is exactly one receipt-backed clip update.
+    const easeTools=doc.createElement('div');
+    easeTools.className='keyframe-easing-controls';
+    const segmentLabel=doc.createElement('label');
+    segmentLabel.textContent='Segment ';
+    const segmentSelect=doc.createElement('select');
+    segmentSelect.setAttribute('aria-label',property+' easing segment');
+    const selectionKey=clip.clip_id+':'+property;
+    let segment=clamp(selectedEaseSegments.get(selectionKey)??0,0,points.length-2);
+    selectedEaseSegments.set(selectionKey,segment);
+    for(let i=0;i<points.length-1;i++){
+      const option=doc.createElement('option');
+      option.value=String(i);option.textContent=(i+1)+'→'+(i+2);
+      segmentSelect.append(option);
+    }
+    segmentSelect.value=String(segment);
+    segmentSelect.disabled=!editable;
+    segmentLabel.append(segmentSelect);
+    const easeLabel=doc.createElement('label');
+    easeLabel.textContent='Ease ';
+    const easeSelect=doc.createElement('select');
+    easeSelect.dataset.keyframeEasing=property;
+    easeSelect.setAttribute('aria-label',property+' segment easing');
+    for(const value of KEYFRAME_EASES){
+      const option=doc.createElement('option');option.value=value;
+      option.textContent=value==='linear'?'Linear':
+        value==='ease-in'?'Ease In':value==='ease-out'?'Ease Out':'Ease In/Out';
+      easeSelect.append(option);
+    }
+    easeSelect.value=points[segment].ease||'linear';
+    easeSelect.disabled=!editable;
+    segmentSelect.addEventListener('change',()=>{
+      segment=Number(segmentSelect.value);
+      if(!Number.isInteger(segment)||segment<0||segment>=points.length-1)return;
+      selectedEaseSegments.set(selectionKey,segment);
+      easeSelect.value=points[segment].ease||'linear';
+    });
+    easeSelect.addEventListener('change',()=>{
+      if(!editable)return;
+      const index=selectedEaseSegments.get(selectionKey)??0;
+      try{
+        commit(setKeyframeSegmentEase(points,index,easeSelect.value));
+        root.querySelector('[data-keyframe-easing="'+property+'"]')
+          ?.focus({preventScroll:true});
+      }catch(e){onError(e.message);}
+    });
+    easeLabel.append(easeSelect);
+    easeTools.append(segmentLabel,easeLabel);
+    lane.append(easeTools);
     plot.addEventListener('dblclick',event=>{
       if(!editable||event.target!==plot)return;
       const rect=plot.getBoundingClientRect();
