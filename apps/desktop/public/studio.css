@@ -148,3 +148,9 @@
 .peak-guide-row meter{width:100%;height:16px;accent-color:#a9e7cd}
 .peak-guide-row output{text-align:right;font-variant-numeric:tabular-nums;color:#d8ebfa}
 .mix-peak-guide>.tip{margin:8px 0 0}
+
+/* R5.5 V2 dissolution uses its own second moving decoder, above outgoing V2. */
+.screen #overlay-incoming{position:absolute;z-index:4;top:5%;right:5%;width:34%;height:32%;object-fit:contain;background:#020713;display:none;opacity:0;border:2px solid rgba(255,255,255,.42);border-radius:8px;pointer-events:none}
+.screen #overlay-incoming.full-overlay{inset:0;width:100%;height:100%;border:0;border-radius:0;background:transparent}
+.layer-clip.has-overlay-transition{border-right:4px solid #a7e5f9}
+.layer-clip .overlay-transition-caption{display:block;font-size:9px;color:#fff3bd}
