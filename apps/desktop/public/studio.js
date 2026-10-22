@@ -237,6 +237,7 @@ function setEditingTool(mode) {
   if(!['select','razor'].includes(mode))return;
   activeTool=mode;
   updateToolUI();
+  drawTimeline();
   status(mode==='razor'?'Razor: click a targeted clip at its desired cut.':'Selection tool enabled.');
 }
 function actOnTimelineClip(clip,event,button) {
@@ -278,7 +279,7 @@ function drawTimeline() {
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
       item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '') + (clip.transition_out_seconds ? ' has-transition' : '');
-      item.draggable = !exporting;
+      item.draggable = !exporting && activeTool==='select';
       item.style.left=String(100*clip.timeline.start/total)+'%';
       item.style.width=String(Math.max(.3,100*(clip.timeline.end-clip.timeline.start)/total))+'%';
       item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
@@ -358,7 +359,7 @@ function drawTimeline() {
       }
       item.title='Start '+fmt(clip.timeline.start)+' · Select, adjust or drag on the storyboard';
       item.addEventListener('click',event=>actOnTimelineClip(clip,event,item));
-      item.draggable=!exporting;
+      item.draggable=!exporting && activeTool==='select';
       item.addEventListener('dragstart',e=>{e.dataTransfer?.setData('text/plain',clip.clip_id);
         if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
       el.append(item);
