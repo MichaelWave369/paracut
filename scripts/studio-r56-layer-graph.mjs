@@ -1,5 +1,6 @@
 // ParaCut R5.6: local FFmpeg layered render graph. Media must be pre-verified.
 import {extname,resolve} from 'node:path';
+import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
 const n=x=>String(Math.round(x*1000)/1000);
 const len=c=>c.source.end-c.source.start;
 const esc=x=>x.replaceAll(',', '\\,');
@@ -19,7 +20,8 @@ function overlayPart(c,i,input,lane){
   const full=(c.overlay_layout||'pip')==='full',w=full?1280:420,h=full?720:220;
   const filters=['['+input+':v:0]trim=start='+n(c.source.start)+':duration='+n(len(c)),
     'setpts=PTS-STARTPTS','fps=30','scale='+w+':'+h+':force_original_aspect_ratio=decrease',
-    'pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2:color=black','setsar=1','format=rgba'];
+    'pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2:color=black','setsar=1',
+    ...colorFFmpegFilters(c),'format=rgba'];
   const prev=i>0?(lane[i-1].transition_out_seconds||0):0,next=c.transition_out_seconds||0;
   for(const [direction,d] of [['in',c.visual_fade_in||0],['out',c.visual_fade_out||0],['in',prev],['out',next]])
     if(d>0)filters.push('fade=t='+direction+':st='+(direction==='in'?0:n(len(c)-d))+':d='+n(d)+':alpha=1');
@@ -60,7 +62,9 @@ export function planLayeredMp4(state,mediaByAsset,output,{ffmpeg='ffmpeg',buildA
   for(const item of entries)sources.push('-i',resolve(item.media.path));
   for(let i=0;i<state.clips.length;i++){
     const c=state.clips[i];
-    graph.push('['+i+':v:0]trim=start='+n(c.source.start)+':duration='+n(len(c))+',setpts=PTS-STARTPTS,fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=yuv420p,settb=AVTB[v'+i+']');
+    graph.push('['+i+':v:0]trim=start='+n(c.source.start)+':duration='+n(len(c))+',setpts=PTS-STARTPTS,fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,'+
+      (colorFFmpegFilters(c).length?colorFFmpegFilters(c).join(',')+',':'')+
+      'format=yuv420p,settb=AVTB[v'+i+']');
   }
   let last='v0';
   for(let i=1;i<state.clips.length;i++){
