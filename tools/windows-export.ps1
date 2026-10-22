@@ -54,6 +54,64 @@ try {
         finally { $chooser.Dispose() }
     }
 
+    function Select-RenderOptions {
+        $dialog = New-Object System.Windows.Forms.Form
+        try {
+            $dialog.Text = 'ParaCut: MP4 Render Quality'
+            $dialog.ClientSize = New-Object System.Drawing.Size(425, 215)
+            $dialog.StartPosition = 'CenterScreen'
+            $dialog.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+            $dialog.MaximizeBox = $false
+            $dialog.MinimizeBox = $false
+
+            $heading = New-Object System.Windows.Forms.Label
+            $heading.Location = New-Object System.Drawing.Point(18, 18)
+            $heading.Size = New-Object System.Drawing.Size(390, 35)
+            $heading.Text = 'Choose a local MP4 quality preset (defaults to R5.6 Balanced).'
+            $dialog.Controls.Add($heading)
+
+            $quality = New-Object System.Windows.Forms.ComboBox
+            $quality.Location = New-Object System.Drawing.Point(18, 60)
+            $quality.Size = New-Object System.Drawing.Size(388, 25)
+            $quality.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+            [void]$quality.Items.AddRange([object[]]@('Balanced', 'Compact', 'High'))
+            $quality.SelectedIndex = 0
+            $dialog.Controls.Add($quality)
+
+            $protect = New-Object System.Windows.Forms.CheckBox
+            $protect.Location = New-Object System.Drawing.Point(18, 105)
+            $protect.Size = New-Object System.Drawing.Size(390, 39)
+            $protect.Text = 'Protect master audio with a 0.95 sample-peak limiter'
+            $protect.Checked = $false
+            $dialog.Controls.Add($protect)
+
+            $yes = New-Object System.Windows.Forms.Button
+            $yes.Text = 'Continue'
+            $yes.Location = New-Object System.Drawing.Point(215, 160)
+            $yes.Size = New-Object System.Drawing.Size(90, 32)
+            $yes.DialogResult = [System.Windows.Forms.DialogResult]::OK
+            $dialog.Controls.Add($yes)
+            $dialog.AcceptButton = $yes
+
+            $no = New-Object System.Windows.Forms.Button
+            $no.Text = 'Cancel'
+            $no.Location = New-Object System.Drawing.Point(316, 160)
+            $no.Size = New-Object System.Drawing.Size(90, 32)
+            $no.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+            $dialog.Controls.Add($no)
+            $dialog.CancelButton = $no
+
+            if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+                return $null
+            }
+            return @{
+                Quality = $quality.SelectedItem.ToString().ToLowerInvariant()
+                Protect = [bool]$protect.Checked
+            }
+        }
+        finally { $dialog.Dispose() }
+    }
+
     $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $renderer = Join-Path $repoRoot 'scripts\studio-export-local.mjs'
     if (-not (Test-Path -LiteralPath $renderer -PathType Leaf)) {
@@ -121,13 +179,29 @@ try {
         throw 'Output already exists. ParaCut never overwrites movies. Select a new filename.'
     }
 
+    $renderOptions = Select-RenderOptions
+    if ($null -eq $renderOptions) {
+        Write-Host 'Render cancelled at quality selection. No movie was written.'
+        exit 0
+    }
+    # One argument vector for dry-run and actual render. Never construct a command string.
+    $renderArgs = @(
+        '--draft', $draft, '--media-dir', $mediaDir, '--out', $output,
+        '--ffmpeg', $ffmpegPath, '--ffprobe', $ffprobePath,
+        '--quality', $renderOptions.Quality
+    )
+    if ($renderOptions.Protect) {
+        $renderArgs += '--audio-protect'
+    }
+
+    Write-Host ('Preset: ' + $renderOptions.Quality + '; master limiter: ' + $renderOptions.Protect)
     Write-Host ''
     Write-Host 'ParaCut: validating your draft and the original media...'
     Write-Host ('Draft:  ' + $draft)
     Write-Host ('Media:  ' + $mediaDir)
     Write-Host ('Output: ' + $output)
     Write-Host ''
-    & $node.Source $renderer --draft $draft --media-dir $mediaDir --out $output --ffmpeg $ffmpegPath --ffprobe $ffprobePath --dry-run
+    & $node.Source $renderer @renderArgs --dry-run
     if ($LASTEXITCODE -ne 0) {
         throw 'Dry-run validation failed. No movie was rendered. See the details in this window.'
     }
@@ -135,7 +209,8 @@ try {
     $newline = [Environment]::NewLine
     $prompt = 'Draft: ' + $draft + $newline +
         'Original media: ' + $mediaDir + $newline +
-        'MP4 output: ' + $output + $newline + $newline +
+        'MP4 output: ' + $output + $newline +
+        'Quality: ' + $renderOptions.Quality + '; audio protection: ' + $renderOptions.Protect + $newline + $newline +
         'Render locally now? Existing files will not be overwritten.'
     $confirm = [System.Windows.Forms.MessageBox]::Show(
         $prompt, 'ParaCut: confirm MP4 render',
@@ -148,7 +223,7 @@ try {
     }
 
     # The same validated inputs are passed directly to the existing CLI.
-    & $node.Source $renderer --draft $draft --media-dir $mediaDir --out $output --ffmpeg $ffmpegPath --ffprobe $ffprobePath
+    & $node.Source $renderer @renderArgs
     if ($LASTEXITCODE -ne 0) {
         throw 'Local render failed or output verification failed. See the console details.'
     }

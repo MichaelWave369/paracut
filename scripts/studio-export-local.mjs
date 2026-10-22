@@ -11,12 +11,13 @@ import { planLocalMp4, shellPreview } from './studio-local-export-core.mjs';
 
 function parseArgs(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
-    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe');
+    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe --quality compact|balanced|high --audio-protect');
     process.exit(0);
   }
-  const opt={},known=new Set(['--draft','--media-dir','--out','--media-map','--ffmpeg','--ffprobe']);
+  const opt={},known=new Set(['--draft','--media-dir','--out','--media-map','--ffmpeg','--ffprobe','--quality']);
   for (let i=0;i<argv.length;i++) {
     if(argv[i]==='--dry-run'){opt.dryRun=true;continue;}
+    if(argv[i]==='--audio-protect'){opt.protectAudio=true;continue;}
     const key=argv[i];
     if(!known.has(key)||!argv[i+1]||argv[i+1].startsWith('--'))throw Error('Unknown/missing option: '+key);
     opt[key.slice(2).replaceAll('-','_')]=argv[++i];
@@ -83,9 +84,10 @@ async function main() {
   if(existsSync(target))throw Error('Output already exists: refusing overwrite '+target);
   const state=importDraft(await readFile(resolve(opt.draft),'utf8'));
   const linked=await relink(state,opt);
-  const plan=planLocalMp4(state,linked,target,{ffmpeg:opt.ffmpeg||'ffmpeg'});
+  const plan=planLocalMp4(state,linked,target,{ffmpeg:opt.ffmpeg||'ffmpeg',quality:opt.quality||'balanced',protectAudio:opt.protectAudio===true});
   console.log('ParaCut local MP4: '+plan.videoClips+' video clips, '+plan.audioSegments+
     ' audio segments, '+plan.transitions+' V1 transitions, '+(plan.overlayClips||0)+' V2 overlays, '+(plan.overlayCrossfades||0)+' V2 transitions, '+(plan.voiceClips||0)+' A2 clips, '+plan.duration+' seconds.');
+  console.log('Export quality: '+plan.quality+'; master audio protection: '+(plan.protectAudio?'ON (0.95 sample peak limiter)':'OFF')+'.');
   if(opt.dryRun) {
     console.log('DRY RUN: no file written and no encoder executed.');
     console.log(shellPreview([plan.ffmpeg,...plan.args]));
