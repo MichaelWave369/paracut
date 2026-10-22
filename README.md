@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎞️ ParaCut Studio R5.8 — Source + Program Editing
+
+Our first Premiere-style **dual-monitor workflow** has arrived: independently preview original footage in a **Source Monitor**, mark IN/OUT, then **Insert at the Program playhead** with V1 ripple or **Replace Selected V1**. The Project Media shelf now supports search and sorting. Every committed edit is validated, undoable and captured as a ledger receipt. Existing V1/V2/A1/A2/T1 browser and local MP4 exports remain unchanged. [R5.8 guide and limitations](docs/STUDIO_R58.md).
+
+
 ## 🎛️ ParaCut Studio R5.7 — Export Quality & Audio Protection
 
 The locally launched Windows/Node.js MP4 exporter adds **Compact, Balanced and High** encoding presets and an **optional post-mix audio sample limiter**. Balanced with protection off matches the old R5.6 output settings. Windows file pickers now include a quality/safety dialog; CLI options are `--quality compact|balanced|high` and `--audio-protect`. All footage stays local, with no file overwrites. [R5.7 quality/mastering guide](docs/STUDIO_R57.md).
