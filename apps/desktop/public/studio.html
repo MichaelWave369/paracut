@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.4 · Match Frame & Attributes</title>
+  <title>ParaCut Studio R6.5 · Timeline Markers</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.4 · CLIP ATTRIBUTES</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.5 · TIMELINE MARKERS</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -129,6 +129,7 @@
             <span>I / O Source marks · J / , Previous frame · . Next frame</span>
             <span>K Stop · L Forward 1×/2× · Space Play/Pause</span>
             <span>Delete Remove selected · Shift+Delete Sync Ripple V1</span>
+            <span>M Add marker · Shift+M Next marker · Alt+M Previous marker</span>
             <span>Ctrl/⌘ Z Undo · Ctrl/⌘ Y Redo</span>
           </div>
         </details>
@@ -142,6 +143,7 @@
         <div id="storyboard-scroll" class="storyboard-scroll" tabindex="0" aria-label="Scrollable storyboard timeline">
         <div id="storyboard-canvas" class="storyboard-canvas">
         <div id="precision-ruler" class="precision-ruler" aria-label="Time ruler"></div>
+        <div id="marker-track" class="marker-track" aria-label="Review markers" role="group"></div>
         <div class="timeline-ruler"><span>00:00</span><span>VIDEO 1 · RIPPLE SEQUENCE</span><span id="timeline-total">00:00</span></div>
         <div class="track-heading"><span>V1</span> VIDEO · RIPPLE CUT</div>
         <div id="timeline-track" class="timeline-track" aria-label="Video timeline"><div class="empty-timeline">Your video timeline is empty. Add clips from Media Shelf.</div></div>
@@ -308,6 +310,33 @@
         <p class="tip">Select Edit on a title to change it. Preview and WebM export use the same color, placement and fade timing.</p>
       </div>
       <div id="title-list" class="title-list"></div>
+      <hr>
+      <div class="panel-title"><h2>Timeline Markers</h2><span id="marker-count" class="tiny">0 markers</span></div>
+      <div class="marker-panel">
+        <div class="marker-toolbar">
+          <button type="button" id="marker-add" title="Add review marker at Program playhead (M)">+ Marker at Playhead</button>
+          <button type="button" id="marker-prev" title="Previous review marker (Alt+M)" disabled>← Previous</button>
+          <button type="button" id="marker-next" title="Next review marker (Shift+M)" disabled>Next →</button>
+        </div>
+        <div id="marker-edit" class="marker-edit" hidden>
+          <label>Label <input id="marker-label" maxlength="60" placeholder="Review note" /></label>
+          <div class="field-pair">
+            <label>Time (sec) <input id="marker-time" type="number" min="0" max="86400" step=".001" /></label>
+            <label>Color <select id="marker-color">
+              <option value="mint">Phi Mint</option><option value="gold">Gold</option>
+              <option value="blue">Blue</option><option value="coral">Coral</option>
+            </select></label>
+          </div>
+          <label>Notes <textarea id="marker-note" maxlength="280" rows="2" placeholder="What should happen here?"></textarea></label>
+          <div class="marker-toolbar">
+            <button type="button" id="marker-save" class="primary">Save Marker</button>
+            <button type="button" id="marker-delete">Delete Marker</button>
+            <button type="button" id="marker-cancel">Deselect</button>
+          </div>
+        </div>
+        <p class="tip">Click a marker in the ruler or the list to seek and edit it. Markers are annotations, not rendered graphics; their times stay absolute during ripple edits.</p>
+        <ol id="marker-list" class="marker-list" aria-label="Project timeline markers"></ol>
+      </div>
       <hr>
       <div class="panel-title" id="ledger-workspace-anchor"><h2>Edit Receipts</h2><span id="receipt-count" class="tiny">0</span></div>
       <ol id="receipts" class="receipts"></ol>
