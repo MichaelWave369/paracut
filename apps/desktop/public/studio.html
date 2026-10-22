@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.7 · Keyframes</title>
+  <title>ParaCut Studio R6.8 · Visual Keyframe Lanes</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.7 · KEYFRAME ANIMATION</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.8 · VISUAL KEYFRAMES</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -138,6 +138,7 @@
           <label for="timeline-zoom">Timeline zoom <strong id="zoom-label">100%</strong></label>
           <input id="timeline-zoom" type="range" min="1" max="4" step=".25" value="1" aria-label="Timeline zoom">
           <button id="fit-timeline" title="Fit all tracks horizontally">Fit</button>
+          <label for="show-keyframe-lanes" class="keyframe-lane-toggle"><input id="show-keyframe-lanes" type="checkbox" checked> ◆ Keyframe lanes</label>
           <span id="snap-feedback" role="status" aria-live="polite"></span>
         </div>
         <div id="storyboard-scroll" class="storyboard-scroll" tabindex="0" aria-label="Scrollable storyboard timeline">
@@ -153,10 +154,16 @@
         <div id="audio-track" class="timeline-track audio-track" aria-label="Audio soundtrack timeline"><div class="empty-timeline">Add audio tracks, voiceovers, or music from the Media Shelf.</div></div>
         <div class="track-heading soundtrack"><span>A2</span> AUDIO · VOICEOVER / FX / MUSIC</div>
         <div id="audio2-track" class="layer-track audio-layer" aria-label="Second audio storyboard"><span class="empty-timeline">Add audio on A2 to overlap music and voiceovers at the playhead.</span></div>
+        <div id="visual-keyframe-lanes" class="visual-keyframe-lanes" hidden>
+          <div class="track-heading keyframes-heading"><span>◆</span> KEYFRAMES · SELECTED CLIP</div>
+          <div id="keyframe-lane-opacity" class="keyframe-lane" hidden aria-label="Selected overlay opacity keyframe lane"></div>
+          <div id="keyframe-lane-volume" class="keyframe-lane" hidden aria-label="Selected clip audio volume keyframe lane"></div>
+        </div>
         <div class="track-heading titles-heading"><span>T1</span> TEXT · OVERLAYS</div>
         <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
         <div id="storyboard-playhead" class="storyboard-playhead" aria-hidden="true"></div>
         </div></div>
+        <p class="tip">◆ Keyframe lanes display the selected clip's Start and End opacity/volume diamonds. Drag a diamond vertically, or focus it and use arrow keys (Shift for 10% steps); one successful gesture creates one receipt. Unanimated values appear as a flat 100% guide until edited.</p>
         <p class="tip">Press V for Selection, C for Razor; click a targeted clip to split precisely where you click. J jogs one 30fps frame backward, K stops, L plays forward (press again for 2×). Target buttons affect Razor only, not Source Insert/Replace. No reverse-audio playback yet.</p>
         <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Two touching V2 clips can dissolve into each other; remove the dissolve before moving or trimming either joined clip. Layered clips can be dragged or moved precisely from Inspector. Snap aligns clip starts/ends with playhead, titles, and other track boundaries; zoom reveals details.</p>
       </div>
