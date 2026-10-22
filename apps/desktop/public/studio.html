@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.3 · Precision Editing</title>
+  <title>ParaCut Studio R6.4 · Match Frame & Attributes</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.3 · PRECISION EDIT</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.4 · CLIP ATTRIBUTES</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -75,6 +75,8 @@
             <button id="source-insert" class="primary" title="Insert selected source range at Program playhead and ripple V1" disabled>Insert at Playhead</button>
             <button id="source-replace" title="Replace selected V1 clip with source range, rippling later clips" disabled>Replace Selected V1</button>
           </div>
+          <div class="source-edit-row"><button id="source-match-frame" type="button" title="Match selected video clip's current Program frame into Source Monitor (F)" disabled>↗ Match Frame <kbd>F</kbd></button></div>
+          <p class="tip">Double-click a V1/V2 timeline clip to open its original media at that exact frame. Match Frame doesn't edit the movie or create a receipt.</p>
           <p class="tip">Source IN + OUT and the Program playhead define a three-point insertion. Replacing operates on one selected V1 clip. Both edits have receipts and Undo/Redo.</p>
         </div>
       <div class="preview panel">
@@ -123,7 +125,7 @@
         <details id="shortcut-reference" class="shortcut-reference">
           <summary>⌨ Shortcuts</summary>
           <div class="shortcut-reference-body">
-            <span>V Selection · C Razor · S Split</span>
+            <span>V Selection · C Razor · S Split · F Match Frame</span>
             <span>I / O Source marks · J / , Previous frame · . Next frame</span>
             <span>K Stop · L Forward 1×/2× · Space Play/Pause</span>
             <span>Delete Remove selected · Shift+Delete Sync Ripple V1</span>
@@ -202,6 +204,16 @@
           <label for="v2-dissolve-seconds">Dissolve to next V2 overlay</label>
           <div class="transition-row"><input id="v2-dissolve-seconds" type="number" min="0" max="1.5" step="0.1" value="0"><button id="apply-v2-dissolve">Apply V2 Dissolve</button></div>
           <p id="v2-dissolve-note" class="tip">Requires two touching V2 clips. Set to 0 to remove their dissolve.</p>
+        </div>
+        <div id="attribute-clipboard" class="attribute-clipboard" hidden>
+          <div class="panel-title"><h2>Copy / Paste Attributes</h2><span class="tiny">Current session</span></div>
+          <div class="attribute-actions">
+            <button id="copy-color" type="button">Copy Color</button>
+            <button id="paste-color" type="button" disabled>Paste Color</button>
+            <button id="copy-overlay" type="button">Copy V2 Style</button>
+            <button id="paste-overlay" type="button" disabled>Paste V2 Style</button>
+          </div>
+          <p id="attribute-clipboard-status" class="tip">Copy a saved clip grade or V2 visual style, then select another clip and paste. Each paste creates one edit receipt.</p>
         </div>
         <div id="clip-color-control" class="clip-color-control" hidden>
           <div class="panel-title"><h2>Color · Clip Controls</h2><span class="tiny">V1 / V2</span></div>
