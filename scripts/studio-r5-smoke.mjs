@@ -65,7 +65,13 @@ assert.equal(past.video2Clips.length,0);
 assert.equal(past.audio2Clips.length,0);
 assert.equal(duration(past),17);
 assert.ok(crossfadeAt(past,9.5));
-assert.throws(()=>planLocalMp4(saved,{},'/tmp/out.mp4'),/does not support V2\/A2/);
+assert.throws(()=>planLocalMp4(saved,{},'/tmp/out.mp4'),/Source media not relinked/);
+const localMap=Object.fromEntries(saved.assets.map(a=>[a.asset_id,{
+  path:'/tmp/'+a.asset_id+'.original',hasAudio:a.type.startsWith('audio/')}]));
+const localPlan=planLocalMp4(saved,localMap,'/tmp/out.mp4');
+assert.match(localPlan.graph,/overlay=x=/);
+assert.equal(localPlan.overlayClips,1);
+assert.equal(localPlan.voiceClips,1);
 const ui=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 for(const id of ['video2-track','audio2-track','overlay-video','overlay-layout',
