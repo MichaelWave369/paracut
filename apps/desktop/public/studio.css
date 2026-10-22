@@ -262,3 +262,14 @@
 .grade-indicator,.motion-indicator{font-size:9px!important;font-weight:700;letter-spacing:.06em;display:inline-block;padding:2px 4px;border-radius:4px;margin-left:3px;white-space:nowrap}
 .grade-indicator{color:#102c29!important;background:#9de8d4}
 .motion-indicator{color:#271e3c!important;background:#bda6ff}
+
+/* R6.3 precision editing: separate synchronized ripple tool and shortcut legend */
+#ripple-delete{border-color:#6d7d48;background:#293b2d;color:#dcf4d1;white-space:nowrap}
+#ripple-delete:hover:not(:disabled){background:#36583e;border-color:#a4d79c}
+#ripple-delete kbd{font:9px ui-monospace,monospace;color:#bcdfb9;margin-left:4px}
+#jog-next{font-size:11px;white-space:nowrap}
+.shortcut-reference{margin:7px 0 8px;border:1px solid #354b61;border-radius:8px;background:#101e2b;color:#b5cde0;font-size:11px}
+.shortcut-reference summary{cursor:pointer;padding:8px 11px;user-select:none}
+.shortcut-reference summary:hover{color:#ddf5ff}
+.shortcut-reference-body{padding:2px 12px 10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;font:10px ui-monospace,monospace;line-height:1.55}
+@media(max-width:720px){.shortcut-reference-body{grid-template-columns:minmax(0,1fr)}}
