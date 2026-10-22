@@ -150,6 +150,7 @@ export function snapLayerTime(state, {desiredStart, span, trackId, excludeClipId
     anchors.push(c.timeline.start,c.timeline.end);
   }
   for(const t of state.titles) anchors.push(t.start,t.end);
+  for(const marker of state.markers) anchors.push(marker.time);
   const options=[];
   for(const anchor of anchors) for(const edge of ['start','end']) {
     const x=edge==='start'?anchor:anchor-span;
@@ -313,7 +314,7 @@ export function change(state, command) {
   const before = checkpoint(state);
   let assets = copy(state.assets), clips = copy(state.clips), audioClips = copy(state.audioClips), video2Clips=copy(state.video2Clips), audio2Clips=copy(state.audio2Clips), audioMix=copy(state.audioMix), titles = copy(state.titles), markers=copy(state.markers??[]), name = state.name;
   const { type } = command;
-  let rippleDetails=null;
+  let rippleDetails=null,createdMarkerId=null;
   const laneFor = clipId => [clips,audioClips,video2Clips,audio2Clips].find(
     lane => lane.some(c=>c.clip_id===clipId)) || null;
   if (type === 'asset.added') {
@@ -500,7 +501,7 @@ export function change(state, command) {
     if(markers.length>=MARKER_LIMIT)throw Error('Maximum 100 timeline markers.');
     const marker=markerFromInput(command.marker,id());
     markers=sortedMarkers([...markers,marker]);
-    command.marker_id=marker.marker_id;
+    createdMarkerId=marker.marker_id;
   } else if (type === 'marker.updated') {
     const index=markers.findIndex(m=>m.marker_id===command.marker_id);
     if(index<0)throw Error('Marker not found.');
@@ -613,7 +614,7 @@ export function change(state, command) {
       ...(type === 'clip.color.updated' ? { color:copy(command.color) } : {}),
       ...(type === 'clip.ripple.deleted' ? rippleDetails : {}),
       ...(type.startsWith('marker.') ? {
-        marker_id:command.marker_id,
+        marker_id:createdMarkerId??command.marker_id,
         ...(type!=='marker.deleted'?{
           time:command.marker.time,label:command.marker.label.trim(),
           color:command.marker.color??'mint',note:command.marker.note??''
