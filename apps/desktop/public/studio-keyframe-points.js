@@ -92,7 +92,7 @@ export function moveKeyframePoint(raw,index,at,value){
   if((index===0&&candidate.at!==0)||
     (index===points.length-1&&candidate.at!==1))
     throw Error('Start and End keyframe times are fixed.');
-  points[index]=candidate;
+  points[index]={...candidate,...(points[index].ease?{ease:points[index].ease}:{})};
   return validateKeyframePoints(points);
 }
 export function setKeyframeSegmentEase(raw,index,ease){
