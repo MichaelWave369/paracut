@@ -115,6 +115,8 @@ function updateTimeUI() {
   showTitleAt(playhead);
   applyPreviewColor();
   updateStoryPlayhead();
+  $('marker-prev').disabled=exporting||!navigateMarker(state.markers,playhead,'previous');
+  $('marker-next').disabled=exporting||!navigateMarker(state.markers,playhead,'next');
 }
 function currentSource() {
   const asset=state.assets.find(a=>a.asset_id===sourceAssetId);
