@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R6.9 — Multi-Point Animation
+
+The selected clip's visual keyframe lanes now support **2–8 draggable points** per V2 Opacity or clip Volume curve. Double-click the graph or press **+ Point at Playhead**, drag interior diamonds in **time and value**, or use keyboard arrows and Delete. Every completed edit produces one validated receipt with Undo/Redo, and saved piecewise-linear curves flow through Program preview, browser recording and local FFmpeg MP4. Older two-point drafts still work; Inspector Start/End Apply intentionally resets that property to two points. [R6.9 guide](docs/STUDIO_R69.md).
+
+
 ## ◆ ParaCut Studio R6.8 — Visual Keyframe Lanes
 
 The R6.7 two-point V2 Opacity and clip Volume animation now has **timeline-aligned curves and draggable Start/End diamonds**. A pointer release makes one validated, undoable ledger edit; arrows, Shift+arrows and Home/End provide keyboard access. Every automated clip shows a **◆ KF** badge, and the Keyframe Lanes view is toggleable. Also fixes an R6.7 Inspector selection bug. Draft schema and browser/local FFmpeg export engines remain unchanged. [R6.8 visual keyframe guide](docs/STUDIO_R68.md).
