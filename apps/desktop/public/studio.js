@@ -191,9 +191,10 @@ function clipClickTime(clip,event,item) {
 function matchTimelineDoubleClick(clip,event,item) {
   if(activeTool!=='select'||!clip.track_id.startsWith('video-'))return;
   event.preventDefault();
+  const matchedTime=clipClickTime(clip,event,item);
   selectedId=clip.clip_id;
   drawTimeline();drawInspector();
-  matchFrame(clip,clipClickTime(clip,event,item));
+  matchFrame(clip,matchedTime);
 }
 function refreshAttributes() {
   const clip=selectedClip(),video=Boolean(clip?.track_id.startsWith('video-'));
