@@ -87,7 +87,7 @@ const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.u
 for(const id of ['clip-color-control','color-brightness','color-contrast',
   'color-saturation','color-warmth','apply-clip-color','reset-clip-color'])
  assert.match(html,new RegExp('id="'+id+'"'));
-assert.match(js,/el\.style\.filter=colorCSS\(find\(el\.dataset\.clip\)\)/);
+assert.match(js,/el\.style\.filter=previewColorFor\(find\(el\.dataset\.clip\),selectedId,/);
 assert.match(js,/g\.filter=colorCSS\(clip\)/);
 assert.match(js,/drawVideoFrame\(encoderIncoming,fade.progress,fade.incoming\)/);
 assert.match(js,/drawVideoFrame\(el,1,clip\)/);
