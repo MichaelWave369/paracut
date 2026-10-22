@@ -3,6 +3,7 @@ import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
+import { workspacePreset,loadWorkspace,saveWorkspace,resizeWorkspace } from './studio-workspaces.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
@@ -1177,6 +1178,77 @@ $('snap-enabled').addEventListener('change',event=>{
   $('snap-feedback').textContent=event.target.checked?'Snap ON':'Snap OFF';
 });
 window.addEventListener('resize',()=>{drawTimeline();drawTitles();updateStoryPlayhead();});
+// Layout is local UI state. It never changes the edit ledger, media, or drafts.
+function availableWorkspaceStorage() {
+  try{return window.localStorage;}catch{return null;}
+}
+let workspaceSettings=loadWorkspace(availableWorkspaceStorage());
+function applyWorkspaceSettings({persist=true,focus=false}={}) {
+  const pref=workspaceSettings,root=document.documentElement,host=$('editor-workspace');
+  root.style.setProperty('--workspace-left',pref.left+'px');
+  root.style.setProperty('--workspace-right',pref.right+'px');
+  root.style.setProperty('--workspace-monitor',pref.monitor+'px');
+  host.dataset.workspace=pref.preset;
+  host.dataset.sourceVisible=String(pref.showSource);
+  $('workspace-preset').value=pref.preset;
+  $('workspace-source-visible').checked=pref.showSource;
+  for(const [id,key] of [['resize-media','left'],['resize-inspector','right'],
+    ['resize-monitors','monitor']])
+    $(id).setAttribute('aria-valuenow',String(pref[key]));
+  const labels={editing:'Editing',audio:'Audio',color:'Color layout (no color effects yet)',titles:'Titles'};
+  $('workspace-feedback').textContent=labels[pref.preset]+' · '+pref.left+'/'+pref.right+' px · monitor '+pref.monitor+' px';
+  if(!pref.showSource)sourceVideo.pause();
+  if(persist)saveWorkspace(availableWorkspaceStorage(),pref);
+  if(focus && pref.preset==='audio')$('audio-workspace-anchor').scrollIntoView({block:'start',behavior:'smooth'});
+  if(focus && pref.preset==='titles')$('titles-workspace-anchor').scrollIntoView({block:'start',behavior:'smooth'});
+  if(focus && pref.preset==='color')$('studio-inspector').scrollTop=0;
+  // Ruler tick density and canvas width follow the actual workspace viewport.
+  requestAnimationFrame(()=>{drawTimeline();drawTitles();updateStoryPlayhead();});
+}
+function applyWorkspacePreset(name) {
+  workspaceSettings=workspacePreset(name);
+  applyWorkspaceSettings({focus:true});
+}
+function installWorkspaceResize(id,key,sign,axis) {
+  const el=$(id);let pointer=null;
+  el.addEventListener('pointerdown',e=>{
+    if(e.button!==0 || el.offsetParent===null)return;
+    pointer={id:e.pointerId,at:axis==='x'?e.clientX:e.clientY,initial:workspaceSettings};
+    el.setPointerCapture(e.pointerId);el.classList.add('is-dragging');e.preventDefault();
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!pointer || e.pointerId!==pointer.id)return;
+    const delta=sign*((axis==='x'?e.clientX:e.clientY)-pointer.at);
+    workspaceSettings=resizeWorkspace(pointer.initial,key,delta);
+    applyWorkspaceSettings({persist:false});
+  });
+  const stop=e=>{
+    if(!pointer || e.pointerId!==pointer.id)return;
+    pointer=null;el.classList.remove('is-dragging');
+    saveWorkspace(availableWorkspaceStorage(),workspaceSettings);
+  };
+  el.addEventListener('pointerup',stop);
+  el.addEventListener('pointercancel',stop);
+  el.addEventListener('lostpointercapture',()=>{pointer=null;el.classList.remove('is-dragging');});
+  el.addEventListener('keydown',e=>{
+    const direction=e.key==='ArrowRight'||e.key==='ArrowDown'?1:
+      e.key==='ArrowLeft'||e.key==='ArrowUp'?-1:0;
+    if(!direction)return;
+    e.preventDefault();
+    workspaceSettings=resizeWorkspace(workspaceSettings,key,sign*direction*(e.shiftKey?32:16));
+    applyWorkspaceSettings();
+  });
+}
+$('workspace-preset').addEventListener('change',e=>applyWorkspacePreset(e.target.value));
+$('workspace-source-visible').addEventListener('change',e=>{
+  workspaceSettings={...workspaceSettings,showSource:e.target.checked};
+  applyWorkspaceSettings();
+});
+$('workspace-reset').addEventListener('click',()=>applyWorkspacePreset(workspaceSettings.preset));
+installWorkspaceResize('resize-media','left',1,'x');
+installWorkspaceResize('resize-inspector','right',-1,'x');
+installWorkspaceResize('resize-monitors','monitor',1,'y');
+applyWorkspaceSettings({persist:false});
 render(); void seekTo(0); status('New project ready.');
 });
 $('save-draft').addEventListener('click', () => {

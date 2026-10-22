@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R5.9 · Tool Velocity</title>
+  <title>ParaCut Studio R6.0 · Workspace Layouts</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.9 · EDITING TOOLS</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.0 · WORKSPACES</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -22,7 +22,20 @@
     </div>
   </header>
 
-  <main class="workspace">
+  <nav class="workspace-bar" aria-label="Editor workspace controls">
+    <label for="workspace-preset">Workspace</label>
+    <select id="workspace-preset" aria-label="Choose editor workspace">
+      <option value="editing">Editing</option>
+      <option value="audio">Audio</option>
+      <option value="color">Color (layout only)</option>
+      <option value="titles">Titles</option>
+    </select>
+    <label class="source-visibility" for="workspace-source-visible"><input type="checkbox" id="workspace-source-visible" checked> Source Monitor</label>
+    <button id="workspace-reset" type="button" title="Reset current preset sizes">Reset layout</button>
+    <span id="workspace-feedback" role="status" aria-live="polite" class="tiny">Editing workspace</span>
+    <span class="workspace-guide">Drag dividers or use arrow keys while they are focused.</span>
+  </nav>
+  <main id="editor-workspace" class="workspace" data-workspace="editing" data-source-visible="true">
     <aside class="media panel">
       <div class="panel-title"><h2>Project Media</h2><span id="asset-count" class="tiny">0 files</span></div>
       <div class="project-controls">
@@ -40,7 +53,7 @@
       <div class="layer-add-guide">Media + appends to V1/A1. Use the second button for V2/A2 at the current playhead.</div>
       <p class="tip">Media stays on your device. V2 overlays are placed above V1; A2 mixes with A1.</p>
     </aside>
-
+    <div id="resize-media" class="panel-resizer" role="separator" tabindex="0" aria-label="Resize Project Media panel" aria-orientation="vertical" aria-valuemin="180" aria-valuemax="440" aria-valuenow="250"></div>
     <section class="center">
       <div class="monitor-bank">
         <div class="source-preview panel">
@@ -80,6 +93,7 @@
         </div>
       </div>
       </div>
+      <div id="resize-monitors" class="panel-resizer panel-resizer-horizontal" role="separator" tabindex="0" aria-label="Resize monitors and timeline" aria-orientation="horizontal" aria-valuemin="230" aria-valuemax="680" aria-valuenow="400"></div>
       <div class="timeline panel">
         <div class="panel-title"><h2>Timeline · R5.9</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
@@ -129,8 +143,8 @@
         <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Two touching V2 clips can dissolve into each other; remove the dissolve before moving or trimming either joined clip. Layered clips can be dragged or moved precisely from Inspector. Snap aligns clip starts/ends with playhead, titles, and other track boundaries; zoom reveals details.</p>
       </div>
     </section>
-
-    <aside class="inspector panel">
+    <div id="resize-inspector" class="panel-resizer" role="separator" tabindex="0" aria-label="Resize Inspector panel" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="500" aria-valuenow="310"></div>
+    <aside id="studio-inspector" class="inspector panel">
       <div class="panel-title"><h2>Inspector</h2><span class="tiny">SELECTED CLIP</span></div>
       <div id="inspector-empty" class="note">Select a timeline clip to trim, reorder, or inspect it.</div>
       <div id="inspector-fields" hidden>
@@ -200,7 +214,7 @@
         <dl id="selected-meta" class="metadata"></dl>
       </div>
       <hr>
-      <div class="panel-title"><h2>Track Mixer</h2><span class="tiny">A1 + A2</span></div>
+      <div class="panel-title" id="audio-workspace-anchor"><h2>Track Mixer</h2><span class="tiny">A1 + A2</span></div>
       <div class="track-mixer" id="track-mixer">
         <div class="mixer-channel" data-mixer="a1">
           <div class="mixer-channel-top"><strong>A1 · SOUNDTRACK</strong><span id="mixer-a1-value">100%</span></div>
@@ -228,7 +242,7 @@
         <p class="tip">Optional voiceover ducking lowers A1 to 40% under A2, with short fades. Solo isolates selected audio buses, including muting original video audio. Changes are saved and undoable.</p>
       </div>
       <hr>
-      <div class="panel-title"><h2>Titles &amp; Overlays</h2><span class="tiny">T1</span></div>
+      <div class="panel-title" id="titles-workspace-anchor"><h2>Titles &amp; Overlays</h2><span class="tiny">T1</span></div>
       <div class="title-editor">
         <label for="title-text">Text overlay</label>
         <input id="title-text" type="text" maxlength="100" placeholder="A thousand worlds. One book.">
@@ -251,7 +265,7 @@
       </div>
       <div id="title-list" class="title-list"></div>
       <hr>
-      <div class="panel-title"><h2>Edit Receipts</h2><span id="receipt-count" class="tiny">0</span></div>
+      <div class="panel-title" id="ledger-workspace-anchor"><h2>Edit Receipts</h2><span id="receipt-count" class="tiny">0</span></div>
       <ol id="receipts" class="receipts"></ol>
       <p class="tip">Draft receipts document changes. They are not cryptographic verification or publish approval.</p>
     </aside>
