@@ -1,6 +1,7 @@
 // ParaCut Studio R4.1: browser-draft -> local FFmpeg render plan.
 // No shell command execution or network access in this module.
 import { extname, resolve } from 'node:path';
+import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 
 const n = x => String(Math.round(x * 1000) / 1000);
 const seconds = c => c.source.end - c.source.start;
@@ -35,13 +36,11 @@ export function buildAss(titles, length) {
 }
 
 export function planLocalMp4(state, mediaByAsset, output, {ffmpeg='ffmpeg'}={}) {
-  // This old sequential render graph cannot honor the new bus mixer.
-  // Refuse rather than producing an MP4 with different audio than preview.
   const mix=state?.audioMix;
-  if(mix && (mix.duckA1 || ['a1','a2'].some(k=>mix[k]?.gain!==1 ||
-      mix[k]?.muted || mix[k]?.solo)))
-    throw Error('R4.1 local MP4 companion cannot render R5.2 bus mixing; use browser export. No audio changes were silently omitted.');
-  if(state?.video2Clips?.length || state?.audio2Clips?.length) throw Error('R4.1 local MP4 companion does not support V2/A2 layered tracks yet. Use the browser MP4/WebM renderer; no layers were silently omitted.');
+  const advanced=Boolean(state?.video2Clips?.length || state?.audio2Clips?.length ||
+    (mix && (mix.duckA1 || ['a1','a2'].some(k=>mix[k]?.gain!==1 ||
+      mix[k]?.muted || mix[k]?.solo))));
+  if(advanced)return planLayeredMp4(state,mediaByAsset,output,{ffmpeg,buildAss});
   if(!state?.clips?.length)throw Error('A video clip is required.');
   if(state.clips.length>32||state.audioClips.length>32)throw Error('Local export limit: 32 clips per lane.');
   const length=state.clips.at(-1).timeline.end;
