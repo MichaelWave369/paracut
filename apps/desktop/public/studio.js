@@ -10,6 +10,7 @@ import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {validateKeyframePair} from './studio-keyframes.js';
+import {renderVisualKeyframeLanes} from './studio-keyframe-view.js';
 import {EFFECTS_SECTIONS,readEffectsView,writeEffectsView,
   setEffectsSection,allEffectsSections,effectsVisibility,effectsSummaries}
   from './studio-effects-layout.js';
@@ -24,6 +25,7 @@ const razorTargets=new Set(['video-1']);
 let transportSpeed=1;
 const attributeClipboard={color:null,overlay:null};
 let timelineZoom=1; // local interface preference, not saved into media drafts
+let showKeyframeLanes=true;
 function timelineExtent(){
   return Math.max(duration(state),state.audioClips.at(-1)?.timeline.end||0,
     state.video2Clips.at(-1)?.timeline.end||0,
@@ -347,6 +349,18 @@ function applyTransportSpeed() {
   for(const el of [video,crossfadeVideo,overlayVideo,overlayIncoming,soundtrack,audio2Player])
     el.playbackRate=transportSpeed;
 }
+function drawKeyframeLanes(){
+  const clip=[...state.clips,...state.audioClips,...state.video2Clips,
+    ...state.audio2Clips].find(c=>c.clip_id===selectedId);
+  renderVisualKeyframeLanes({
+    root:$('visual-keyframe-lanes'),
+    opacityLane:$('keyframe-lane-opacity'),
+    volumeLane:$('keyframe-lane-volume'),
+    clip:showKeyframeLanes?clip:null,
+    total:timelineExtent(),editable:!exporting&&activeTool==='select',
+    onCommit:command=>edit(command)
+  });
+}
 function drawTimeline() {
   const lanes = [
     { el: $('timeline-track'), clips: state.clips, empty: 'Your video timeline is empty. Add video files.' },
@@ -484,6 +498,7 @@ function drawTimeline() {
       placeOnLayer({type:'clip.layer.moved',clip_id,start:Math.round(x*layerTotal*10)/10});
     };
   }
+  drawKeyframeLanes();
 }
 
 function showTitleAt(at) {
@@ -1527,7 +1542,11 @@ for(const [name, method] of [['undo',undo],['redo',redo]]) $(name).addEventListe
 $('project-name').addEventListener('change', e => edit({ type:'project.renamed', name:e.target.value }));
 $('new-project').addEventListener('click', () => {
   if (exporting || !confirm('Start a new project? Export your draft first if you want to keep these edits.')) return;
-  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; resetTitleEditor(); $('timeline-zoom').addEventListener('input',event=>{
+  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; resetTitleEditor(); $('show-keyframe-lanes').addEventListener('change',event=>{
+  showKeyframeLanes=event.target.checked;
+  drawKeyframeLanes();
+});
+$('timeline-zoom').addEventListener('input',event=>{
   const scroll=$('storyboard-scroll'),total=timelineExtent();
   const relative=total>0?playhead/total:0;
   const oldWidth=$('storyboard-canvas').clientWidth||1;
