@@ -1,6 +1,7 @@
 // ParaCut Studio R4.1: browser-draft -> local FFmpeg render plan.
 // No shell command execution or network access in this module.
 import { extname, resolve } from 'node:path';
+import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
 import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 import { applyExportOptions } from './studio-r57-export-options.mjs';
 
@@ -59,7 +60,9 @@ export function planLocalMp4(state, mediaByAsset, output, {ffmpeg='ffmpeg',quali
     const c=state.clips[i],span=seconds(c);
     graph.push('['+i+':v:0]trim=start='+n(c.source.start)+':duration='+n(span)+
       ',setpts=PTS-STARTPTS,fps=30,scale=1280:720:force_original_aspect_ratio=decrease,'+
-      'pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,format=yuv420p,settb=AVTB[v'+i+']');
+      'pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,'+
+      (colorFFmpegFilters(c).length?colorFFmpegFilters(c).join(',')+',':'')+
+      'format=yuv420p,settb=AVTB[v'+i+']');
   }
   let outputVideo='v0';
   for(let i=1;i<state.clips.length;i++) {

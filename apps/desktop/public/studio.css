@@ -239,3 +239,13 @@
   .workspace .timeline{margin:0}
   .workspace-bar{padding:8px}
 }
+
+/* R6.1 source-specific color controls */
+.clip-color-control{margin:16px 0;padding:14px 11px;border:1px solid #446479;background:#101f2d;border-radius:10px}
+.clip-color-control[hidden]{display:none}
+.clip-color-control .panel-title{margin-bottom:8px}
+.color-field{display:grid;grid-template-columns:90px minmax(50px,1fr) 46px;gap:7px;align-items:center;margin:13px 0;font-size:11px;color:#bcd0e4}
+.color-field input{accent-color:#93dec6;width:100%}
+.color-field output{font:10px ui-monospace,monospace;text-align:right;color:#b5e8dc}
+.color-actions{display:flex;gap:9px;margin-top:15px}
+.color-actions button{flex:1;padding:8px}

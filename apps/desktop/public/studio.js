@@ -4,6 +4,7 @@ import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './st
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 import { workspacePreset,loadWorkspace,saveWorkspace,resizeWorkspace } from './studio-workspaces.js';
+import { clipColor, colorCSS, COLOR_DEFAULTS } from './studio-color.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
@@ -106,6 +107,7 @@ function updateTimeUI() {
   $('seek').value = String(Math.min(playhead, d));
   $('play').textContent = playing ? '❚❚' : '▶';
   showTitleAt(playhead);
+  applyPreviewColor();
   updateStoryPlayhead();
 }
 function currentSource() {
@@ -481,6 +483,12 @@ async function syncLayerPlayer(el,clip,at,autoplay,kind) {
     try{await el.play()}catch(e){status(kind+' layer preview: '+e.message,true);}
   }else if(!autoplay)el.pause();
 }
+function applyPreviewColor() {
+  const find=id=>[...state.clips,...state.video2Clips].find(c=>c.clip_id===id);
+  // Apply each source's own filter before it is crossfaded or overlaid.
+  for(const el of [video,crossfadeVideo,overlayVideo,overlayIncoming])
+    el.style.filter=colorCSS(find(el.dataset.clip));
+}
 function syncLayers(at,autoplay) {
   const dissolve=overlayCrossfadeAt(state,at);
   void syncLayerPlayer(overlayVideo,activeOverlayClip(state,at),at,autoplay,'video');
@@ -689,7 +697,19 @@ function drawInspector() {
   const clip = [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].find(c => c.clip_id === selectedId);
   $('inspector-fields').hidden = !clip;
   $('inspector-empty').hidden = Boolean(clip);
+  $('clip-color-control').hidden=!clip||!clip.track_id.startsWith('video-');
   if (!clip) return;
+  if(clip.track_id.startsWith('video-')) {
+    const values=clipColor(clip);
+    for(const key of ['brightness','contrast','saturation','warmth']){
+      const display=key==='warmth'?Math.round(values[key]):Math.round(values[key]*100);
+      $('color-'+key).value=String(display);
+      $('color-'+key+'-value').textContent=display+(key==='warmth'?'':'%');
+      $('color-'+key).disabled=exporting;
+    }
+    $('apply-clip-color').disabled=exporting;
+    $('reset-clip-color').disabled=exporting;
+  }
   const asset = state.assets.find(a => a.asset_id === clip.asset_id);
   $('selected-name').textContent = asset?.name || 'Unknown asset';
   $('in-time').value = String(clip.source.start);
@@ -889,12 +909,13 @@ function stopPlayback() {
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
       video.muted = isSourceAudioMuted(onScreen);
       previewAudioAt(playhead);
+      applyPreviewColor();
       render();
       status(command.type === 'clip.source-audio.muted'
         ? (command.muted ? 'Original video audio muted. A1 stays on.' : 'Original video audio restored.')
@@ -1103,6 +1124,22 @@ $('apply-crossfade').addEventListener('click', () => edit({
 }));
 $('apply-layer-start').addEventListener('click',()=>placeOnLayer({type:'clip.layer.moved',
   clip_id:selectedId,start:Number($('layer-start').value)}));
+for(const key of ['brightness','contrast','saturation','warmth']) {
+  $('color-'+key).addEventListener('input',e=>{
+    $('color-'+key+'-value').textContent=e.target.value+(key==='warmth'?'':'%');
+  });
+}
+function submitColor() {
+  const values={};
+  for(const key of ['brightness','contrast','saturation','warmth'])
+    values[key]=Number($('color-'+key).value)/(key==='warmth'?1:100);
+  edit({type:'clip.color.updated',clip_id:selectedId,color:values});
+}
+$('apply-clip-color').addEventListener('click',submitColor);
+$('reset-clip-color').addEventListener('click',()=>{
+  const clip=[...state.clips,...state.video2Clips].find(c=>c.clip_id===selectedId);
+  if(clip)edit({type:'clip.color.updated',clip_id:selectedId,color:{...COLOR_DEFAULTS}});
+});
 $('apply-overlay-style').addEventListener('click',()=>edit({type:'clip.overlay.updated',
   clip_id:selectedId,layout:$('overlay-layout').value,
   opacity:Number($('overlay-opacity').value)/100,
@@ -1322,20 +1359,21 @@ async function renderVideo(format) {
   try {
     const canvas = document.createElement('canvas'); canvas.width=1280; canvas.height=720;
     const g = canvas.getContext('2d',{alpha:false}); if(!g) throw Error('Canvas unavailable.');
-    const drawVideoFrame = (el, alpha) => {
+    const drawVideoFrame = (el, alpha, clip) => {
       const vw=el.videoWidth, vh=el.videoHeight;
       if (!vw || !vh || el.readyState < 2) return;
       const scale=Math.min(canvas.width/vw,canvas.height/vh), w=vw*scale,h=vh*scale;
       g.save(); g.globalAlpha = alpha;
+      g.filter=colorCSS(clip);
       g.drawImage(el,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
       g.restore();
     };
     const paint = (at = 0) => {
       g.fillStyle='#05070b'; g.fillRect(0,0,canvas.width,canvas.height);
-      drawVideoFrame(encoderVideo,1);
+      drawVideoFrame(encoderVideo,1,state.clips.find(c=>c.clip_id===encoderVideo.dataset.clip));
       const fade=crossfadeAt(state,at);
       if (fade && encoderIncoming.dataset.clip === fade.incoming.clip_id)
-        drawVideoFrame(encoderIncoming,fade.progress);
+        drawVideoFrame(encoderIncoming,fade.progress,fade.incoming);
       const overlayFade=overlayCrossfadeAt(state,at);
       const paintOverlay=(el,clip,weight)=>{
         if(!clip || el.dataset.clip!==clip.clip_id || el.readyState<2)return;
@@ -1345,13 +1383,14 @@ async function renderVideo(format) {
         const motion=overlayMotionAt(clip,at);
         if((clip.overlay_layout??'pip')==='full'){
           g.translate(motion.x*canvas.width,motion.y*canvas.height);
-          drawVideoFrame(el,1);
+          drawVideoFrame(el,1,clip);
         } else {
           const vw=el.videoWidth,vh=el.videoHeight;
           if(vw&&vh){const ratio=Math.min(420/vw,220/vh);
             const w=vw*ratio,h=vh*ratio;
             g.translate(motion.x*(w+12),motion.y*(h+12));
             g.fillStyle='#091321';g.fillRect(1210-w-12,35,w+12,h+12);
+            g.filter=colorCSS(clip);
             g.drawImage(el,1210-w-6,41,w,h);}
         }
         g.restore();

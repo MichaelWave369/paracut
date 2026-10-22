@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎨 ParaCut Studio R6.1 — Real Color Controls
+
+Select a V1/V2 video clip and adjust **brightness, contrast, saturation and warmth** in the Inspector. Apply and Reset are validated, undoable, receipt-backed edits that survive project saves. Individually graded sources flow through the Program Monitor, browser exports and the local FFmpeg MP4 companion. Browser CSS and FFmpeg color math are **approximations, not pixel-perfect matches**. [R6.1 grading guide](docs/STUDIO_R61.md).
+
+
 ## 🖥️ ParaCut Studio R6.0 — Editor Workspaces
 
 ParaCut's five-track editing cockpit now has **resizable Project Media and Inspector columns**, a draggable **monitor/timeline divider**, and four **locally saved layout presets**: Editing, Audio, Color (layout only), and Titles. Source Monitor visibility is independently toggleable. All settings live outside the project draft, ledger and rendering pipeline. No color grading tools or floating dockable windows are claimed yet. [R6.0 workspace guide](docs/STUDIO_R60.md).

@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.0 · Workspace Layouts</title>
+  <title>ParaCut Studio R6.1 · Clip Color</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.0 · WORKSPACES</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.1 · COLOR CONTROLS</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -188,6 +188,16 @@
           <label for="v2-dissolve-seconds">Dissolve to next V2 overlay</label>
           <div class="transition-row"><input id="v2-dissolve-seconds" type="number" min="0" max="1.5" step="0.1" value="0"><button id="apply-v2-dissolve">Apply V2 Dissolve</button></div>
           <p id="v2-dissolve-note" class="tip">Requires two touching V2 clips. Set to 0 to remove their dissolve.</p>
+        </div>
+        <div id="clip-color-control" class="clip-color-control" hidden>
+          <div class="panel-title"><h2>Color · Clip Controls</h2><span class="tiny">V1 / V2</span></div>
+          <p class="tip">Basic clip-level corrections. Applied to Program preview, browser recording, and local FFmpeg with approximate visual matching.</p>
+          <div class="color-field"><label for="color-brightness">Brightness</label><input id="color-brightness" type="range" min="50" max="150" step="1" value="100"><output id="color-brightness-value">100%</output></div>
+          <div class="color-field"><label for="color-contrast">Contrast</label><input id="color-contrast" type="range" min="50" max="150" step="1" value="100"><output id="color-contrast-value">100%</output></div>
+          <div class="color-field"><label for="color-saturation">Saturation</label><input id="color-saturation" type="range" min="0" max="200" step="1" value="100"><output id="color-saturation-value">100%</output></div>
+          <div class="color-field"><label for="color-warmth">Warmth</label><input id="color-warmth" type="range" min="-50" max="50" step="1" value="0"><output id="color-warmth-value">0</output></div>
+          <div class="color-actions"><button id="apply-clip-color" class="primary" type="button">Apply Color</button><button id="reset-clip-color" type="button">Reset</button></div>
+          <p class="tip">Edits are receipt-backed and undoable. Browser CSS and FFmpeg use different color math, so output may vary. No LUT or color-managed grading yet.</p>
         </div>
         <div id="source-audio-control" class="source-audio-control" hidden>
           <label class="source-audio-toggle" for="mute-source-audio">
