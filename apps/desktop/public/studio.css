@@ -373,3 +373,7 @@
 .keyframe-diamond:hover:not(:disabled),.keyframe-diamond:focus-visible{outline:2px solid #e5fff6;outline-offset:2px}
 .keyframe-diamond:disabled{opacity:.55;cursor:default}
 @media(max-width:760px){.keyframe-lane{height:100px}.keyframe-plot{top:23px;height:55px}}
+
+.keyframe-indicator{display:inline-block;margin-left:3px;padding:2px 5px;
+ font-size:9px!important;font-weight:700;letter-spacing:.06em;
+ border-radius:4px;background:#b2a8ff;color:#231f41!important;white-space:nowrap}
