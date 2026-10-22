@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎞️ ParaCut Studio R6.4 — Match Frame + Copy/Paste Attributes
+
+Double-click a V1/V2 clip to load its **original video at the corresponding trimmed source frame** into Source Monitor, or press **F** to match the selected clip at the Program playhead. Copy/paste **Color** attributes across V1/V2 clips or **visual V2 Style** across overlays. Copying remains private session UI state; each validated paste creates one ledger receipt with Undo/Redo. No changes to source files, draft format, or browser/local render engines. [R6.4 guide](docs/STUDIO_R64.md).
+
+
 ## ✂️ ParaCut Studio R6.3 — Synchronized Ripple Delete
 
 A new **Sync Ripple** action (`Shift+Delete`) removes a V1 clip and moves later **V2 overlays, A2 audio, and T1 titles** earlier with it. Unlike ordinary Delete, it keeps downstream layers in step; it refuses ambiguous overlaps and touching V1 crossfades rather than silently destroying media. **A1 remains on its own soundtrack timeline.** Edits create receipts and support Undo/Redo. Program frame stepping now supports **comma/period**, with an in-editor shortcut reference. [R6.3 guide and limitations](docs/STUDIO_R63.md).
