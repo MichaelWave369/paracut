@@ -36,17 +36,25 @@ export function renderVisualKeyframeLanes({
         handles[endpoint].title=property+' '+endpoint+': '+Math.round(values[endpoint]*100)+'%';
       }
     }
-    function commit(values){
+    function commit(values,focusEndpoint){
       if(!editable)return;
       const v=validateKeyframePair(values);
-      if(plan.active&&v.start===plan.values.start&&v.end===plan.values.end)return;
+      if(v.start===plan.values.start&&v.end===plan.values.end)return;
       onCommit({type:'clip.keyframes.updated',clip_id:clip.clip_id,
         field:plan.field,values:v});
+      // The receipt redraws the lane. Preserve keyboard focus for repeated edits.
+      if(focusEndpoint){
+        root.querySelector('[data-keyframe-property="'+property+
+          '"][data-keyframe-endpoint="'+focusEndpoint+'"]')
+          ?.focus({preventScroll:true});
+      }
     }
     for(const endpoint of ['start','end']){
       const handle=doc.createElement('button');handles[endpoint]=handle;
       handle.type='button';handle.className='keyframe-diamond keyframe-'+endpoint;
       handle.textContent='◆';
+      handle.dataset.keyframeProperty=property;
+      handle.dataset.keyframeEndpoint=endpoint;
       handle.style.left=endpoint==='start'?'0%':'100%';
       handle.disabled=!editable;
       handle.setAttribute('aria-label',property+' '+endpoint+' keyframe');
@@ -77,7 +85,7 @@ export function renderVisualKeyframeLanes({
         // Releasing pointer capture before committing avoids destroying a captured DOM node.
         if(handle.hasPointerCapture(event.pointerId))handle.releasePointerCapture(event.pointerId);
         event.stopPropagation();
-        commit(v);
+        commit(v,endpoint);
       });
       handle.addEventListener('pointercancel',()=>{
         drag=null;updateView(plan.values);
@@ -97,7 +105,7 @@ export function renderVisualKeyframeLanes({
         else if(event.key==='End')v=100;
         else return;
         event.preventDefault();event.stopPropagation();
-        commit(editKeyframeEndpoint(plan.values,endpoint,v));
+        commit(editKeyframeEndpoint(plan.values,endpoint,v),endpoint);
       });
       plot.append(handle);
     }
