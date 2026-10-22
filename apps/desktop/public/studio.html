@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.5 · Timeline Markers</title>
+  <title>ParaCut Studio R6.6 · Effects Controls</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.5 · TIMELINE MARKERS</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.6 · EFFECTS CONTROLS</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -167,6 +167,14 @@
       <div id="inspector-empty" class="note">Select a timeline clip to trim, reorder, or inspect it.</div>
       <div id="inspector-fields" hidden>
         <div class="selected-title" id="selected-name"></div>
+        <div class="effects-toolbar" role="group" aria-label="Inspector section controls">
+          <button type="button" id="effects-expand-all">Expand all</button>
+          <button type="button" id="effects-collapse-all">Collapse all</button>
+          <span id="effects-view-status" class="tiny" role="status" aria-live="polite">Section layout saved locally</span>
+        </div>
+        <details id="effects-timing" data-effects-section="timing" class="effects-section" open>
+          <summary><span class="effects-section-name">Timing</span><small id="effects-timing-summary" class="effects-summary">Source + transitions</small></summary>
+          <div class="effects-section-body">
         <div class="field-pair"><label>Source In (sec)<input id="in-time" type="number" min="0" step="0.001"></label><label>Source Out (sec)<input id="out-time" type="number" min="0" step="0.001"></label></div>
         <div id="waveform-trim-panel" class="waveform-trim-panel" hidden>
           <strong>Audio source waveform · Trim handles</strong>
@@ -184,39 +192,46 @@
           <div class="transition-row"><input id="layer-start" type="number" min="0" step="0.1"><button id="apply-layer-start">Move Clip</button></div>
           <p class="tip">V2/A2 clips use absolute time. Enable Snap above the timeline to align starts/ends to the playhead or existing cuts. Same-lane overlaps are still rejected.</p>
         </div>
-        <div id="overlay-style-control" class="transition-control" hidden>
-          <label>V2 visual overlay</label>
-          <div class="field-pair">
-            <label>Placement<select id="overlay-layout"><option value="pip">Picture-in-picture</option><option value="full">Full-frame overlay</option></select></label>
-            <label>Opacity (%)<input id="overlay-opacity" type="number" min="0" max="100" step="1" value="100"></label>
-          </div>
-          <label>Entrance/Exit Motion<select id="overlay-motion">
-            <option value="none">Dissolve only</option>
-            <option value="slide-left">Slide from left</option>
-            <option value="rise">Rise upward</option>
-          </select></label>
-          <div class="field-pair">
-            <label>Fade in (sec)<input id="overlay-fade-in" type="number" min="0" step=".1" value="0"></label>
-            <label>Fade out (sec)<input id="overlay-fade-out" type="number" min="0" step=".1" value="0"></label>
-          </div>
-          <button id="apply-overlay-style" class="wide">Apply Overlay Style</button>
-          <p class="tip">Video opacity fades affect V2 visuals. Source audio is independently muted by default.</p>
+        <div id="transition-control" class="transition-control" hidden>
+          <label for="crossfade-seconds">Crossfade to next video</label>
+          <div class="transition-row"><input id="crossfade-seconds" type="number" min="0" max="1.5" step="0.1" value="0"><button id="apply-crossfade">Apply</button></div>
+          <p class="tip" id="crossfade-note">0 = hard cut. Up to 1.5 seconds if both clips are long enough.</p>
         </div>
         <div id="v2-transition-control" class="transition-control" hidden>
           <label for="v2-dissolve-seconds">Dissolve to next V2 overlay</label>
           <div class="transition-row"><input id="v2-dissolve-seconds" type="number" min="0" max="1.5" step="0.1" value="0"><button id="apply-v2-dissolve">Apply V2 Dissolve</button></div>
           <p id="v2-dissolve-note" class="tip">Requires two touching V2 clips. Set to 0 to remove their dissolve.</p>
         </div>
-        <div id="attribute-clipboard" class="attribute-clipboard" hidden>
-          <div class="panel-title"><h2>Copy / Paste Attributes</h2><span class="tiny">Current session</span></div>
-          <div class="attribute-actions">
-            <button id="copy-color" type="button">Copy Color</button>
-            <button id="paste-color" type="button" disabled>Paste Color</button>
-            <button id="copy-overlay" type="button">Copy V2 Style</button>
-            <button id="paste-overlay" type="button" disabled>Paste V2 Style</button>
           </div>
-          <p id="attribute-clipboard-status" class="tip">Copy a saved clip grade or V2 visual style, then select another clip and paste. Each paste creates one edit receipt.</p>
+        </details>
+        <div id="overlay-style-control" class="transition-control" hidden>
+        <details id="effects-motion" data-effects-section="motion" class="effects-section" open>
+          <summary><span class="effects-section-name">Motion</span><small id="effects-motion-summary" class="effects-summary">V2 placement + fades</small></summary>
+          <div class="effects-section-body">
+            <div class="field-pair">
+              <label>Placement<select id="overlay-layout"><option value="pip">Picture-in-picture</option><option value="full">Full-frame overlay</option></select></label>
+              <label>Entrance/Exit Motion<select id="overlay-motion">
+                <option value="none">Dissolve only</option><option value="slide-left">Slide from left</option><option value="rise">Rise upward</option>
+              </select></label>
+            </div>
+            <div class="field-pair">
+              <label>Fade in (sec)<input id="overlay-fade-in" type="number" min="0" step=".1" value="0"></label>
+              <label>Fade out (sec)<input id="overlay-fade-out" type="number" min="0" step=".1" value="0"></label>
+            </div>
+          </div>
+        </details>
+        <details id="effects-opacity" data-effects-section="opacity" class="effects-section" open>
+          <summary><span class="effects-section-name">Opacity</span><small id="effects-opacity-summary" class="effects-summary">V2 transparency</small></summary>
+          <div class="effects-section-body">
+            <label>Opacity (%)<input id="overlay-opacity" type="number" min="0" max="100" step="1" value="100"></label>
+          </div>
+        </details>
+          <button id="apply-overlay-style" class="wide">Apply Overlay Style</button>
+          <p class="tip">Motion, opacity and fades are committed together by Apply Overlay Style. Source audio is independent.</p>
         </div>
+        <details id="effects-color" data-effects-section="color" class="effects-section" open>
+          <summary><span class="effects-section-name">Color</span><small id="effects-color-summary" class="effects-summary">Grading</small></summary>
+          <div class="effects-section-body">
         <div id="clip-color-control" class="clip-color-control" hidden>
           <div class="panel-title"><h2>Color · Clip Controls</h2><span class="tiny">V1 / V2</span></div>
           <div class="color-looks" role="group" aria-label="Apply a color look to selected video">
@@ -235,17 +250,17 @@
           <div class="color-actions"><button id="apply-clip-color" class="primary" type="button">Apply Color</button><button id="reset-clip-color" type="button">Reset</button></div>
           <p class="tip">Edits are receipt-backed and undoable. Browser CSS and FFmpeg use different color math, so output may vary. No LUT or color-managed grading yet.</p>
         </div>
+          </div>
+        </details>
+        <details id="effects-audio" data-effects-section="audio" class="effects-section" open>
+          <summary><span class="effects-section-name">Audio</span><small id="effects-audio-summary" class="effects-summary">Volume + fades</small></summary>
+          <div class="effects-section-body">
         <div id="source-audio-control" class="source-audio-control" hidden>
           <label class="source-audio-toggle" for="mute-source-audio">
             <input id="mute-source-audio" type="checkbox">
             <span>Mute original video audio</span>
           </label>
           <p class="tip">Mutes only this video's built-in sound. Your A1/A2 soundtracks keep playing. Applies to preview and browser export.</p>
-        </div>
-        <div id="transition-control" class="transition-control" hidden>
-          <label for="crossfade-seconds">Crossfade to next video</label>
-          <div class="transition-row"><input id="crossfade-seconds" type="number" min="0" max="1.5" step="0.1" value="0"><button id="apply-crossfade">Apply</button></div>
-          <p class="tip" id="crossfade-note">0 = hard cut. Up to 1.5 seconds if both clips are long enough.</p>
         </div>
         <div class="audio-adjustments">
           <label for="clip-volume">Audio volume <span id="volume-number">100%</span></label>
@@ -257,7 +272,29 @@
           <button id="apply-audio" class="wide">Apply Audio Settings</button>
           <p class="tip">Affects this clip's audio only. Fade times must fit inside its duration.</p>
         </div>
+          </div>
+        </details>
+        <details id="effects-attributes" data-effects-section="attributes" class="effects-section" open>
+          <summary><span class="effects-section-name">Copy / Paste</span><small id="effects-attributes-summary" class="effects-summary">Clipboard</small></summary>
+          <div class="effects-section-body">
+        <div id="attribute-clipboard" class="attribute-clipboard" hidden>
+          <div class="panel-title"><h2>Copy / Paste Attributes</h2><span class="tiny">Current session</span></div>
+          <div class="attribute-actions">
+            <button id="copy-color" type="button">Copy Color</button>
+            <button id="paste-color" type="button" disabled>Paste Color</button>
+            <button id="copy-overlay" type="button">Copy V2 Style</button>
+            <button id="paste-overlay" type="button" disabled>Paste V2 Style</button>
+          </div>
+          <p id="attribute-clipboard-status" class="tip">Copy a saved clip grade or V2 visual style, then select another clip and paste. Each paste creates one edit receipt.</p>
+        </div>
+          </div>
+        </details>
+        <details id="effects-metadata" data-effects-section="metadata" class="effects-section" open>
+          <summary><span class="effects-section-name">Clip information</span><small id="effects-metadata-summary" class="effects-summary">Read-only</small></summary>
+          <div class="effects-section-body">
         <dl id="selected-meta" class="metadata"></dl>
+          </div>
+        </details>
       </div>
       <hr>
       <div class="panel-title" id="audio-workspace-anchor"><h2>Track Mixer</h2><span class="tiny">A1 + A2</span></div>
