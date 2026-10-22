@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🖥️ ParaCut Studio R6.0 — Editor Workspaces
+
+ParaCut's five-track editing cockpit now has **resizable Project Media and Inspector columns**, a draggable **monitor/timeline divider**, and four **locally saved layout presets**: Editing, Audio, Color (layout only), and Titles. Source Monitor visibility is independently toggleable. All settings live outside the project draft, ledger and rendering pipeline. No color grading tools or floating dockable windows are claimed yet. [R6.0 workspace guide](docs/STUDIO_R60.md).
+
+
 ## ✂️ ParaCut Studio R5.9 — Razor Tools + JKL Editing
 
 The Source/Program studio adds **V/C Selection/Razor tools**, explicit V1/V2/A1/A2 **Razor target buttons**, and **J/K/L transport** (one-frame backward jog, stop, and 1×/2× forward playback). Click a targeted clip in Razor mode to split exactly where you click; cuts are validated, receipt-backed and undoable. All prior edits, drafts, browser export and local MP4 rendering are preserved. [R5.9 editing tools guide](docs/STUDIO_R59.md).
