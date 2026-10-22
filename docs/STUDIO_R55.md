@@ -1,5 +1,8 @@
 # ParaCut Studio R5.5 — V2-to-V2 moving video dissolves
 
+> **Current update (R5.6):** The local FFmpeg companion now supports V2/A2 layered rendering, V2 dissolves, track mixing, ducking and titles. The older limitation descriptions below document their original release scope. See [Studio R5.6](STUDIO_R56.md) for current requirements, fidelity limits and testing.
+
+
 The second video track now supports **real two-source crossfades** between two touching V2 overlays. Both original videos advance during the overlap in the browser preview and browser WebM / supported native MP4 export.
 
 ## Create a V2 dissolve

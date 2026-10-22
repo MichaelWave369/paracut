@@ -1,5 +1,8 @@
 # ParaCut R4.2 — Windows one-click local MP4 companion
 
+> **Current update (R5.6):** The local FFmpeg companion now supports V2/A2 layered rendering, V2 dissolves, track mixing, ducking and titles. The older limitation descriptions below document their original release scope. See [Studio R5.6](STUDIO_R56.md) for current requirements, fidelity limits and testing.
+
+
 R4.2 makes the [R4.1 local FFmpeg exporter](STUDIO_R41.md) easier to use on Windows. It adds a **double-click launcher with native Windows file pickers**, so you no longer have to type the export command or quote file paths.
 
 This is a **user-initiated desktop operation**, not a feature the GitHub Pages website can run by itself. There is no local HTTP server, installer, browser extension, or automatic media upload.

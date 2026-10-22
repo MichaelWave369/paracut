@@ -34,6 +34,7 @@ assert.doesNotMatch(ps,/^\s*(Invoke-Expression|iex|Set-ExecutionPolicy|Start-Pro
 assert.match(workflow,/windows-launcher-parse:/);
 assert.match(workflow,/runs-on: windows-latest/);
 assert.match(workflow,/Language\.Parser]::ParseFile/);
-assert.match(html,/Windows local MP4 guide/);
+assert.match(html,/Local multitrack MP4 guide/);
+assert.match(html,/docs\/STUDIO_R56\.md/);
 assert.match(guide,/not a feature the GitHub Pages website can run by itself/);
 console.log('ParaCut R4.2 Windows launch smoke PASS: double-click flow, local-only execution, safe argument boundaries, dry-run before confirmation, no-overwrite and Windows parser CI.');

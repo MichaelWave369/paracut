@@ -1,5 +1,8 @@
 # ParaCut Studio R5 — Layered Storyboard (V1/V2 + A1/A2)
 
+> **Current update (R5.6):** The local FFmpeg companion now supports V2/A2 layered rendering, V2 dissolves, track mixing, ducking and titles. The older limitation descriptions below document their original release scope. See [Studio R5.6](STUDIO_R56.md) for current requirements, fidelity limits and testing.
+
+
 The browser Studio gains two independent layered lanes, without breaking the sequential video edit flow that already exports real movies.
 
 ## What's new
