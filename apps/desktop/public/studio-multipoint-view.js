@@ -10,7 +10,7 @@ const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const round=n=>Math.round(n*1000)/1000;
 const pathFor=points=>'M '+points.map(p=>(p.at*100)+' '+(100-p.value*100)).join(' L ');
 export function renderMultiPointKeyframeLanes({
-  root,opacityLane,volumeLane,clip,total,playhead,editable,onCommit,onError=()=>{},
+  root,opacityLane,volumeLane,clip,total,playhead,getPlayhead=()=>playhead,editable,onCommit,onError=()=>{},
   document:doc=document
 }){
   root.hidden=!clip;
@@ -69,13 +69,10 @@ export function renderMultiPointKeyframeLanes({
     const addButton=doc.createElement('button');
     addButton.type='button';addButton.className='keyframe-add';
     addButton.textContent='+ Point at Playhead';
-    addButton.disabled=!editable||points.length>=KEYFRAME_POINT_LIMIT||
-      !Number.isFinite(playhead)||
-      playhead<=clip.timeline.start+.01*(clip.timeline.end-clip.timeline.start)||
-      playhead>=clip.timeline.end-.01*(clip.timeline.end-clip.timeline.start);
+    addButton.disabled=!editable||points.length>=KEYFRAME_POINT_LIMIT;
     addButton.addEventListener('click',event=>{
       event.stopPropagation();
-      const at=round((playhead-clip.timeline.start)/
+      const at=round((getPlayhead()-clip.timeline.start)/
         (clip.timeline.end-clip.timeline.start));
       add(at,round(keyframeCurveAt(points,at)));
     });
@@ -149,12 +146,12 @@ export function renderMultiPointKeyframeLanes({
           next=moveKeyframePoint(points,index,points[index].at,
             event.key==='Home'?0:1);
         }else if(!isEndpoint&&['ArrowLeft','ArrowRight'].includes(event.key)){
-          const step=event.shiftKey?.1:.01;
+          const step=event.shiftKey ? 0.1 : 0.01;
           const at=clamp(round(points[index].at+(event.key==='ArrowRight'?step:-step)),
             points[index-1].at+.01,points[index+1].at-.01);
           next=moveKeyframePoint(points,index,at,points[index].value);
         }else if(up||down){
-          const delta=(event.shiftKey?.1:.05)*(up?1:-1);
+          const delta=(event.shiftKey ? 0.1 : 0.05)*(up?1:-1);
           next=moveKeyframePoint(points,index,points[index].at,
             clamp(round(points[index].value+delta),0,1));
         }else return;
