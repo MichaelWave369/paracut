@@ -75,7 +75,7 @@ assert.match(ui,/activeAudio2Clip\(state,timelinePosition\)/);
 assert.match(ui,/overlayGain\.gain\.value=0/);
 assert.match(ui,/audio2Gain\.gain\.value=0/);
 assert.match(ui,/await syncExportLayer\(encoderAudio2,activeAudio2Clip\(state,timelinePosition\),timelinePosition,audio2Gain\)/);
-assert.match(ui,/drawVideoFrame\(encoderOverlay,1\)/); // globalAlpha supplies opacity
+assert.match(ui,/paintOverlay\(encoderOverlay,activeOverlayClip\(state,at\),overlayFade\?1-overlayFade.progress:1\)/); // real outgoing source
 assert.match(ui,/syncLayers\(playhead,playing\)/);
 assert.match(ui,/clip\.layer\.added/);
 assert.match(ui,/clip\.layer\.moved/);
