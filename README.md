@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R6.8 — Visual Keyframe Lanes
+
+The R6.7 two-point V2 Opacity and clip Volume animation now has **timeline-aligned curves and draggable Start/End diamonds**. A pointer release makes one validated, undoable ledger edit; arrows, Shift+arrows and Home/End provide keyboard access. Every automated clip shows a **◆ KF** badge, and the Keyframe Lanes view is toggleable. Also fixes an R6.7 Inspector selection bug. Draft schema and browser/local FFmpeg export engines remain unchanged. [R6.8 visual keyframe guide](docs/STUDIO_R68.md).
+
+
 ## ◆ ParaCut Studio R6.7 — First Real Keyframes
 
 Animate a V2 clip's **Opacity** and any media clip's **Audio Volume** with two validated Start/End keyframes and linear interpolation. Controls appear in the collapsible Effects Inspector; Apply/Clear are ledger-backed and Undo/Redo-safe. Program preview, browser recording and local FFmpeg MP4 graphs all evaluate saved animation. Older drafts and neutral clips keep their existing behavior. This is **two-point animation**, not yet a multi-point timeline or bezier editor. [R6.7 guide](docs/STUDIO_R67.md).

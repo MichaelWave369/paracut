@@ -10,6 +10,7 @@ import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {validateKeyframePair} from './studio-keyframes.js';
+import {renderVisualKeyframeLanes} from './studio-keyframe-view.js';
 import {EFFECTS_SECTIONS,readEffectsView,writeEffectsView,
   setEffectsSection,allEffectsSections,effectsVisibility,effectsSummaries}
   from './studio-effects-layout.js';
@@ -24,6 +25,7 @@ const razorTargets=new Set(['video-1']);
 let transportSpeed=1;
 const attributeClipboard={color:null,overlay:null};
 let timelineZoom=1; // local interface preference, not saved into media drafts
+let showKeyframeLanes=true;
 function timelineExtent(){
   return Math.max(duration(state),state.audioClips.at(-1)?.timeline.end||0,
     state.video2Clips.at(-1)?.timeline.end||0,
@@ -347,6 +349,27 @@ function applyTransportSpeed() {
   for(const el of [video,crossfadeVideo,overlayVideo,overlayIncoming,soundtrack,audio2Player])
     el.playbackRate=transportSpeed;
 }
+function appendKeyframeBadge(clip,item){
+  if(clip.opacity_keyframes===undefined&&clip.volume_keyframes===undefined)return;
+  const badge=document.createElement('small');
+  badge.className='keyframe-indicator';
+  badge.textContent='◆ KF';
+  badge.title=(clip.opacity_keyframes?'Opacity ':'')+
+    (clip.volume_keyframes?'Volume ':'')+'animation applied';
+  item.append(badge);
+}
+function drawKeyframeLanes(){
+  const clip=[...state.clips,...state.audioClips,...state.video2Clips,
+    ...state.audio2Clips].find(c=>c.clip_id===selectedId);
+  renderVisualKeyframeLanes({
+    root:$('visual-keyframe-lanes'),
+    opacityLane:$('keyframe-lane-opacity'),
+    volumeLane:$('keyframe-lane-volume'),
+    clip:showKeyframeLanes?clip:null,
+    total:timelineExtent(),editable:!exporting&&activeTool==='select',
+    onCommit:command=>edit(command)
+  });
+}
 function drawTimeline() {
   const lanes = [
     { el: $('timeline-track'), clips: state.clips, empty: 'Your video timeline is empty. Add video files.' },
@@ -364,16 +387,6 @@ function drawTimeline() {
       lane.el.append(msg); continue;
     }
     for (const clip of lane.clips) {
-      for(const [property,field,allowed] of [
-    ['opacity','opacity_keyframes',clip.track_id==='video-2'],
-    ['volume','volume_keyframes',true]]){
-    $('keyframe-'+property+'-editor').hidden=!allowed;
-    const values=clip[field]||{start:1,end:1};
-    for(const end of ['start','end'])
-      $('keyframe-'+property+'-'+end).value=String(Math.round(values[end]*100));
-    $('apply-'+property+'-keyframes').disabled=exporting||!allowed;
-    $('clear-'+property+'-keyframes').disabled=exporting||!allowed||!clip[field];
-  }
   const asset = state.assets.find(a => a.asset_id === clip.asset_id);
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
@@ -386,6 +399,7 @@ function drawTimeline() {
       const label = document.createElement('span'); label.textContent = asset?.name || 'Missing file';
       const time = document.createElement('small'); time.textContent = fmt(clip.timeline.end - clip.timeline.start);
       item.append(label, time);
+      appendKeyframeBadge(clip,item);
       if(!isAudio&&hasColorAdjustment(clip)){
         item.classList.add('graded-clip');
         const grade=document.createElement('small');grade.className='grade-indicator';
@@ -452,6 +466,7 @@ function drawTimeline() {
       const name=document.createElement('span');
       name.textContent=(asset?.name||'Missing media')+' · '+fmt(clip.timeline.start);
       item.append(name);
+      appendKeyframeBadge(clip,item);
       if(kind==='video'&&hasColorAdjustment(clip)){
         item.classList.add('graded-clip');
         const grade=document.createElement('small');grade.className='grade-indicator';
@@ -494,6 +509,7 @@ function drawTimeline() {
       placeOnLayer({type:'clip.layer.moved',clip_id,start:Math.round(x*layerTotal*10)/10});
     };
   }
+  drawKeyframeLanes();
 }
 
 function showTitleAt(at) {
@@ -947,7 +963,18 @@ function drawInspector() {
     $('apply-clip-color').disabled=exporting;
     $('reset-clip-color').disabled=exporting;
   }
-  const asset = state.assets.find(a => a.asset_id === clip.asset_id);
+for(const [property,field,allowed] of [
+    ['opacity','opacity_keyframes',clip.track_id==='video-2'],
+    ['volume','volume_keyframes',true]]){
+    $('keyframe-'+property+'-editor').hidden=!allowed;
+    const values=clip[field]||{start:1,end:1};
+    for(const end of ['start','end'])
+      $('keyframe-'+property+'-'+end).value=String(Math.round(values[end]*100));
+    $('apply-'+property+'-keyframes').disabled=exporting||!allowed;
+    $('clear-'+property+'-keyframes').disabled=exporting||!allowed||!clip[field];
+  }
+
+    const asset = state.assets.find(a => a.asset_id === clip.asset_id);
   $('selected-name').textContent = asset?.name || 'Unknown asset';
   $('in-time').value = String(clip.source.start);
   $('out-time').value = String(clip.source.end);
@@ -1526,7 +1553,11 @@ for(const [name, method] of [['undo',undo],['redo',redo]]) $(name).addEventListe
 $('project-name').addEventListener('change', e => edit({ type:'project.renamed', name:e.target.value }));
 $('new-project').addEventListener('click', () => {
   if (exporting || !confirm('Start a new project? Export your draft first if you want to keep these edits.')) return;
-  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; resetTitleEditor(); $('timeline-zoom').addEventListener('input',event=>{
+  stopPlayback(); clearMedia(); state=newStudio(); selectedId=null; playhead=0; resetTitleEditor(); $('show-keyframe-lanes').addEventListener('change',event=>{
+  showKeyframeLanes=event.target.checked;
+  drawKeyframeLanes();
+});
+$('timeline-zoom').addEventListener('input',event=>{
   const scroll=$('storyboard-scroll'),total=timelineExtent();
   const relative=total>0?playhead/total:0;
   const oldWidth=$('storyboard-canvas').clientWidth||1;
