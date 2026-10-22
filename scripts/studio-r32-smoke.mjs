@@ -69,7 +69,7 @@ const ui=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url
 assert.match(html,/id="crossfade-video"/);
 assert.match(html,/id="apply-crossfade"/);
 assert.match(ui,/const fade=crossfadeAt\(state,at\)/);
-assert.match(ui,/drawVideoFrame\(encoderIncoming,fade.progress\)/);
+assert.match(ui,/drawVideoFrame\(encoderIncoming,fade.progress,fade.incoming\)/); // per-source color grading during moving V1 crossfade
 assert.match(ui,/audioLevelAt\(fade.incoming,at\) \* audioMixLevelAt\(state,'video-1',at\) \* fade.progress/);
 assert.match(ui,/videoSourceGain.gain.value = audioLevelAt\(clip,timelinePosition\) \*/);
 assert.match(ui,/const skipped = index > 0/);
