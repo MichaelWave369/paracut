@@ -70,6 +70,7 @@ class Element {
 }
 const doc={createElement:tag=>new Element(tag),createElementNS:(_ns,tag)=>new Element(tag)};
 const root=new Element('div'),opacityLane=new Element('div'),volumeLane=new Element('div');
+root.append(opacityLane,volumeLane);
 const find=(prop,which)=>root.querySelector(
  '[data-keyframe-property="'+prop+'"][data-keyframe-endpoint="'+which+'"]');
 let s=newStudio('Visual lane receipts');
@@ -82,8 +83,9 @@ for(const asset_id of ['v1','music'])s=change(s,{type:'clip.appended',asset_id})
 s=change(s,{type:'clip.layer.added',asset_id:'over',track_id:'video-2',start:1});
 const overlayId=s.video2Clips[0].clip_id;
 const a1Id=s.audioClips[0].clip_id;
-let receipts=0;
+let receipts=0,selectedClipId=overlayId;
 function render(clip){
+ selectedClipId=clip?.clip_id??null;
  renderVisualKeyframeLanes({
    root,opacityLane,volumeLane,clip,total:6,editable:true,document:doc,
    onCommit:command=>{
@@ -91,8 +93,7 @@ function render(clip){
      s=change(s,command);
      assert.equal(s.receipts.length,previous+1);
      receipts++;
-     render(s.video2Clips.find(c=>c.clip_id===overlayId)||
-       s.audioClips.find(c=>c.clip_id===a1Id));
+     render([...s.video2Clips,...s.audioClips].find(c=>c.clip_id===selectedClipId)||null);
    }
  });
 }
