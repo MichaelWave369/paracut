@@ -1,4 +1,5 @@
 // ParaCut Studio R3: local-first editor with video/audio automation and timed titles.
+import { validateClipColor } from './studio-color.js';
 // This is a browser draft format, NOT the canonical ParaCut project-core format.
 export const DRAFT_SCHEMA = 'paracut.studio.draft.v3';
 export const PREVIOUS_DRAFT_SCHEMA = 'paracut.studio.draft.v2';
@@ -480,6 +481,10 @@ export function change(state, command) {
     if (!finite(seconds) || seconds < 0 || seconds > maxCrossfade(clips,index) + 0.0001)
       throw Error('Crossfade must fit both adjacent clips (maximum '+maxCrossfade(clips,index)+' seconds).');
     clips[index].transition_out_seconds = round(seconds);
+  } else if (type === 'clip.color.updated') {
+    const clip=[...clips,...video2Clips].find(c=>c.clip_id===command.clip_id);
+    if(!clip)throw Error('Color adjustments are available only for V1/V2 video clips.');
+    clip.color=validateClipColor(command.color);
   } else if (type === 'clip.audio.updated') {
     const clip = laneFor(command.clip_id)?.find(c => c.clip_id === command.clip_id);
     if (!clip) throw Error('Select a clip first.');
@@ -571,6 +576,7 @@ export function change(state, command) {
         {source_in:command.start,source_out:command.end,at:command.at??null,source_edit:'video-1'} : {}),
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
+      ...(type === 'clip.color.updated' ? { color:copy(command.color) } : {}),
       ...(type === 'clip.transition.updated'||type === 'clip.overlay.transition.updated' ? {seconds:command.seconds} : {}),
       ...(type==='mixer.updated'?{lane:command.lane,gain:command.gain,muted:command.muted,solo:command.solo}:{}),
       ...(type==='mixer.duck.updated'?{enabled:command.enabled}:{}),
@@ -627,6 +633,10 @@ export function validate(state) {
       assertAudioValues(c.volume === undefined ? 1 : c.volume,
         c.fade_in === undefined ? 0 : c.fade_in,
         c.fade_out === undefined ? 0 : c.fade_out, seconds);
+      if(c.color!==undefined){
+        if(!trackId.startsWith('video-'))throw Error('Audio tracks cannot have color effects.');
+        validateClipColor(c.color);
+      }
       if(trackId==='video-2')assertOverlayStyle(c);
       if(trackId==='video-2'||trackId==='audio-2'){
         if(trackId==='audio-2')assertLayerPosition(lane,c,c.clip_id);
