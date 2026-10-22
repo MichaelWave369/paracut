@@ -1,6 +1,7 @@
 // ParaCut R5.6: local FFmpeg layered render graph. Media must be pre-verified.
 import {extname,resolve} from 'node:path';
 import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
+import {audioKeyframeFilter,overlayKeyframeFilter} from '../apps/desktop/public/studio-keyframes.js';
 const n=x=>String(Math.round(x*1000)/1000);
 const len=c=>c.source.end-c.source.start;
 const esc=x=>x.replaceAll(',', '\\,');
@@ -22,6 +23,8 @@ function overlayPart(c,i,input,lane){
     'setpts=PTS-STARTPTS','fps=30','scale='+w+':'+h+':force_original_aspect_ratio=decrease',
     'pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2:color=black','setsar=1',
     ...colorFFmpegFilters(c),'format=rgba'];
+  const animatedAlpha=overlayKeyframeFilter(c);
+  if(animatedAlpha)filters.push(animatedAlpha);
   const prev=i>0?(lane[i-1].transition_out_seconds||0):0,next=c.transition_out_seconds||0;
   for(const [direction,d] of [['in',c.visual_fade_in||0],['out',c.visual_fade_out||0],['in',prev],['out',next]])
     if(d>0)filters.push('fade=t='+direction+':st='+(direction==='in'?0:n(len(c)-d))+':d='+n(d)+':alpha=1');
@@ -91,6 +94,8 @@ export function planLayeredMp4(state,mediaByAsset,output,{ffmpeg='ffmpeg',buildA
     const filters=['['+index+':a:0]atrim=start='+n(c.source.start)+':duration='+n(length),
       'asetpts=PTS-STARTPTS','aresample=48000',
       'aformat=sample_fmts=fltp:channel_layouts=stereo','volume='+n((c.volume??1)*bus)];
+    const animatedVolume=audioKeyframeFilter(c);
+    if(animatedVolume)filters.push(animatedVolume);
     if(c.fade_in>0)filters.push('afade=t=in:st=0:d='+n(c.fade_in));
     if(c.fade_out>0)filters.push('afade=t=out:st='+n(length-c.fade_out)+':d='+n(c.fade_out));
     if(c.track_id==='video-1'||c.track_id==='video-2'){

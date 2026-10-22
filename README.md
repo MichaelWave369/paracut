@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R6.7 — First Real Keyframes
+
+Animate a V2 clip's **Opacity** and any media clip's **Audio Volume** with two validated Start/End keyframes and linear interpolation. Controls appear in the collapsible Effects Inspector; Apply/Clear are ledger-backed and Undo/Redo-safe. Program preview, browser recording and local FFmpeg MP4 graphs all evaluate saved animation. Older drafts and neutral clips keep their existing behavior. This is **two-point animation**, not yet a multi-point timeline or bezier editor. [R6.7 guide](docs/STUDIO_R67.md).
+
+
 ## 🎛️ ParaCut Studio R6.6 — Organized Effects Controls
 
 The clip Inspector now provides collapsible, **context-aware Timing, Motion, Opacity, Color, Audio, Copy/Paste and Clip Information** sections. Expand/Collapse All and local section preferences make the studio easier to navigate; the Color workspace reopens its actual grading controls. Existing editing commands, receipts, Undo/Redo, saved drafts, browser recording, and local FFmpeg MP4 exports are preserved. [R6.6 Effects Controls guide](docs/STUDIO_R66.md).

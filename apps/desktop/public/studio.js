@@ -9,6 +9,7 @@ import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } fro
 import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
+import {validateKeyframePair} from './studio-keyframes.js';
 import {EFFECTS_SECTIONS,readEffectsView,writeEffectsView,
   setEffectsSection,allEffectsSections,effectsVisibility,effectsSummaries}
   from './studio-effects-layout.js';
@@ -363,7 +364,17 @@ function drawTimeline() {
       lane.el.append(msg); continue;
     }
     for (const clip of lane.clips) {
-      const asset = state.assets.find(a => a.asset_id === clip.asset_id);
+      for(const [property,field,allowed] of [
+    ['opacity','opacity_keyframes',clip.track_id==='video-2'],
+    ['volume','volume_keyframes',true]]){
+    $('keyframe-'+property+'-editor').hidden=!allowed;
+    const values=clip[field]||{start:1,end:1};
+    for(const end of ['start','end'])
+      $('keyframe-'+property+'-'+end).value=String(Math.round(values[end]*100));
+    $('apply-'+property+'-keyframes').disabled=exporting||!allowed;
+    $('clear-'+property+'-keyframes').disabled=exporting||!allowed||!clip[field];
+  }
+  const asset = state.assets.find(a => a.asset_id === clip.asset_id);
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
       item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '') + (clip.transition_out_seconds ? ' has-transition' : '');
@@ -1147,7 +1158,7 @@ function stopPlayback() {
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted','marker.added','marker.updated','marker.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','clip.keyframes.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted','marker.added','marker.updated','marker.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
@@ -1155,6 +1166,7 @@ function edit(command) {
       previewAudioAt(playhead);
       applyPreviewColor();
       render();
+      if(command.type==='clip.keyframes.updated')syncLayers(playhead,playing);
       status(command.type === 'clip.source-audio.muted'
         ? (command.muted ? 'Original video audio muted. A1 stays on.' : 'Original video audio restored.')
         : command.type + ' ✓');
@@ -1428,6 +1440,22 @@ for(const lane of ['a1','a2']) {
 }
 $('mixer-duck').addEventListener('change',e=>
   edit({type:'mixer.duck.updated',enabled:e.target.checked}));
+for(const [property,field] of [['opacity','opacity_keyframes'],['volume','volume_keyframes']]){
+  $('apply-'+property+'-keyframes').addEventListener('click',()=>{
+    if(!selectedId)return;
+    const values={
+      start:Number($('keyframe-'+property+'-start').value)/100,
+      end:Number($('keyframe-'+property+'-end').value)/100
+    };
+    try{validateKeyframePair(values);}
+    catch(e){return status(e.message,true);}
+    edit({type:'clip.keyframes.updated',clip_id:selectedId,field,values});
+  });
+  $('clear-'+property+'-keyframes').addEventListener('click',()=>{
+    if(!selectedId)return;
+    edit({type:'clip.keyframes.updated',clip_id:selectedId,field,values:null});
+  });
+}
 $('apply-audio').addEventListener('click', () => edit({
   type:'clip.audio.updated',clip_id:selectedId,volume:Number($('clip-volume').value)/100,
   fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
