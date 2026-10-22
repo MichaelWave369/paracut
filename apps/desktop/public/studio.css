@@ -335,3 +335,14 @@
 #overlay-style-control>button{margin-top:9px}
 #overlay-style-control>p{padding:0 8px}
 @media(max-width:760px){.effects-section>summary{padding:12px}.effects-toolbar{gap:5px}}
+
+/* R6.7 two-point, clip-relative animated opacity and gain */
+.keyframe-editor{border:1px solid #557189;background:#122b37;border-radius:9px;padding:10px;margin:13px 0}
+.keyframe-editor[hidden]{display:none!important}
+.keyframe-editor legend{color:#c5e7e4;font-size:11px;font-weight:700;padding:0 7px}
+.keyframe-editor label{font-size:10px}
+.keyframe-editor input{min-width:0;width:100%}
+.keyframe-actions{display:flex;gap:7px;margin:10px 0}
+.keyframe-actions button{flex:1;padding:8px 6px;font-size:10px;min-width:0;white-space:normal}
+.keyframe-actions button:first-child{border-color:#6acbb9}
+.keyframe-editor .tip{font-size:10px;margin:7px 0 0}
