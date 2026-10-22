@@ -154,3 +154,29 @@
 .screen #overlay-incoming.full-overlay{inset:0;width:100%;height:100%;border:0;border-radius:0;background:transparent}
 .layer-clip.has-overlay-transition{border-right:4px solid #a7e5f9}
 .layer-clip .overlay-transition-caption{display:block;font-size:9px;color:#fff3bd}
+
+/* R5.8 dedicated Source/Program editing workspace */
+.center{grid-template-rows:auto minmax(270px,1fr)}
+.monitor-bank{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}
+.monitor-bank .preview,.monitor-bank .source-preview{min-width:0}
+.source-screen{aspect-ratio:16/9;background:#05070b;border:1px solid #303e56;border-radius:9px;display:grid;place-items:center;position:relative;overflow:hidden}
+.source-screen video{display:none;width:100%;height:100%;object-fit:contain}
+.source-screen .empty-preview{font-size:17px;letter-spacing:.13em}
+.source-screen .empty-preview span{font-size:10px}
+.source-transport{display:flex;gap:7px;align-items:center;padding-top:11px}
+.source-transport button{min-width:36px;padding:7px}
+.source-transport input{flex:1;min-width:36px;accent-color:#78d8d2}
+.source-transport .mono{font-size:9px}
+.source-edit-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px}
+.source-edit-row>button{font-size:10px;padding:7px 9px}
+.source-edit-row>label{display:flex;align-items:center;gap:4px;font-size:10px;color:#a2bed0;flex:1;min-width:80px}
+.source-edit-row input{width:100%;min-width:0;padding:6px;border:1px solid #31465c;background:#0d1825;color:#e8f5ff;border-radius:6px;font:10px ui-monospace,monospace}
+.source-preview>.tip{margin-bottom:0;font-size:10px}
+.project-controls{display:flex;gap:6px;margin:-5px 0 12px;flex-wrap:wrap}
+.project-controls input,.project-controls select{background:#0c1825;color:#d8edfd;border:1px solid #3d5265;border-radius:6px;padding:7px;min-width:0;font-size:11px}
+.project-controls input{flex:2 1 100px}.project-controls select{flex:1 1 100px}
+.media-item{grid-template-columns:minmax(0,1fr) auto auto auto}
+.media-item .source-load{font-size:10px;padding:6px}
+.media-item.source-active{border-color:#6fe2cb;background:#163544}
+@media(max-width:1100px){.monitor-bank{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:700px){.source-edit-row>button{flex:1}.source-edit-row>label{flex:1 1 40%}}
