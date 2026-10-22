@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R6.1 · Clip Color</title>
+  <title>ParaCut Studio R6.2 · Color Workflow</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.1 · COLOR CONTROLS</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R6.2 · COLOR WORKFLOW</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -27,7 +27,7 @@
     <select id="workspace-preset" aria-label="Choose editor workspace">
       <option value="editing">Editing</option>
       <option value="audio">Audio</option>
-      <option value="color">Color (layout only)</option>
+      <option value="color">Color</option>
       <option value="titles">Titles</option>
     </select>
     <label class="source-visibility" for="workspace-source-visible"><input type="checkbox" id="workspace-source-visible" checked> Source Monitor</label>
@@ -78,7 +78,9 @@
           <p class="tip">Source IN + OUT and the Program playhead define a three-point insertion. Replacing operates on one selected V1 clip. Both edits have receipts and Undo/Redo.</p>
         </div>
       <div class="preview panel">
-        <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span></div>
+        <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span>
+        <button id="program-grade-compare" type="button" class="grade-compare" aria-pressed="false" disabled
+        title="Temporarily show original color for selected V1/V2 clip (preview only)">Before/After</button></div>
         <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-incoming" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
         <div class="transport">
           <button id="jog-back" title="Jog Program back one 30fps frame (J)">J ◀</button>
@@ -191,7 +193,15 @@
         </div>
         <div id="clip-color-control" class="clip-color-control" hidden>
           <div class="panel-title"><h2>Color · Clip Controls</h2><span class="tiny">V1 / V2</span></div>
-          <p class="tip">Basic clip-level corrections. Applied to Program preview, browser recording, and local FFmpeg with approximate visual matching.</p>
+          <div class="color-looks" role="group" aria-label="Apply a color look to selected video">
+            <span class="tool-label">LOOKS</span>
+            <button type="button" data-color-look="neutral" title="Apply neutral look">Neutral</button>
+            <button type="button" data-color-look="warm" title="Apply warm look">Warm</button>
+            <button type="button" data-color-look="contrast" title="Apply higher contrast look">High Contrast</button>
+            <button type="button" data-color-look="mint" title="Apply Phi Mint grade">Phi Mint</button>
+          </div>
+          <p id="color-compare-note" class="tip">Changes preview live while dragging. Apply Color saves a receipt; Before/After in Program temporarily shows this clip without its grade.</p>
+          <p class="tip">Clip-level adjustments and reusable looks, with an independent Before/After Program preview. Saved grades apply to browser and local FFmpeg rendering.</p>
           <div class="color-field"><label for="color-brightness">Brightness</label><input id="color-brightness" type="range" min="50" max="150" step="1" value="100"><output id="color-brightness-value">100%</output></div>
           <div class="color-field"><label for="color-contrast">Contrast</label><input id="color-contrast" type="range" min="50" max="150" step="1" value="100"><output id="color-contrast-value">100%</output></div>
           <div class="color-field"><label for="color-saturation">Saturation</label><input id="color-saturation" type="range" min="0" max="200" step="1" value="100"><output id="color-saturation-value">100%</output></div>
