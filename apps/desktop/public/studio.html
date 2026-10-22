@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R5.4 · Live Bus Meters</title>
+  <title>ParaCut Studio R5.5 · Overlay Crossfades</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.4 · LIVE AUDIO METERS</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.5 · V2 TRANSITIONS</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -37,7 +37,7 @@
     <section class="center">
       <div class="preview panel">
         <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span></div>
-        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-video" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
+        <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-incoming" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
         <div class="transport">
           <button id="backward" title="Go to start">⏮</button>
           <button id="play" class="play" title="Play or pause (Space)">▶</button>
@@ -48,7 +48,7 @@
         </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R5.4</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R5.5</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
@@ -77,7 +77,7 @@
         <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
         <div id="storyboard-playhead" class="storyboard-playhead" aria-hidden="true"></div>
         </div></div>
-        <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Layered clips can be dragged or moved precisely from Inspector. Snap aligns clip starts/ends with playhead, titles, and other track boundaries; zoom reveals details.</p>
+        <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Two touching V2 clips can dissolve into each other; remove the dissolve before moving or trimming either joined clip. Layered clips can be dragged or moved precisely from Inspector. Snap aligns clip starts/ends with playhead, titles, and other track boundaries; zoom reveals details.</p>
       </div>
     </section>
 
@@ -120,6 +120,11 @@
           </div>
           <button id="apply-overlay-style" class="wide">Apply Overlay Style</button>
           <p class="tip">Video opacity fades affect V2 visuals. Source audio is independently muted by default.</p>
+        </div>
+        <div id="v2-transition-control" class="transition-control" hidden>
+          <label for="v2-dissolve-seconds">Dissolve to next V2 overlay</label>
+          <div class="transition-row"><input id="v2-dissolve-seconds" type="number" min="0" max="1.5" step="0.1" value="0"><button id="apply-v2-dissolve">Apply V2 Dissolve</button></div>
+          <p id="v2-dissolve-note" class="tip">Requires two touching V2 clips. Set to 0 to remove their dissolve.</p>
         </div>
         <div id="source-audio-control" class="source-audio-control" hidden>
           <label class="source-audio-toggle" for="mute-source-audio">

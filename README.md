@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎞️ ParaCut Studio R5.5 — V2 overlay crossfades
+
+The five-track browser editor now supports **two moving V2 video sources dissolving together** in live preview and browser WebM / supported MP4 output. Select the first of two touching V2 clips, choose a dissolve duration, and ParaCut creates a controlled overlap with independently gain-weighted V2 original audio. Old drafts still work. The standalone Windows FFmpeg companion continues to refuse layered edits until its engine supports them. [R5.5 guide](docs/STUDIO_R55.md).
+
+
 ## 🎚️ ParaCut Studio R5.4 — Live Audio Bus Meters
 
 During playback, **A1/A2 level indicators now read measured Web Audio sample peaks (dBFS)** after the existing clip volume/fades and track mixer. Paused/unsupported browsers retain clearly labeled R5.3 waveform *estimates*. These are A1/A2 preview-bus readings, **not a master meter or LUFS measurement**. Browser exports and drafts are unchanged. [R5.4 behavior and limitations](docs/STUDIO_R54.md).
