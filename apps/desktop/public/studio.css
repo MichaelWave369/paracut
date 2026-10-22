@@ -249,3 +249,16 @@
 .color-field output{font:10px ui-monospace,monospace;text-align:right;color:#b5e8dc}
 .color-actions{display:flex;gap:9px;margin-top:15px}
 .color-actions button{flex:1;padding:8px}
+
+/* R6.2 clip-local color workflow, not a new export effect */
+.color-looks{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 0;margin:8px 0 3px}
+.color-looks .tool-label{color:#a4b9cd;letter-spacing:.1em;font-size:9px;font-weight:700;margin-right:2px}
+.color-looks button{padding:6px 8px;border:1px solid #466379;background:#182d3d;color:#e3f0f8;border-radius:6px;font-size:10px}
+.color-looks button:hover:not(:disabled),.color-looks button:focus-visible{border-color:#9be0d0;background:#214d50}
+.grade-compare{margin-left:auto;padding:6px 10px;border:1px solid #4a736b;border-radius:6px;background:#163c39;color:#c9fff1;font-size:10px;white-space:nowrap}
+.grade-compare[aria-pressed=true]{border-color:#f5d39c;background:#634a2c;color:#fff0ce}
+.grade-compare:disabled{opacity:.45;cursor:not-allowed}
+.timeline-clip.graded-clip,.layer-clip.graded-clip{box-shadow:inset 0 -3px 0 #72e1cb}
+.grade-indicator,.motion-indicator{font-size:9px!important;font-weight:700;letter-spacing:.06em;display:inline-block;padding:2px 4px;border-radius:4px;margin-left:3px;white-space:nowrap}
+.grade-indicator{color:#102c29!important;background:#9de8d4}
+.motion-indicator{color:#271e3c!important;background:#bda6ff}

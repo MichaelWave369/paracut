@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎨 ParaCut Studio R6.2 — Color Looks + Before/After
+
+The Color workspace now offers four **receipt-backed looks** (Neutral, Warm, High Contrast and Phi Mint), **temporary live slider preview**, selected-clip **Before/After comparison** in Program Monitor, and **COLOR/FX timeline indicators**. Color-edit receipts display their exact correction values. Program comparison is preview-only and does **not** alter browser or local MP4 output. [R6.2 guide](docs/STUDIO_R62.md).
+
+
 ## 🎨 ParaCut Studio R6.1 — Real Color Controls
 
 Select a V1/V2 video clip and adjust **brightness, contrast, saturation and warmth** in the Inspector. Apply and Reset are validated, undoable, receipt-backed edits that survive project saves. Individually graded sources flow through the Program Monitor, browser exports and the local FFmpeg MP4 companion. Browser CSS and FFmpeg color math are **approximations, not pixel-perfect matches**. [R6.1 grading guide](docs/STUDIO_R61.md).

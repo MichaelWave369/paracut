@@ -66,7 +66,7 @@ for(const id of ['workspace-preset','workspace-source-visible','workspace-reset'
   'editor-workspace','resize-media','resize-inspector','resize-monitors',
   'studio-inspector','audio-workspace-anchor','titles-workspace-anchor'])
   assert.match(html,new RegExp('id="'+id+'"'));
-assert.match(html,/Color \(layout only\)/);
+assert.match(html,/<option value="color">Color<\/option>/);
 assert.match(js,/loadWorkspace\(availableWorkspaceStorage\(\)\)/);
 assert.match(js,/saveWorkspace\(availableWorkspaceStorage\(\),pref\)/);
 assert.match(js,/function installWorkspaceResize\(id,key,sign,axis\)/);
