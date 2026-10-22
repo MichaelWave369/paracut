@@ -1,5 +1,10 @@
 # ParaCut
 
+## 🎛️ ParaCut Studio R5.7 — Export Quality & Audio Protection
+
+The locally launched Windows/Node.js MP4 exporter adds **Compact, Balanced and High** encoding presets and an **optional post-mix audio sample limiter**. Balanced with protection off matches the old R5.6 output settings. Windows file pickers now include a quality/safety dialog; CLI options are `--quality compact|balanced|high` and `--audio-protect`. All footage stays local, with no file overwrites. [R5.7 quality/mastering guide](docs/STUDIO_R57.md).
+
+
 ## 🎬 ParaCut Studio R5.6 — Layered Local MP4
 
 The opt-in Windows/Node.js FFmpeg companion now supports the full **V1/V2 video and A1/A2 audio storyboard**, including moving V2 dissolves, PiP/full overlays, voiceover ducking, track gain/mute/solo, source audio and timed T1 titles. It still uses your own installed FFmpeg, with explicit dry-run validation, exact media relinking and no overwrites. [R5.6 local rendering guide](docs/STUDIO_R56.md).
