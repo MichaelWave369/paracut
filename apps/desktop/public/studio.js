@@ -1166,6 +1166,7 @@ function edit(command) {
       previewAudioAt(playhead);
       applyPreviewColor();
       render();
+      if(command.type==='clip.keyframes.updated')syncLayers(playhead,playing);
       status(command.type === 'clip.source-audio.muted'
         ? (command.muted ? 'Original video audio muted. A1 stays on.' : 'Original video audio restored.')
         : command.type + ' ✓');
