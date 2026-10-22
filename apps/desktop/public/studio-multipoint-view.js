@@ -334,7 +334,7 @@ export function renderMultiPointKeyframeLanes({
           if(!up&&!down&&event.key!=='Home'&&event.key!=='End')return;
           event.preventDefault();event.stopPropagation();
           const v=event.key==='Home'?0:event.key==='End'?1:
-            points[index].handles[which]+(up?1:-1)*(event.shiftKey?.1:.05);
+            points[index].handles[which]+(up?1:-1)*(event.shiftKey ? 0.1 : 0.05);
           try{
             commit(editValue(v));
             root.querySelector('[data-keyframe-bezier="'+property+
