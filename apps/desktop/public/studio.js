@@ -8,6 +8,9 @@ const $ = id => document.getElementById(id);
 let state = newStudio();
 let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 let activeExportFormat = null;
+let activeTool='select'; // editor preference only; never stored in draft
+const razorTargets=new Set(['video-1']);
+let transportSpeed=1;
 let timelineZoom=1; // local interface preference, not saved into media drafts
 function timelineExtent(){
   return Math.max(duration(state),state.audioClips.at(-1)?.timeline.end||0,
@@ -216,6 +219,45 @@ function drawPrecisionRuler(total,width) {
     el.append(tick);
   }
 }
+function updateToolUI() {
+  $('tool-select').setAttribute('aria-pressed',String(activeTool==='select'));
+  $('tool-razor').setAttribute('aria-pressed',String(activeTool==='razor'));
+  $('storyboard-canvas').classList.toggle('razor-mode',activeTool==='razor');
+  for(const [tag,track] of [['v1','video-1'],['v2','video-2'],['a1','audio-1'],['a2','audio-2']]){
+    $('target-'+tag).setAttribute('aria-pressed',String(razorTargets.has(track)));
+    $('target-'+tag).disabled=exporting;
+  }
+  $('tool-select').disabled=exporting;
+  $('tool-razor').disabled=exporting;
+  $('tool-feedback').textContent=(activeTool==='razor'?'Razor':'Selection')+
+    ' · '+([...razorTargets].map(x=>x.replace('video-','V').replace('audio-','A')).join(', ')||'no targeted tracks');
+}
+function setEditingTool(mode) {
+  if(exporting)return;
+  if(!['select','razor'].includes(mode))return;
+  activeTool=mode;
+  updateToolUI();
+  drawTimeline();
+  status(mode==='razor'?'Razor: click a targeted clip at its desired cut.':'Selection tool enabled.');
+}
+function actOnTimelineClip(clip,event,button) {
+  if(exporting)return;
+  if(activeTool==='razor'){
+    if(!razorTargets.has(clip.track_id))return status('Track '+clip.track_id+' is not targeted for Razor.',true);
+    const r=button.getBoundingClientRect(),fraction=Math.max(0,Math.min(1,
+      (event.clientX-r.left)/Math.max(1,r.width)));
+    const time=Math.round((clip.timeline.start+fraction*(clip.timeline.end-clip.timeline.start))*1000)/1000;
+    selectedId=clip.clip_id;
+    edit({type:'clip.split',clip_id:clip.clip_id,time});
+    return;
+  }
+  selectedId=clip.clip_id;drawTimeline();drawInspector();refreshSourceMonitor();
+  void seekTo(Math.min(clip.timeline.start,duration(state)),{autoplay:playing});
+}
+function applyTransportSpeed() {
+  for(const el of [video,crossfadeVideo,overlayVideo,overlayIncoming,soundtrack,audio2Player])
+    el.playbackRate=transportSpeed;
+}
 function drawTimeline() {
   const lanes = [
     { el: $('timeline-track'), clips: state.clips, empty: 'Your video timeline is empty. Add video files.' },
@@ -237,7 +279,7 @@ function drawTimeline() {
       const isAudio = clip.track_id === 'audio-1';
       const item = document.createElement('button');
       item.type = 'button'; item.className = 'timeline-clip' + (isAudio ? ' audio' : '') + (clip.clip_id === selectedId ? ' selected' : '') + (isSourceAudioMuted(clip) ? ' source-muted' : '') + (clip.transition_out_seconds ? ' has-transition' : '');
-      item.draggable = !exporting;
+      item.draggable = !exporting && activeTool==='select';
       item.style.left=String(100*clip.timeline.start/total)+'%';
       item.style.width=String(Math.max(.3,100*(clip.timeline.end-clip.timeline.start)/total))+'%';
       item.setAttribute('aria-pressed', String(clip.clip_id === selectedId));
@@ -261,10 +303,7 @@ function drawTimeline() {
         const canvas = document.createElement('canvas'); canvas.className = 'waveform'; item.append(canvas);
         requestAnimationFrame(() => paintWaveform(canvas, waveforms.get(clip.asset_id)));
       }
-      item.addEventListener('click', () => {
-        selectedId = clip.clip_id; drawTimeline(); drawInspector();
-        void seekTo(Math.min(clip.timeline.start, duration(state)), { autoplay: playing });
-      });
+      item.addEventListener('click',event=>actOnTimelineClip(clip,event,item));
       item.addEventListener('dragstart', event => {
         draggedClipId = clip.clip_id;
         event.dataTransfer?.setData('text/plain', clip.clip_id);
@@ -319,9 +358,8 @@ function drawTimeline() {
         requestAnimationFrame(()=>paintWaveform(canvas,waveforms.get(clip.asset_id)));
       }
       item.title='Start '+fmt(clip.timeline.start)+' · Select, adjust or drag on the storyboard';
-      item.addEventListener('click',()=>{selectedId=clip.clip_id;drawTimeline();drawInspector();
-        void seekTo(Math.min(clip.timeline.start,duration(state)),{autoplay:playing});});
-      item.draggable=!exporting;
+      item.addEventListener('click',event=>actOnTimelineClip(clip,event,item));
+      item.draggable=!exporting && activeTool==='select';
       item.addEventListener('dragstart',e=>{e.dataTransfer?.setData('text/plain',clip.clip_id);
         if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
       el.append(item);
@@ -734,6 +772,7 @@ function drawMixer() {
 }
 function render() {
   $('project-name').value = state.name;
+  updateToolUI();
   drawMixer();
   drawMedia(); drawTimeline(); drawInspector(); drawTitles(); drawReceipts(); updateTimeUI();
   previewAudioAt(playhead);
@@ -796,6 +835,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
   // Start/resume the preview AudioContext before any async metadata awaits.
   // Browsers generally require this to happen inside the user gesture.
   if(autoplay)ensureLiveBusMeters();
+  applyTransportSpeed();
   const serial = ++seekSerial, d = duration(state);
   playhead = Math.max(0, Math.min(d, Number(seconds) || 0));
   updateTimeUI();
@@ -831,6 +871,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
       ensureLiveBusMeters();
       await video.play(); playing = true;
     } else { video.pause(); playing = false; }
+    applyTransportSpeed();
     void syncSoundtrack(playhead, playing);
     void syncCrossfadePreview(playhead, playing);
     syncLayers(playhead,playing);
@@ -839,6 +880,7 @@ async function seekTo(seconds, { autoplay = false } = {}) {
   } catch (e) { playing = false; status('Preview failed: ' + e.message, true); updateTimeUI(); }
 }
 function stopPlayback() {
+  transportSpeed=1;applyTransportSpeed();
   playing = false; video.pause(); soundtrack.pause(); overlayVideo.pause();overlayIncoming.pause(); audio2Player.pause(); hideCrossfadePreview();
   if (transitionFrameHandle) cancelAnimationFrame(transitionFrameHandle);
   transitionFrameHandle=0; updateTimeUI();updatePeakGuides(playhead);
@@ -925,6 +967,38 @@ video.addEventListener('ended', () => {
   if (!playing) return;
   const clip = activeClip(state, Math.min(playhead, duration(state)-.001));
   if (clip) void seekTo(clip.timeline.end, { autoplay:clip.timeline.end < duration(state)-.001 });
+});
+for(const [key,mode] of [['tool-select','select'],['tool-razor','razor']]){
+  $(key).addEventListener('click',()=>setEditingTool(mode));
+}
+for(const [key,track] of [['v1','video-1'],['v2','video-2'],['a1','audio-1'],['a2','audio-2']]){
+  $('target-'+key).addEventListener('click',()=>{
+    if(exporting)return;
+    if(razorTargets.has(track))razorTargets.delete(track);
+    else razorTargets.add(track);
+    updateToolUI();
+  });
+}
+$('jog-back').addEventListener('click',()=>{
+  if(exporting||!state.clips.length)return;
+  stopPlayback();
+  void seekTo(Math.max(0,Math.round((playhead-1/30)*1000)/1000));
+});
+$('jog-stop').addEventListener('click',()=>{if(!exporting)stopPlayback();});
+$('jog-forward').addEventListener('click',async()=>{
+  if(exporting||!state.clips.length)return;
+  if(playing){
+    transportSpeed=transportSpeed===1?2:1;
+    applyTransportSpeed();
+    status('Forward playback '+transportSpeed+'×');
+    return;
+  }
+  sourceVideo.pause();
+  transportSpeed=1;
+  if(playhead>=duration(state)-.005)playhead=0;
+  await seekTo(playhead,{autoplay:true});
+  applyTransportSpeed();
+  if(playing)status('Forward playback 1×');
 });
 $('play').addEventListener('click', async () => {
   if (!state.clips.length) return;
@@ -1120,7 +1194,7 @@ $('draft-input').addEventListener('change', async e => {
   } catch (err) { status('Could not open draft: ' + err.message,true); }
 });
 document.addEventListener('keydown', e => {
-  if (['INPUT','TEXTAREA'].includes(document.activeElement?.tagName) || exporting) return;
+  if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable || exporting) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); $('undo').click(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); $('redo').click(); return; }
   if(!e.ctrlKey&&!e.metaKey&&!e.altKey && e.key.toLowerCase()==='i' && sourceAssetId){
@@ -1128,6 +1202,14 @@ document.addEventListener('keydown', e => {
   }
   if(!e.ctrlKey&&!e.metaKey&&!e.altKey && e.key.toLowerCase()==='o' && sourceAssetId){
     e.preventDefault();$('source-mark-out').click();return;
+  }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey){
+    const key=e.key.toLowerCase();
+    if(key==='v'){e.preventDefault();setEditingTool('select');return;}
+    if(key==='c'){e.preventDefault();setEditingTool('razor');return;}
+    if(key==='j'){e.preventDefault();$('jog-back').click();return;}
+    if(key==='k'){e.preventDefault();$('jog-stop').click();return;}
+    if(key==='l'){e.preventDefault();if(!e.repeat)$('jog-forward').click();return;}
   }
   if (e.code === 'Space') { e.preventDefault(); $('play').click(); }
   else if (e.key.toLowerCase() === 's') $('split').click();

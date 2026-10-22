@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R5.8 · Source Editing</title>
+  <title>ParaCut Studio R5.9 · Tool Velocity</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.8 · SOURCE EDITING</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R5.9 · EDITING TOOLS</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -68,6 +68,9 @@
         <div class="panel-title"><h2>Program Monitor</h2><span id="preview-label" class="tiny">Nothing on timeline</span></div>
         <div class="screen"><video id="preview-video" playsinline preload="auto"></video><video id="crossfade-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-video" playsinline preload="auto" aria-hidden="true"></video><video id="overlay-incoming" playsinline preload="auto" aria-hidden="true"></video><div id="title-preview" class="title-preview" hidden></div><div id="empty-preview" class="empty-preview">PARACUT <span>Drop a video in the Media Shelf to begin.</span></div></div>
         <div class="transport">
+          <button id="jog-back" title="Jog Program back one 30fps frame (J)">J ◀</button>
+          <button id="jog-stop" title="Stop transport (K)">K ■</button>
+          <button id="jog-forward" title="Play forward (L); press L again for 2×">L ▶</button>
           <button id="backward" title="Go to start">⏮</button>
           <button id="play" class="play" title="Play or pause (Space)">▶</button>
           <button id="forward" title="Go to end">⏭</button>
@@ -78,12 +81,27 @@
       </div>
       </div>
       <div class="timeline panel">
-        <div class="panel-title"><h2>Timeline · R5.8</h2><div class="toolbar">
+        <div class="panel-title"><h2>Timeline · R5.9</h2><div class="toolbar">
           <button id="undo" title="Undo (Ctrl/⌘ Z)">↶ Undo</button>
           <button id="redo" title="Redo (Ctrl/⌘ Y)">↷ Redo</button>
           <button id="split" title="Split selected clip at playhead (S)">✂ Split</button>
           <button id="remove" title="Remove selected clip (Delete)">✕ Delete</button>
         </div></div>
+        <div class="edit-tools" role="toolbar" aria-label="Editing tool palette">
+          <div class="edit-tool-group">
+            <span class="tool-label">TOOL</span>
+            <button type="button" id="tool-select" aria-pressed="true" title="Selection tool (V)">↖ Selection <kbd>V</kbd></button>
+            <button type="button" id="tool-razor" aria-pressed="false" title="Razor tool (C): click targeted clip at cut time">✂ Razor <kbd>C</kbd></button>
+          </div>
+          <div class="edit-tool-group" role="group" aria-label="Tracks targeted by Razor tool">
+            <span class="tool-label">RAZOR TARGETS</span>
+            <button type="button" id="target-v1" class="target-track" aria-pressed="true" title="Target V1 razor cuts">V1</button>
+            <button type="button" id="target-v2" class="target-track" aria-pressed="false" title="Target V2 razor cuts">V2</button>
+            <button type="button" id="target-a1" class="target-track" aria-pressed="false" title="Target A1 razor cuts">A1</button>
+            <button type="button" id="target-a2" class="target-track" aria-pressed="false" title="Target A2 razor cuts">A2</button>
+          </div>
+          <span id="tool-feedback" role="status" aria-live="polite" class="tiny">Selection • V1 targeted</span>
+        </div>
         <div class="precision-toolbar">
           <label class="snap-label" for="snap-enabled"><input id="snap-enabled" type="checkbox" checked> ⌁ Snap boundaries</label>
           <label for="timeline-zoom">Timeline zoom <strong id="zoom-label">100%</strong></label>
@@ -107,6 +125,7 @@
         <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
         <div id="storyboard-playhead" class="storyboard-playhead" aria-hidden="true"></div>
         </div></div>
+        <p class="tip">Press V for Selection, C for Razor; click a targeted clip to split precisely where you click. J jogs one 30fps frame backward, K stops, L plays forward (press again for 2×). Target buttons affect Razor only, not Source Insert/Replace. No reverse-audio playback yet.</p>
         <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Two touching V2 clips can dissolve into each other; remove the dissolve before moving or trimming either joined clip. Layered clips can be dragged or moved precisely from Inspector. Snap aligns clip starts/ends with playhead, titles, and other track boundaries; zoom reveals details.</p>
       </div>
     </section>

@@ -510,6 +510,14 @@ export function change(state, command) {
       throw Error('Remove the V2 dissolve before splitting its clips.');
     const offset = t - c.timeline.start;
     if (!finite(t) || offset < 0.08 || c.timeline.end - t < 0.08) throw Error('Move the playhead inside the clip to split.');
+    if(lane===clips) {
+      const atFade=crossfadeAt(state,t);
+      if(atFade)throw Error('Razor cannot split an active V1 dissolve. Cut outside the transition.');
+      const earlier=index>0?(clips[index-1].transition_out_seconds||0):0;
+      const later=c.transition_out_seconds||0;
+      if(offset<earlier+.08 || c.timeline.end-t<later+.08)
+        throw Error('Razor cut is too near a V1 crossfade.');
+    }
     const at = round(c.source.start + offset);
     const first = fitFades({ ...c, clip_id: id(), source: { start: c.source.start, end: at },
       ...(lane === clips ? {transition_out_seconds:0} : {}) });
