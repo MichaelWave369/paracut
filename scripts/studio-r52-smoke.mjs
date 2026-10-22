@@ -65,7 +65,13 @@ assert.equal(overlayMotionAt(reopened.video2Clips[0],1.2).x,0);
 const bad=JSON.parse(exportDraft(state));
 bad.audioMix.a1.gain=9;
 assert.throws(()=>importDraft(JSON.stringify(bad)),/mixer settings/);
-assert.throws(()=>planLocalMp4(state,{},'/tmp/out.mp4'),/cannot render R5.2 bus mixing/);
+assert.throws(()=>planLocalMp4(state,{},'/tmp/out.mp4'),/Source media not relinked/);
+const linked=Object.fromEntries(state.assets.map(a=>[a.asset_id,{
+  path:'/tmp/'+a.asset_id+'.original',hasAudio:a.type.startsWith('audio/')}]));
+const layeredPlan=planLocalMp4(state,linked,'/tmp/out.mp4');
+assert.match(layeredPlan.graph,/overlay=x=/);
+assert.equal(layeredPlan.voiceClips,1);
+assert.match(layeredPlan.graph,/amix=inputs=/);
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const ui=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
