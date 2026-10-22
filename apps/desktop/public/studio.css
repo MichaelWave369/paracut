@@ -282,3 +282,28 @@
 .attribute-actions button:disabled{opacity:.4}
 #source-match-frame{border-color:#568b90;background:#173a41;color:#d6fff7}
 #source-match-frame kbd{font:9px ui-monospace,monospace;margin-left:5px;color:#a5d3db}
+
+/* R6.5 receipt-backed timeline review markers, no effect on exports */
+.marker-track{position:relative;height:22px;min-height:22px;border-bottom:1px solid #354b62;background:#122231}
+.marker-pin{position:absolute;top:2px;transform:translateX(-50%);min-width:15px;height:18px;
+ padding:0 1px;border:1px solid transparent;background:transparent;font-size:13px;line-height:15px;
+ z-index:4;cursor:pointer}
+.marker-pin:focus-visible{outline:2px solid #dcf0ff;outline-offset:1px}
+.marker-mint{color:#7debd3!important}.marker-gold{color:#ffe19c!important}
+.marker-blue{color:#87b6ff!important}.marker-coral{color:#ffa29a!important}
+.marker-pin.selected{background:#344a56;border-color:#eee;border-radius:3px}
+.marker-panel{padding:4px 0 12px}
+.marker-toolbar{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+.marker-toolbar button{font-size:10px;flex:1;padding:8px}
+.marker-edit{padding:10px;border:1px solid #38566a;border-radius:8px;background:#112335}
+.marker-edit[hidden]{display:none}
+.marker-edit>label{display:flex;flex-direction:column;font-size:11px;gap:5px;color:#b6cbdb;margin:6px 0}
+.marker-edit input,.marker-edit select,.marker-edit textarea{
+  width:100%;min-width:0;background:#0e1b2b;border:1px solid #3e576d;color:#eff7ff;
+  border-radius:6px;padding:8px;font:12px system-ui,sans-serif}
+.marker-edit textarea{resize:vertical}
+.marker-list{display:flex;flex-direction:column;gap:6px;list-style:none;padding:0;margin:10px 0;max-height:220px;overflow:auto}
+.marker-item{border:1px solid #354859;border-radius:6px;padding:5px;display:flex;flex-direction:column;gap:3px}
+.marker-item.selected{border-color:#91dccb;background:#1a3842}
+.marker-select{background:#172b3b;border:0;text-align:left;font-size:11px;font-weight:700;padding:6px;cursor:pointer}
+.marker-note{font-size:10px;color:#a9bdd0;white-space:pre-wrap;overflow-wrap:anywhere;padding:0 6px}

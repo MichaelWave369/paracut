@@ -1,5 +1,10 @@
 # ParaCut
 
+## 📍 ParaCut Studio R6.5 — Timeline Review Markers
+
+Add **colored, named markers with review notes** at any Program playhead position. Navigate with **Shift+M / Alt+M**, click marker pins in the timeline, edit timing and comments in Inspector, and use marker positions as optional snapping anchors. Marker edits have ledger receipts and Undo/Redo, and persist in compatible Studio drafts; browser and local MP4 video renders ignore these annotations. [R6.5 marker guide](docs/STUDIO_R65.md).
+
+
 ## 🎞️ ParaCut Studio R6.4 — Match Frame + Copy/Paste Attributes
 
 Double-click a V1/V2 clip to load its **original video at the corresponding trimmed source frame** into Source Monitor, or press **F** to match the selected clip at the Program playhead. Copy/paste **Color** attributes across V1/V2 clips or **visual V2 Style** across overlays. Copying remains private session UI state; each validated paste creates one ledger receipt with Undo/Redo. No changes to source files, draft format, or browser/local render engines. [R6.4 guide](docs/STUDIO_R64.md).

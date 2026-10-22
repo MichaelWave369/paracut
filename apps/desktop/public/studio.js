@@ -8,10 +8,11 @@ import { clipColor, hasColorAdjustment, COLOR_DEFAULTS } from './studio-color.js
 import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } from './studio-color-workflow.js';
 import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
+import {navigateMarker,sortedMarkers} from './studio-markers.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
-let selectedId = null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
+let selectedId = null, selectedMarkerId=null, playhead = 0, playing = false, exporting = false, cancelExport = false, seekSerial = 0;
 let activeExportFormat = null;
 let activeTool='select'; // editor preference only; never stored in draft
 let colorCompareBefore=false, colorPreviewPending=false, lastColorSelectedId=null;
@@ -23,7 +24,7 @@ function timelineExtent(){
   return Math.max(duration(state),state.audioClips.at(-1)?.timeline.end||0,
     state.video2Clips.at(-1)?.timeline.end||0,
     state.audio2Clips.at(-1)?.timeline.end||0,
-    ...state.titles.map(t=>t.end),.01);
+    ...state.titles.map(t=>t.end),...state.markers.map(m=>m.time),.01);
 }
 function updateStoryPlayhead() {
   const total=timelineExtent(),line=$('storyboard-playhead');
@@ -114,6 +115,8 @@ function updateTimeUI() {
   showTitleAt(playhead);
   applyPreviewColor();
   updateStoryPlayhead();
+  $('marker-prev').disabled=exporting||!navigateMarker(state.markers,playhead,'previous');
+  $('marker-next').disabled=exporting||!navigateMarker(state.markers,playhead,'next');
 }
 function currentSource() {
   const asset=state.assets.find(a=>a.asset_id===sourceAssetId);
@@ -689,6 +692,63 @@ function resetTitleEditor() {
   $('add-title').textContent = '+ Add Text Overlay';
   $('cancel-title-edit').hidden = true;
 }
+function jumpToMarker(marker){
+  if(!marker||exporting)return;
+  selectedMarkerId=marker.marker_id;
+  stopPlayback();
+  drawMarkers();
+  const time=Math.min(marker.time,duration(state));
+  void seekTo(time);
+  if(marker.time>duration(state))
+    status('Marker at '+fmt(marker.time)+' lies after V1 end; Program stopped at '+fmt(time)+'.');
+}
+function drawMarkers(){
+  const markers=sortedMarkers(state.markers),list=$('marker-list'),
+    track=$('marker-track'),total=timelineExtent();
+  list.replaceChildren();track.replaceChildren();
+  if(selectedMarkerId&&!markers.some(m=>m.marker_id===selectedMarkerId))
+    selectedMarkerId=null;
+  $('marker-count').textContent=markers.length+' marker'+(markers.length===1?'':'s');
+  $('marker-add').disabled=exporting||markers.length>=100||!state.clips.length;
+  $('marker-prev').disabled=exporting||!navigateMarker(markers,playhead,'previous');
+  $('marker-next').disabled=exporting||!navigateMarker(markers,playhead,'next');
+  for(const marker of markers){
+    const pin=document.createElement('button');
+    pin.type='button';pin.className='marker-pin marker-'+marker.color+
+      (selectedMarkerId===marker.marker_id?' selected':'');
+    pin.style.left=String(Math.min(100,100*marker.time/total))+'%';
+    pin.title=marker.label+' · '+fmt(marker.time)+(marker.note?' · '+marker.note:'');
+    pin.setAttribute('aria-label','Marker '+marker.label+' at '+fmt(marker.time));
+    pin.textContent='◆';pin.disabled=exporting;
+    pin.addEventListener('click',()=>jumpToMarker(marker));track.append(pin);
+
+    const li=document.createElement('li');li.className='marker-item';
+    if(selectedMarkerId===marker.marker_id)li.classList.add('selected');
+    const nav=document.createElement('button');nav.type='button';nav.disabled=exporting;
+    nav.className='marker-select marker-'+marker.color;
+    nav.textContent=fmt(marker.time)+' · '+marker.label;
+    nav.title=marker.note||'Click to navigate and edit';
+    nav.addEventListener('click',()=>jumpToMarker(marker));
+    const note=document.createElement('span');note.className='marker-note';
+    note.textContent=marker.note;
+    li.append(nav,note);list.append(li);
+  }
+  const selected=markers.find(m=>m.marker_id===selectedMarkerId);
+  $('marker-edit').hidden=!selected;
+  if(selected){
+    $('marker-label').value=selected.label;
+    $('marker-time').value=String(selected.time);
+    $('marker-note').value=selected.note;
+    $('marker-color').value=selected.color;
+  }
+  for(const name of ['marker-label','marker-time','marker-note','marker-color',
+    'marker-save','marker-delete','marker-cancel'])$(name).disabled=exporting||!selected;
+}
+function markerFormValues(){
+  return {time:Number($('marker-time').value),
+    label:$('marker-label').value,note:$('marker-note').value,
+    color:$('marker-color').value};
+}
 function drawTitles() {
   const list = $('title-list'), track = $('title-track');
   list.replaceChildren(); track.replaceChildren();
@@ -923,7 +983,7 @@ function render() {
   $('project-name').value = state.name;
   updateToolUI();
   drawMixer();
-  drawMedia(); drawTimeline(); drawInspector(); drawTitles(); drawReceipts(); updateTimeUI();
+  drawMedia(); drawTimeline(); drawInspector(); drawTitles(); drawMarkers(); drawReceipts(); updateTimeUI();
   previewAudioAt(playhead);
   updatePeakGuides(playhead);
   $('undo').disabled = !state.undo.length || exporting;
@@ -1048,7 +1108,7 @@ function stopPlayback() {
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted','marker.added','marker.updated','marker.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
@@ -1333,6 +1393,29 @@ $('apply-audio').addEventListener('click', () => edit({
   type:'clip.audio.updated',clip_id:selectedId,volume:Number($('clip-volume').value)/100,
   fade_in:Number($('fade-in').value),fade_out:Number($('fade-out').value)
 }));
+$('marker-add').addEventListener('click',()=>{
+  if(exporting||!state.clips.length)return;
+  const ids=new Set(state.markers.map(m=>m.marker_id)),before=state.receipts.length;
+  edit({type:'marker.added',marker:{time:Math.round(playhead*1000)/1000,
+    label:'Marker '+(state.markers.length+1),note:'',color:'mint'}});
+  if(state.receipts.length>before){
+    const created=state.markers.find(m=>!ids.has(m.marker_id));
+    selectedMarkerId=created?.marker_id||null;drawMarkers();
+  }
+});
+$('marker-save').addEventListener('click',()=>{
+  if(!selectedMarkerId)return;
+  edit({type:'marker.updated',marker_id:selectedMarkerId,marker:markerFormValues()});
+});
+$('marker-delete').addEventListener('click',()=>{
+  if(!selectedMarkerId)return;
+  edit({type:'marker.deleted',marker_id:selectedMarkerId});
+});
+$('marker-cancel').addEventListener('click',()=>{selectedMarkerId=null;drawMarkers();});
+$('marker-prev').addEventListener('click',()=>
+  jumpToMarker(navigateMarker(state.markers,playhead,'previous')));
+$('marker-next').addEventListener('click',()=>
+  jumpToMarker(navigateMarker(state.markers,playhead,'next')));
 $('add-title').addEventListener('click', () => {
   const title = {
     text: $('title-text').value.trim(),
@@ -1496,6 +1579,15 @@ document.addEventListener('keydown', e => {
   }
   if(!e.ctrlKey&&!e.metaKey&&!e.altKey && e.key.toLowerCase()==='o' && sourceAssetId){
     e.preventDefault();$('source-mark-out').click();return;
+  }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='m'){
+    e.preventDefault();
+    if(e.shiftKey)$('marker-next').click();
+    else $('marker-add').click();
+    return;
+  }
+  if(!e.ctrlKey&&!e.metaKey&&e.altKey&&e.key.toLowerCase()==='m'){
+    e.preventDefault();$('marker-prev').click();return;
   }
   if(!e.ctrlKey&&!e.metaKey&&!e.altKey){
     const key=e.key.toLowerCase();

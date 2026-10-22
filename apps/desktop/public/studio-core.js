@@ -1,6 +1,7 @@
 // ParaCut Studio R3: local-first editor with video/audio automation and timed titles.
 import { validateClipColor } from './studio-color.js';
 import { synchronizedRipplePlan } from './studio-ripple.js';
+import { validateMarker,markerFromInput,sortedMarkers,MARKER_LIMIT } from './studio-markers.js';
 // This is a browser draft format, NOT the canonical ParaCut project-core format.
 export const DRAFT_SCHEMA = 'paracut.studio.draft.v3';
 export const PREVIOUS_DRAFT_SCHEMA = 'paracut.studio.draft.v2';
@@ -58,7 +59,7 @@ export function overlayMotionAt(clip,time) {
   return {x:0,y:0};
 }
 export function newStudio(name = 'Untitled Cut') {
-  return { schema: DRAFT_SCHEMA, name, assets: [], clips: [], audioClips: [], video2Clips: [], audio2Clips: [], audioMix: defaultAudioMix(), titles: [], receipts: [], undo: [], redo: [] };
+  return { schema: DRAFT_SCHEMA, name, assets: [], clips: [], audioClips: [], video2Clips: [], audio2Clips: [], audioMix: defaultAudioMix(), titles: [], markers: [], receipts: [], undo: [], redo: [] };
 }
 export function duration(state) {
   return state.clips.length ? state.clips[state.clips.length - 1].timeline.end : 0;
@@ -149,6 +150,7 @@ export function snapLayerTime(state, {desiredStart, span, trackId, excludeClipId
     anchors.push(c.timeline.start,c.timeline.end);
   }
   for(const t of state.titles) anchors.push(t.start,t.end);
+  for(const marker of state.markers) anchors.push(marker.time);
   const options=[];
   for(const anchor of anchors) for(const edge of ['start','end']) {
     const x=edge==='start'?anchor:anchor-span;
@@ -256,7 +258,7 @@ function fitFades(clip) {
 function checkpoint(state) {
   return { assets:copy(state.assets),clips:copy(state.clips),audioClips:copy(state.audioClips),
     video2Clips:copy(state.video2Clips),audio2Clips:copy(state.audio2Clips),
-    titles:copy(state.titles),audioMix:copy(state.audioMix),name:state.name };
+    titles:copy(state.titles),markers:copy(state.markers??[]),audioMix:copy(state.audioMix),name:state.name };
 }
 function assertLayerPosition(lane, candidate, idToSkip=null) {
   if(!finite(candidate.timeline.start)||candidate.timeline.start<0||
@@ -310,9 +312,9 @@ function receipt(action, details = {}) {
 export function change(state, command) {
   validate(state);
   const before = checkpoint(state);
-  let assets = copy(state.assets), clips = copy(state.clips), audioClips = copy(state.audioClips), video2Clips=copy(state.video2Clips), audio2Clips=copy(state.audio2Clips), audioMix=copy(state.audioMix), titles = copy(state.titles), name = state.name;
+  let assets = copy(state.assets), clips = copy(state.clips), audioClips = copy(state.audioClips), video2Clips=copy(state.video2Clips), audio2Clips=copy(state.audio2Clips), audioMix=copy(state.audioMix), titles = copy(state.titles), markers=copy(state.markers??[]), name = state.name;
   const { type } = command;
-  let rippleDetails=null;
+  let rippleDetails=null,createdMarkerId=null;
   const laneFor = clipId => [clips,audioClips,video2Clips,audio2Clips].find(
     lane => lane.some(c=>c.clip_id===clipId)) || null;
   if (type === 'asset.added') {
@@ -495,6 +497,20 @@ export function change(state, command) {
     clip.volume = round(command.volume);
     clip.fade_in = round(command.fade_in);
     clip.fade_out = round(command.fade_out);
+  } else if (type === 'marker.added') {
+    if(markers.length>=MARKER_LIMIT)throw Error('Maximum 100 timeline markers.');
+    const marker=markerFromInput(command.marker,id());
+    markers=sortedMarkers([...markers,marker]);
+    createdMarkerId=marker.marker_id;
+  } else if (type === 'marker.updated') {
+    const index=markers.findIndex(m=>m.marker_id===command.marker_id);
+    if(index<0)throw Error('Marker not found.');
+    markers[index]=markerFromInput(command.marker,command.marker_id);
+    markers=sortedMarkers(markers);
+  } else if (type === 'marker.deleted') {
+    if(!markers.some(m=>m.marker_id===command.marker_id))
+      throw Error('Marker not found.');
+    markers=markers.filter(m=>m.marker_id!==command.marker_id);
   } else if (type === 'title.added') {
     if (titles.length >= 40) throw Error('R3 supports up to 40 title overlays.');
     const fresh = titleFromInput(command.title, id());
@@ -588,7 +604,7 @@ export function change(state, command) {
   } else throw Error('Unknown studio edit.');
   clips = reflow(normalizeTransitions(clips), 'video-1');
   audioClips = reflow(audioClips, 'audio-1');
-  const next = { ...state, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, name, undo: [...state.undo.slice(-39), before], redo: [],
+  const next = { ...state, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, markers, name, undo: [...state.undo.slice(-39), before], redo: [],
     receipts: [...state.receipts, receipt(type, { clip_id: command.clip_id || null,
       asset_id: command.asset_id || command.asset?.asset_id || null,
       ...(type === 'clip.source.inserted'||type === 'clip.source.replaced' ?
@@ -597,6 +613,13 @@ export function change(state, command) {
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
       ...(type === 'clip.color.updated' ? { color:copy(command.color) } : {}),
       ...(type === 'clip.ripple.deleted' ? rippleDetails : {}),
+      ...(type.startsWith('marker.') ? {
+        marker_id:createdMarkerId??command.marker_id,
+        ...(type!=='marker.deleted'?{
+          time:command.marker.time,label:command.marker.label.trim(),
+          color:command.marker.color??'mint',note:command.marker.note??''
+        }:{})
+      } : {}),
       ...(type === 'clip.transition.updated'||type === 'clip.overlay.transition.updated' ? {seconds:command.seconds} : {}),
       ...(type==='mixer.updated'?{lane:command.lane,gain:command.gain,muted:command.muted,solo:command.solo}:{}),
       ...(type==='mixer.duck.updated'?{enabled:command.enabled}:{}),
@@ -618,10 +641,18 @@ export function redo(state) {
     receipts: [...state.receipts, receipt('edit.redone')] };
 }
 export function validate(state) {
-  if (!state || !Array.isArray(state.assets) || !Array.isArray(state.clips) || !Array.isArray(state.audioClips) || !Array.isArray(state.video2Clips) || !Array.isArray(state.audio2Clips) || !Array.isArray(state.titles)
-      || state.titles.length > 40 || state.assets.length > 200 || state.clips.length > 400 || state.audioClips.length > 400 || state.video2Clips.length > 80 || state.audio2Clips.length > 80) {
+  if (!state || !Array.isArray(state.assets) || !Array.isArray(state.clips) || !Array.isArray(state.audioClips) || !Array.isArray(state.video2Clips) || !Array.isArray(state.audio2Clips) || !Array.isArray(state.titles) || !Array.isArray(state.markers)
+      || state.titles.length > 40 || state.markers.length > MARKER_LIMIT || state.assets.length > 200 || state.clips.length > 400 || state.audioClips.length > 400 || state.video2Clips.length > 80 || state.audio2Clips.length > 80) {
     throw Error('Invalid ParaCut draft.');
   }
+  const markerIds=new Set();
+  for(const marker of state.markers){
+    validateMarker(marker);
+    if(markerIds.has(marker.marker_id))throw Error('Duplicate timeline marker ID.');
+    markerIds.add(marker.marker_id);
+  }
+  if(JSON.stringify(sortedMarkers(state.markers))!==JSON.stringify(state.markers))
+    throw Error('Timeline markers must be sorted by time.');
   validateAudioMix(state.audioMix);
   const ids = new Set();
   for (const a of state.assets) {
@@ -684,8 +715,8 @@ export function validate(state) {
 }
 export function exportDraft(state) {
   validate(state);
-  const { name, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, receipts } = state;
-  return JSON.stringify({ schema: DRAFT_SCHEMA, name, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, receipts: receipts.slice(-500),
+  const { name, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, markers, receipts } = state;
+  return JSON.stringify({ schema: DRAFT_SCHEMA, name, assets, clips, audioClips, video2Clips, audio2Clips, audioMix, titles, markers, receipts: receipts.slice(-500),
     note: 'Media files are NOT embedded. Relink the originals when reopening.' }, null, 2);
 }
 export function importDraft(json) {
@@ -695,6 +726,7 @@ export function importDraft(json) {
   const state = { schema: DRAFT_SCHEMA, name: String(input.name || 'Recovered Cut').slice(0, 100),
     assets: input.assets, clips: input.clips, audioClips: input.schema === LEGACY_DRAFT_SCHEMA ? [] : input.audioClips,
     titles: input.schema === DRAFT_SCHEMA ? input.titles : [],
+    markers: input.markers === undefined ? [] : input.markers,
     video2Clips: input.video2Clips === undefined ? [] : input.video2Clips,
     audio2Clips: input.audio2Clips === undefined ? [] : input.audio2Clips,
     audioMix: input.audioMix === undefined ? defaultAudioMix() : input.audioMix, receipts: Array.isArray(input.receipts) ? input.receipts.filter(r => r && typeof r === 'object' && typeof r.action === 'string').slice(-500) : [],
