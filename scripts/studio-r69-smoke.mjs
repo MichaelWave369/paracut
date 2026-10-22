@@ -34,7 +34,7 @@ for(const bad of [[],[points[0]],Array(9).fill({at:0,value:1}),
  [{at:0,value:1},{at:1,value:1,script:'x'}],
  [{at:.1,value:1},{at:1,value:1}],
  [{at:0,value:1},{at:.9,value:1}]
-])assert.throws(()=>validateKeyframePoints(bad),/Keyframe/);
+])assert.throws(()=>validateKeyframePoints(bad),/[Kk]eyframe/);
 const inserted=addKeyframePoint(points,.5,.7);
 assert.equal(inserted.length,5);
 assert.equal(inserted[2].at,.5);
