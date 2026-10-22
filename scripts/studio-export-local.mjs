@@ -38,7 +38,7 @@ async function relink(state,opt) {
   const map=mapPath?JSON.parse(await readFile(mapPath,'utf8')):{};
   if(!map||typeof map!=='object'||Array.isArray(map))throw Error('Media map must be an object keyed by asset ID.');
   const names=dir?await readdir(dir):[],out={};
-  const wanted=new Set([...state.clips,...state.audioClips].map(c=>c.asset_id));
+  const wanted=new Set([...state.clips,...state.audioClips,...state.video2Clips,...state.audio2Clips].map(c=>c.asset_id));
   for(const a of state.assets.filter(x=>wanted.has(x.asset_id))) {
     let path;
     if(Object.hasOwn(map,a.asset_id)) {
@@ -85,7 +85,7 @@ async function main() {
   const linked=await relink(state,opt);
   const plan=planLocalMp4(state,linked,target,{ffmpeg:opt.ffmpeg||'ffmpeg'});
   console.log('ParaCut local MP4: '+plan.videoClips+' video clips, '+plan.audioSegments+
-    ' audio segments, '+plan.transitions+' video crossfades, '+plan.duration+' seconds.');
+    ' audio segments, '+plan.transitions+' V1 transitions, '+(plan.overlayClips||0)+' V2 overlays, '+(plan.overlayCrossfades||0)+' V2 transitions, '+(plan.voiceClips||0)+' A2 clips, '+plan.duration+' seconds.');
   if(opt.dryRun) {
     console.log('DRY RUN: no file written and no encoder executed.');
     console.log(shellPreview([plan.ffmpeg,...plan.args]));
