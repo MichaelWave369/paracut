@@ -2,6 +2,7 @@
 // No shell command execution or network access in this module.
 import { extname, resolve } from 'node:path';
 import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
+import {audioKeyframeFilter,overlayKeyframeFilter} from '../apps/desktop/public/studio-keyframes.js';
 import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 import { applyExportOptions } from './studio-r57-export-options.mjs';
 
@@ -81,6 +82,8 @@ export function planLocalMp4(state, mediaByAsset, output, {ffmpeg='ffmpeg',quali
       '['+index+':a:0]atrim=start='+n(c.source.start)+':duration='+n(span),
       'asetpts=PTS-STARTPTS','aresample=48000',
       'aformat=sample_fmts=fltp:channel_layouts=stereo','volume='+n(c.volume??1)];
+    const animatedVolume=audioKeyframeFilter(c);
+    if(animatedVolume)filters.push(animatedVolume);
     if(c.fade_in>0)filters.push('afade=t=in:st=0:d='+n(c.fade_in));
     if(c.fade_out>0)filters.push('afade=t=out:st='+n(span-c.fade_out)+':d='+n(c.fade_out));
     if(c.track_id==='video-1') {
