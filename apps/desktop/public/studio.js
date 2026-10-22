@@ -7,6 +7,7 @@ import { workspacePreset,loadWorkspace,saveWorkspace,resizeWorkspace } from './s
 import { clipColor, hasColorAdjustment, COLOR_DEFAULTS } from './studio-color.js';
 import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } from './studio-color-workflow.js';
 import { synchronizedRipplePlan } from './studio-ripple.js';
+import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 
 const $ = id => document.getElementById(id);
 let state = newStudio();
@@ -16,6 +17,7 @@ let activeTool='select'; // editor preference only; never stored in draft
 let colorCompareBefore=false, colorPreviewPending=false, lastColorSelectedId=null;
 const razorTargets=new Set(['video-1']);
 let transportSpeed=1;
+const attributeClipboard={color:null,overlay:null};
 let timelineZoom=1; // local interface preference, not saved into media drafts
 function timelineExtent(){
   return Math.max(duration(state),state.audioClips.at(-1)?.timeline.end||0,
@@ -150,6 +152,80 @@ function chooseSource(assetId) {
   sourceAssetId=assetId;sourceIn=0;sourceOut=asset.duration;
   refreshSourceMonitor();
   status('Source ready: '+asset.name+'. Mark IN and OUT, then insert at V1 playhead.');
+}
+function selectedClip() {
+  return [...state.clips,...state.audioClips,...state.video2Clips,...state.audio2Clips]
+    .find(c=>c.clip_id===selectedId)||null;
+}
+function matchFrame(clip,time=playhead) {
+  if(exporting||!clip?.track_id.startsWith('video-'))return;
+  if(!media.has(clip.asset_id))return status('Relink the original video before Match Frame.',true);
+  try{
+    const frame=matchedSourceFrame(clip,time);
+    chooseSource(frame.assetId);
+    sourceIn=frame.in;sourceOut=frame.out;
+    if(!$('workspace-source-visible').checked){
+      $('workspace-source-visible').checked=true;
+      $('workspace-source-visible').dispatchEvent(new Event('change'));
+    }
+    refreshSourceMonitor();
+    // Source media metadata can resolve asynchronously after changing src.
+    const seekMatched=()=>{
+      if(sourceAssetId!==frame.assetId)return;
+      try{sourceVideo.currentTime=frame.time;}catch(e){
+        status('Match Frame seek: '+e.message,true);
+      }
+      refreshSourceMonitor();
+    };
+    if(sourceVideo.readyState>=1)seekMatched();
+    else sourceVideo.addEventListener('loadedmetadata',seekMatched,{once:true});
+    status('Match Frame: '+state.assets.find(a=>a.asset_id===frame.assetId).name+
+      ' at '+fmt(frame.time)+' (preview-only).');
+  }catch(e){status('Match Frame: '+e.message,true);}
+}
+function clipClickTime(clip,event,item) {
+  const rect=item.getBoundingClientRect();
+  const fraction=Math.max(0,Math.min(1,(event.clientX-rect.left)/Math.max(1,rect.width)));
+  return clip.timeline.start+fraction*(clip.timeline.end-clip.timeline.start);
+}
+function matchTimelineDoubleClick(clip,event,item) {
+  if(activeTool!=='select'||!clip.track_id.startsWith('video-'))return;
+  event.preventDefault();
+  const matchedTime=clipClickTime(clip,event,item);
+  selectedId=clip.clip_id;
+  drawTimeline();drawInspector();
+  matchFrame(clip,matchedTime);
+}
+function refreshAttributes() {
+  const clip=selectedClip(),video=Boolean(clip?.track_id.startsWith('video-'));
+  $('attribute-clipboard').hidden=!video;
+  $('source-match-frame').disabled=!video||exporting||!media.has(clip?.asset_id);
+  $('copy-color').disabled=!video||exporting;
+  $('paste-color').disabled=!video||exporting||!attributeClipboard.color;
+  $('copy-overlay').disabled=clip?.track_id!=='video-2'||exporting;
+  $('paste-overlay').disabled=clip?.track_id!=='video-2'||exporting||
+    !attributeClipboard.overlay;
+}
+function copyAttributes(kind) {
+  const clip=selectedClip();
+  if(!clip)return status('Select a video clip first.',true);
+  try{
+    attributeClipboard[kind]=captureAttributes(clip,kind);
+    $('attribute-clipboard-status').textContent=
+      'Copied '+(kind==='color'?'color':'V2 style')+
+      ' from '+(state.assets.find(a=>a.asset_id===clip.asset_id)?.name||'video')+
+      '. Select another video and paste.';
+    refreshAttributes();
+  }catch(e){status(e.message,true);}
+}
+function pasteAttributes(kind) {
+  const clip=selectedClip();
+  try{
+    const command=attributePasteCommand(attributeClipboard[kind],clip);
+    const count=state.receipts.length;
+    edit(command);
+    if(state.receipts.length>count)status('Pasted '+kind+' attributes · receipt saved.');
+  }catch(e){status(e.message,true);}
 }
 function applySourceEdit(type) {
   const asset=currentSource();
@@ -316,6 +392,8 @@ function drawTimeline() {
         requestAnimationFrame(() => paintWaveform(canvas, waveforms.get(clip.asset_id)));
       }
       item.addEventListener('click',event=>actOnTimelineClip(clip,event,item));
+      if(!isAudio)item.addEventListener('dblclick',event=>
+        matchTimelineDoubleClick(clip,event,item));
       item.addEventListener('dragstart', event => {
         draggedClipId = clip.clip_id;
         event.dataTransfer?.setData('text/plain', clip.clip_id);
@@ -383,6 +461,8 @@ function drawTimeline() {
       }
       item.title='Start '+fmt(clip.timeline.start)+' · Select, adjust or drag on the storyboard';
       item.addEventListener('click',event=>actOnTimelineClip(clip,event,item));
+      if(kind==='video')item.addEventListener('dblclick',event=>
+        matchTimelineDoubleClick(clip,event,item));
       item.draggable=!exporting && activeTool==='select';
       item.addEventListener('dragstart',e=>{e.dataTransfer?.setData('text/plain',clip.clip_id);
         if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
@@ -743,6 +823,7 @@ function drawInspector() {
   $('inspector-fields').hidden = !clip;
   $('inspector-empty').hidden = Boolean(clip);
   $('clip-color-control').hidden=!clip||!clip.track_id.startsWith('video-');
+  refreshAttributes();
   if (!clip) return;
   if(clip.track_id.startsWith('video-')) {
     colorPreviewPending=false;
@@ -1136,6 +1217,11 @@ for(const [field,prop] of [['source-in','in'],['source-out','out']])
   });
 $('source-insert').addEventListener('click',()=>applySourceEdit('clip.source.inserted'));
 $('source-replace').addEventListener('click',()=>applySourceEdit('clip.source.replaced'));
+$('source-match-frame').addEventListener('click',()=>matchFrame(selectedClip()));
+for(const kind of ['color','overlay']){
+  $('copy-'+kind).addEventListener('click',()=>copyAttributes(kind));
+  $('paste-'+kind).addEventListener('click',()=>pasteAttributes(kind));
+}
 $('drop-zone').addEventListener('click', () => $('video-input').click());
 $('drop-zone').addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('video-input').click(); } });
 $('video-input').addEventListener('change', async e => { await importVideos([...e.target.files]); e.target.value=''; });
@@ -1413,6 +1499,7 @@ document.addEventListener('keydown', e => {
   }
   if(!e.ctrlKey&&!e.metaKey&&!e.altKey){
     const key=e.key.toLowerCase();
+    if(key==='f'){e.preventDefault();matchFrame(selectedClip());return;}
     if(key==='v'){e.preventDefault();setEditingTool('select');return;}
     if(key==='c'){e.preventDefault();setEditingTool('razor');return;}
     if(e.key===','||key==='j'){e.preventDefault();$('jog-back').click();return;}
