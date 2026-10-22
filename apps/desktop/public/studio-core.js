@@ -362,6 +362,9 @@ export function change(state, command) {
     if(index<0||index>=video2Clips.length-1)
       throw Error('Select a V2 clip with a following V2 clip.');
     const max=maxOverlayCrossfade(video2Clips,index);
+    const prior=video2Clips[index].transition_out_seconds??0;
+    if(Math.abs(video2Clips[index+1].timeline.start+prior-video2Clips[index].timeline.end)>.004)
+      throw Error('V2 dissolve requires two touching clips. Move them together first.');
     const seconds=command.seconds;
     if(!finite(seconds)||seconds<0||seconds>max+.0001)
       throw Error('V2 dissolve must fit two touching clips; maximum '+max+' seconds.');
