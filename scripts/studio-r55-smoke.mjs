@@ -40,7 +40,7 @@ assert.throws(()=>change(state,{type:'clip.layer.moved',clip_id:blue,start:4}),/
 assert.throws(()=>change(state,{type:'clip.trimmed',clip_id:red,start:0,end:2}),/Remove the V2 dissolve/);
 assert.throws(()=>change(state,{type:'clip.split',clip_id:blue,time:4}),/Remove the V2 dissolve/);
 assert.throws(()=>change(state,{type:'clip.deleted',clip_id:red}),/Remove the V2 dissolve/);
-assert.throws(()=>change(state,{type:'clip.overlay.transition.updated',clip_id:blue,seconds:.4}),/maximum 0 seconds/);
+assert.throws(()=>change(state,{type:'clip.overlay.transition.updated',clip_id:blue,seconds:.4}),/maximum 0 seconds|requires two touching clips/);
 // Strictly guard unannotated overlaps and tampered draft data.
 const tampered=JSON.parse(exportDraft(state));
 tampered.video2Clips[0].transition_out_seconds=0;
