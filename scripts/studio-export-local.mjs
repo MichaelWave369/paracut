@@ -13,7 +13,7 @@ import { planLocalMp4, shellPreview } from './studio-local-export-core.mjs';
 
 function parseArgs(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
-    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe --quality compact|balanced|high --audio-protect --benchmark');
+    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe --quality compact|balanced|high --audio-protect --benchmark --benchmark-json');
     process.exit(0);
   }
   const opt={},known=new Set(['--draft','--media-dir','--out','--media-map','--ffmpeg','--ffprobe','--quality']);
@@ -21,12 +21,13 @@ function parseArgs(argv) {
     if(argv[i]==='--dry-run'){opt.dryRun=true;continue;}
     if(argv[i]==='--audio-protect'){opt.protectAudio=true;continue;}
     if(argv[i]==='--benchmark'){opt.benchmark=true;continue;}
+    if(argv[i]==='--benchmark-json'){opt.benchmarkJson=true;continue;}
     const key=argv[i];
     if(!known.has(key)||!argv[i+1]||argv[i+1].startsWith('--'))throw Error('Unknown/missing option: '+key);
     opt[key.slice(2).replaceAll('-','_')]=argv[++i];
   }
   if(!opt.draft||!opt.out||(!opt.media_dir&&!opt.media_map))throw Error('Required: --draft, --out and --media-dir or --media-map.');
-  if(opt.dryRun&&opt.benchmark)throw Error('--benchmark measures a real encode and cannot be used with --dry-run.');
+  if(opt.dryRun&&(opt.benchmark||opt.benchmarkJson))throw Error('Benchmarking measures a real encode and cannot be used with --dry-run.');
   return opt;
 }
 function probe(file,executable) {
@@ -92,7 +93,7 @@ async function main() {
   const relinkedAt=performance.now();
   const plan=planLocalMp4(state,linked,target,{ffmpeg:opt.ffmpeg||'ffmpeg',quality:opt.quality||'balanced',protectAudio:opt.protectAudio===true});
   const plannedAt=performance.now();
-  const diagnostics=opt.benchmark?graphDiagnostics(state,plan.graph):null;
+  const diagnostics=(opt.benchmark||opt.benchmarkJson)?graphDiagnostics(state,plan.graph):null;
   console.log('ParaCut local MP4: '+plan.videoClips+' video clips, '+plan.audioSegments+
     ' audio segments, '+plan.transitions+' V1 transitions, '+(plan.overlayClips||0)+' V2 overlays, '+(plan.overlayCrossfades||0)+' V2 transitions, '+(plan.voiceClips||0)+' A2 clips, '+plan.duration+' seconds.');
   console.log('Export quality: '+plan.quality+'; master audio protection: '+(plan.protectAudio?'ON (0.95 sample peak limiter)':'OFF')+'.');
@@ -120,12 +121,18 @@ async function main() {
     const verifiedAt=performance.now();
     ok=true;
     console.log('Verified local MP4:',target);
-    if(opt.benchmark)console.log(renderBenchmarkReport({
-      mediaSeconds:plan.duration,probeMs:relinkedAt-started,
-      planMs:plannedAt-relinkedAt,encodeMs:encodedAt-encodeStarted,
-      verifyMs:verifiedAt-encodedAt,totalMs:verifiedAt-started,
-      graph:diagnostics
-    }));
+    if(opt.benchmark||opt.benchmarkJson){
+      const record={mediaSeconds:plan.duration,probeMs:relinkedAt-started,
+        planMs:plannedAt-relinkedAt,encodeMs:encodedAt-encodeStarted,
+        verifyMs:verifiedAt-encodedAt,totalMs:verifiedAt-started,
+        graph:diagnostics};
+      // Validate once before either representation can be emitted.
+      const report=renderBenchmarkReport(record);
+      if(opt.benchmark)console.log(report);
+      if(opt.benchmarkJson)console.log('PARACUT_BENCH_JSON '+JSON.stringify({
+        schema:'paracut.export.benchmark.v1',...record
+      }));
+    }
   } finally {
     await rm(working,{recursive:true,force:true});
     if(!ok&&existsSync(target))await unlink(target);
