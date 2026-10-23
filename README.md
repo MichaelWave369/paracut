@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.7 — Balanced Bézier Export Expressions
+
+Complex custom-X Bézier MP4 exports now use a balanced FFmpeg decision tree to find the appropriate adaptive chord. Worst-case interval comparisons drop from **N** to **ceil(log2 N)**, e.g. 64 chords require at most six branch decisions instead of 64, while **the same validated fit and interpolation leaves remain in place**. The synthetic export lab adds an opt-in `v2-bezier-stress` workload with four challenging curve segments; default lab scenarios stay unchanged. No saved draft, receipt or browser preview changes, and no unmeasured wall-clock speedup is claimed. [R7.7 guide](docs/STUDIO_R77.md).
+
+
 ## ◆ ParaCut Studio R7.6 — Faster Native Alpha Paths
 
 R7.6 makes simple V2 opacity automation cheaper to render: completely constant opacity uses a native alpha mixer (or no extra filter at 100%), and exactly linear 0→100% / 100→0% ramps use FFmpeg's built-in `fade=...:alpha=1` instead of evaluating `geq` per pixel. **All complex easing, multi-point and Bézier animation still uses the original validated GEQ path.** The synthetic Export Performance Lab now offers `v2-linear` beside static and Bézier workloads for local measurements; no speedup is claimed without running the comparison on real hardware. Saved drafts, browser animation and edit receipts remain unchanged. [R7.6 guide](docs/STUDIO_R76.md).
