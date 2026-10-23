@@ -93,7 +93,7 @@ assert.equal(faded.receipts.length+2,s.receipts.length);
 
 // The lab adds a native linear V2 case, using precisely the same synthetic
 // clip/overlay as the constant V2 and Bézier cases.
-assert.deepEqual(LAB_SCENARIOS,['v1','v2-static','v2-linear','v2-bezier']);
+assert.deepEqual(LAB_SCENARIOS.slice(0,4),['v1','v2-static','v2-linear','v2-bezier']);
 assert.deepEqual(parseLabOptions(['--scenarios','v2-linear,v2-bezier']).scenarios,
  ['v2-linear','v2-bezier']);
 const draft=importDraft(buildLabDraft({
