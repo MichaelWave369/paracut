@@ -2,7 +2,8 @@
 // creates one receipt through the existing validated change() pipeline.
 import {pointsField,keyframePointsFor,keyframeCurveAt,addKeyframePoint,
   moveKeyframePoint,removeKeyframePoint,validateKeyframePoints,
-  KEYFRAME_POINT_LIMIT,KEYFRAME_EASES,setKeyframeSegmentEase} from './studio-keyframe-points.js';
+  KEYFRAME_POINT_LIMIT,KEYFRAME_EASES,setKeyframeSegmentEase,
+  setKeyframeBezierHandle} from './studio-keyframe-points.js';
 import {keyframeLanePlan,keyframePercentFromY}
   from './studio-keyframe-lanes.js';
 
@@ -52,10 +53,41 @@ export function renderMultiPointKeyframeLanes({
     svg.setAttribute('preserveAspectRatio','none');
     svg.classList.add('keyframe-svg');
     const path=doc.createElementNS('http://www.w3.org/2000/svg','path');
-    path.setAttribute('d',curvePathFor(points));svg.append(path);plot.append(svg);
+    path.setAttribute('d',curvePathFor(points));svg.append(path);
+    const bezierGuide=doc.createElementNS('http://www.w3.org/2000/svg','path');
+    bezierGuide.classList.add('keyframe-bezier-guide');
+    svg.append(bezierGuide);plot.append(svg);
+    const bezierOverlay=doc.createElement('div');
+    bezierOverlay.className='keyframe-bezier-overlay';plot.append(bezierOverlay);
+    let bezierButtons=[];
+    const bezierPosition=(curve,index,which)=>{
+      const a=curve[index],b=curve[index+1];
+      const u=which===0?1/3:2/3;
+      return {at:a.at+(b.at-a.at)*u,
+        value:a.value+(b.value-a.value)*a.handles[which]};
+    };
+    function previewBezier(curve){
+      const index=selectedEaseSegments.get(clip.clip_id+':'+property)??0;
+      if(index<0||index>=curve.length-1||curve[index].ease!=='bezier'){
+        bezierGuide.setAttribute('d','');return;
+      }
+      const a=curve[index],b=curve[index+1];
+      const p=bezierPosition(curve,index,0),q=bezierPosition(curve,index,1);
+      const xy=point=>(point.at*100)+' '+((1-point.value)*100);
+      bezierGuide.setAttribute('d','M '+xy(a)+' L '+xy(p)+' M '+xy(q)+' L '+xy(b));
+      bezierButtons.forEach((button,which)=>{
+        const pos=which===0?p:q;
+        button.style.left=(pos.at*100)+'%';
+        button.style.top=((1-pos.value)*100)+'%';
+        button.setAttribute('aria-valuenow',String(Math.round(a.handles[which]*100)));
+        button.title='Control '+(which+1)+': '+Math.round(a.handles[which]*100)+'%';
+      });
+    }
+
     const handles=[];
     function preview(next){
       path.setAttribute('d',curvePathFor(next));
+      previewBezier(next);
       next.forEach((p,i)=>{
         handles[i].style.left=(p.at*100)+'%';
         handles[i].style.top=(100-p.value*100)+'%';
@@ -121,7 +153,8 @@ export function renderMultiPointKeyframeLanes({
     for(const value of KEYFRAME_EASES){
       const option=doc.createElement('option');option.value=value;
       option.textContent=value==='linear'?'Linear':
-        value==='ease-in'?'Ease In':value==='ease-out'?'Ease Out':'Ease In/Out';
+        value==='ease-in'?'Ease In':value==='ease-out'?'Ease Out':
+        value==='ease-in-out'?'Ease In/Out':'Custom Bézier';
       easeSelect.append(option);
     }
     easeSelect.value=points[segment].ease||'linear';
@@ -131,6 +164,7 @@ export function renderMultiPointKeyframeLanes({
       if(!Number.isInteger(segment)||segment<0||segment>=points.length-1)return;
       selectedEaseSegments.set(selectionKey,segment);
       easeSelect.value=points[segment].ease||'linear';
+      buildBezierHandles();
     });
     easeSelect.addEventListener('change',()=>{
       if(!editable)return;
@@ -227,6 +261,91 @@ export function renderMultiPointKeyframeLanes({
       });
       plot.append(handle);
     }
+    function buildBezierHandles(){
+      bezierOverlay.replaceChildren();bezierButtons=[];
+      const index=selectedEaseSegments.get(selectionKey)??0;
+      if(index>=points.length-1||points[index]?.ease!=='bezier'){
+        bezierGuide.setAttribute('d','');return;
+      }
+      for(let which=0;which<2;which++){
+        const control=doc.createElement('button');
+        control.type='button';
+        control.className='keyframe-bezier-handle';
+        control.dataset.keyframeBezier=property;
+        control.dataset.controlIndex=String(which);
+        control.textContent=which===0?'1':'2';
+        control.disabled=!editable;
+        control.setAttribute('role','slider');
+        control.setAttribute('aria-label',property+' cubic Bézier control '+(which+1));
+        control.setAttribute('aria-valuemin','0');
+        control.setAttribute('aria-valuemax','100');
+        control.setAttribute('aria-orientation','vertical');
+        let drag=null;
+        function editValue(value){
+          return setKeyframeBezierHandle(points,index,which,
+            clamp(round(value),0,1));
+        }
+        control.addEventListener('pointerdown',event=>{
+          if(event.button!==0||control.disabled)return;
+          drag={id:event.pointerId,startY:event.clientY,
+            startValue:points[index].handles[which],next:points};
+          control.setPointerCapture(event.pointerId);
+          event.preventDefault();event.stopPropagation();
+        });
+        function moved(event){
+          const rect=plot.getBoundingClientRect();
+          if(!Number.isFinite(rect.height)||rect.height<=0)
+            throw Error('Invalid Bézier editor height.');
+          return editValue(drag.startValue+(drag.startY-event.clientY)/rect.height);
+        }
+        control.addEventListener('pointermove',event=>{
+          if(!drag||drag.id!==event.pointerId)return;
+          try{
+            drag.next=moved(event);
+            path.setAttribute('d',curvePathFor(drag.next));
+            previewBezier(drag.next);
+          }catch(e){onError(e.message);}
+        });
+        control.addEventListener('pointerup',event=>{
+          if(!drag||drag.id!==event.pointerId)return;
+          let next=drag.next;
+          try{next=moved(event);}catch(e){onError(e.message);}
+          drag=null;
+          if(control.hasPointerCapture(event.pointerId))
+            control.releasePointerCapture(event.pointerId);
+          event.preventDefault();event.stopPropagation();
+          commit(next);
+          root.querySelector('[data-keyframe-bezier="'+property+
+            '"][data-control-index="'+which+'"]')?.focus({preventScroll:true});
+        });
+        control.addEventListener('pointercancel',()=>{
+          drag=null;path.setAttribute('d',curvePathFor(points));previewBezier(points);
+        });
+        control.addEventListener('lostpointercapture',()=>{
+          if(drag){
+            drag=null;path.setAttribute('d',curvePathFor(points));previewBezier(points);
+          }
+        });
+        control.addEventListener('dblclick',event=>event.stopPropagation());
+        control.addEventListener('keydown',event=>{
+          if(control.disabled)return;
+          const up=event.key==='ArrowUp'||event.key==='ArrowRight';
+          const down=event.key==='ArrowDown'||event.key==='ArrowLeft';
+          if(!up&&!down&&event.key!=='Home'&&event.key!=='End')return;
+          event.preventDefault();event.stopPropagation();
+          const v=event.key==='Home'?0:event.key==='End'?1:
+            points[index].handles[which]+(up?1:-1)*(event.shiftKey ? 0.1 : 0.05);
+          try{
+            commit(editValue(v));
+            root.querySelector('[data-keyframe-bezier="'+property+
+              '"][data-control-index="'+which+'"]')?.focus({preventScroll:true});
+          }catch(e){onError(e.message);}
+        });
+        bezierButtons.push(control);bezierOverlay.append(control);
+      }
+      previewBezier(points);
+    }
+    buildBezierHandles();
     preview(points);
     lane.append(plot);
   }

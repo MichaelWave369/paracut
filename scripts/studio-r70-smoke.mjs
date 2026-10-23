@@ -13,7 +13,7 @@ import {planLocalMp4} from './studio-local-export-core.mjs';
 
 const eq=(a,b)=>assert.ok(Math.abs(a-b)<.001,'Expected '+a+' ~= '+b);
 const pair=[{at:0,value:0},{at:1,value:1}];
-assert.deepEqual(KEYFRAME_EASES,['linear','ease-in','ease-out','ease-in-out']);
+assert.deepEqual(KEYFRAME_EASES.slice(0,4),['linear','ease-in','ease-out','ease-in-out']);
 assert.deepEqual(validateKeyframePoints(pair),pair);
 assert.deepEqual(setKeyframeSegmentEase(pair,0,'linear'),pair);
 const easeIn=setKeyframeSegmentEase(pair,0,'ease-in');
@@ -141,6 +141,6 @@ assert.equal(validate(state),true);
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R7\.0 · EASING CURVES/);
+assert.match(html,/R7\.(?:0 · EASING CURVES|1 · CUSTOM BÉZIER)/);
 assert.match(css,/\.keyframe-easing-controls/);
 console.log('ParaCut R7.0 PASS: eased math, visual curve sampling, safe FFmpeg, saved drafts, UI segment changes, receipts and Undo/Redo.');

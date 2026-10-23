@@ -403,3 +403,16 @@
 @media(max-width:760px){.keyframe-lane{height:146px}
  .keyframe-easing-controls{gap:6px;bottom:4px}
  .keyframe-easing-controls select{max-width:112px;padding:4px 3px}}
+
+/* R7.1 bounded cubic Bézier vertical control handles */
+.keyframe-bezier-overlay{position:absolute;inset:0;pointer-events:none;z-index:10}
+.keyframe-svg .keyframe-bezier-guide{stroke:#f8bf80;opacity:.9;
+ stroke-width:1.5;stroke-dasharray:4 4}
+.keyframe-bezier-handle{position:absolute;transform:translate(-50%,-50%);
+ border:2px solid #fff0c2;background:#a55c1e;color:#fff!important;
+ border-radius:50%;height:20px;width:20px;padding:0!important;
+ font-size:11px!important;font-weight:800;line-height:16px;
+ touch-action:none;cursor:ns-resize;pointer-events:auto;z-index:12}
+.keyframe-bezier-handle:hover:not(:disabled),.keyframe-bezier-handle:focus-visible{
+ outline:2px solid #ffe6ac;outline-offset:2px}
+.keyframe-bezier-handle:disabled{opacity:.5;cursor:default}
