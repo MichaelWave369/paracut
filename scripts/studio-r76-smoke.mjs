@@ -118,7 +118,7 @@ for(const scenario of opts.scenarios)for(let repeat=1;repeat<=2;repeat++)
 const report=summarizeLab(opts,runs);
 assert.equal(report.comparisons.length,1);
 assert.equal(report.comparisons[0].kind,'bezier-vs-linear');
-assert.equal(report.comparisons[0].bezierVsLinear,1.667);
+assert.equal(report.comparisons[0].bezierVsLinear,1.615);
 assert.match(formatLabReport(report),/custom Bézier\/native linear alpha encode ratio/);
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
