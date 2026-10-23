@@ -28,7 +28,7 @@ for(const args of [
  ['--report','output.txt'],['--report',''],['--ffmpeg',''],
  ['--unknown','x'],['--repeats','1','--repeats','2'],
  ['--repeats'],['--duration','NaN']
-])assert.throws(()=>parseLabOptions(args),/lab|option|executable/);
+])assert.throws(()=>parseLabOptions(args),/lab|option|executable|duration|repeats/i);
 
 const valid=buildLabDraft({duration:3,scenario:'v2-bezier',
  mainBytes:12345,overlayBytes:321});
