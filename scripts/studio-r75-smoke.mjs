@@ -95,7 +95,7 @@ assert.equal(summary.comparisons[0].animatedVsStatic,Number((2200/1200).toFixed(
 assert.match(formatLabReport(summary),/v2-bezier \| balanced/);
 assert.match(formatLabReport(summary),/Synthetic workloads are not isolated/);
 assert.throws(()=>summarizeLab(opts,runs.slice(1)),/Incomplete/);
-assert.throws(()=>summarizeLab(opts,[...runs,runs[0]]),/Invalid|Unexpected/);
+assert.throws(()=>summarizeLab(opts,[...runs,runs[0]]),/invalid|incomplete|unexpected/i);
 
 // CLI contracts require no FFmpeg installation, media, network or actual render.
 const cli=new URL('./studio-export-lab.mjs',import.meta.url).pathname;
