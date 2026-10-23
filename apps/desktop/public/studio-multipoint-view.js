@@ -10,6 +10,7 @@ import {keyframeLanePlan,keyframePercentFromY}
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const round=n=>Math.round(n*1000)/1000;
 const selectedEaseSegments=new Map(); // view preference only; never part of the draft
+const selectedPrecisionHandles=new Map(); // UI only, never saved
 export function curvePathFor(points){
   // Linear curves retain their original path. Eased sections are sampled for
   // SVG only; the actual Program/export values use the shared curve math.
@@ -19,7 +20,7 @@ export function curvePathFor(points){
     (Math.round((1-value)*100000)/1000);
   let path='M '+xy(points[0].at,points[0].value);
   for(let i=0;i<points.length-1;i++){
-    const a=points[i],b=points[i+1],steps=a.ease?20:1;
+    const a=points[i],b=points[i+1],steps=a.handles_x?64:a.ease?24:1;
     for(let step=1;step<=steps;step++){
       const at=a.at+(b.at-a.at)*step/steps;
       path+=' L '+xy(at,keyframeCurveAt(points,at));
@@ -168,6 +169,7 @@ export function renderMultiPointKeyframeLanes({
       selectedEaseSegments.set(selectionKey,segment);
       easeSelect.value=points[segment].ease||'linear';
       buildBezierHandles();
+      syncPrecision();
     });
     easeSelect.addEventListener('change',()=>{
       if(!editable)return;
@@ -181,6 +183,68 @@ export function renderMultiPointKeyframeLanes({
     easeLabel.append(easeSelect);
     easeTools.append(segmentLabel,easeLabel);
     lane.append(easeTools);
+    // Exact handle coordinates are committed only on Apply, not on typing.
+    // Selection and in-progress fields are local UI state, not project data.
+    const precise=doc.createElement('div');
+    precise.className='keyframe-precision-controls';
+    const handleLabel=doc.createElement('label');
+    handleLabel.textContent='Handle ';
+    const handlePick=doc.createElement('select');
+    handlePick.setAttribute('aria-label',property+' precision handle');
+    for(let i=0;i<2;i++){
+      const option=doc.createElement('option');option.value=String(i);
+      option.textContent=String(i+1);handlePick.append(option);
+    }
+    handleLabel.append(handlePick);
+    const axisField=(axis)=>{
+      const label=doc.createElement('label');
+      label.textContent=axis+' % ';
+      const input=doc.createElement('input');
+      input.type='number';input.min='0';input.max='100';input.step='.1';
+      input.setAttribute('aria-label',property+' Bézier '+axis+' percentage');
+      label.append(input);
+      return {label,input};
+    };
+    const px=axisField('X'),py=axisField('Y');
+    const apply=doc.createElement('button');apply.type='button';
+    apply.className='keyframe-precision-apply';apply.textContent='Apply XY';
+    const readSelection=()=>selectedEaseSegments.get(selectionKey)??0;
+    function syncPrecision(){
+      const index=readSelection(),segmentPoint=points[index];
+      precise.hidden=!(segmentPoint?.ease==='bezier');
+      if(precise.hidden)return;
+      const which=selectedPrecisionHandles.get(selectionKey)??0;
+      handlePick.value=String(which);
+      px.input.value=String(Math.round(
+        (segmentPoint.handles_x??DEFAULT_BEZIER_X)[which]*10000)/100);
+      py.input.value=String(Math.round(segmentPoint.handles[which]*10000)/100);
+      for(const element of [handlePick,px.input,py.input,apply])
+        element.disabled=!editable;
+    }
+    handlePick.addEventListener('change',()=>{
+      const which=Number(handlePick.value);
+      if(!Number.isInteger(which)||which<0||which>1)return;
+      selectedPrecisionHandles.set(selectionKey,which);syncPrecision();
+    });
+    apply.addEventListener('click',event=>{
+      event.stopPropagation();
+      if(!editable)return;
+      try{
+        if(String(px.input.value).trim()===''||String(py.input.value).trim()==='')
+          throw Error('Enter both Bézier handle coordinates.');
+        const x=Number(px.input.value)/100,y=Number(py.input.value)/100;
+        const index=readSelection();
+        const which=selectedPrecisionHandles.get(selectionKey)??0;
+        const next=setKeyframeBezierHandlePosition(points,index,which,x,y);
+        commit(next);
+        root.querySelector('[data-keyframe-precision="'+property+'"]')
+          ?.focus({preventScroll:true});
+      }catch(error){onError(error.message);}
+    });
+    apply.dataset.keyframePrecision=property;
+    precise.append(handleLabel,px.label,py.label,apply);
+    lane.append(precise);
+    syncPrecision();
     plot.addEventListener('dblclick',event=>{
       if(!editable||event.target!==plot)return;
       const rect=plot.getBoundingClientRect();
