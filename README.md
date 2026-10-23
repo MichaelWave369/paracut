@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.5 — Synthetic Export Performance Lab
+
+R7.5 introduces a repeatable, opt-in **local FFmpeg performance lab**. It creates disposable 640×360 test footage and compares V1, static V2 and animated 2D Bézier V2 exports across selected quality presets, reporting measured median encode times and graph complexity. Nothing from your actual videos is read. The normal local exporter also gains a verified machine-readable `--benchmark-json` receipt. Reports are optional, path-free and never overwrite an existing file; all synthetic media and temporary MP4s are cleaned up. No performance claims are made until a real machine completes the benchmarks. [R7.5 guide](docs/STUDIO_R75.md).
+
+
 ## ◆ ParaCut Studio R7.4 — Graph Inspector & Real Export Benchmarks
 
 The selected clip's keyframe lane now includes a **read-only Graph Probe**: scrub within an animation segment and inspect its absolute timeline time, clip-relative position, interpolated value and easing type. Sampling creates **no edits or ledger receipts**. Local FFmpeg exports gain an optional `--benchmark` switch that times source probing, planning, real encoding and verification and reports adaptive-Bézier graph complexity without transmitting or storing performance telemetry. Benchmarking requires a real export; dry-run combinations are deliberately rejected. Existing drafts, render behavior, animation curves and Undo/Redo remain unchanged. [R7.4 guide](docs/STUDIO_R74.md).
