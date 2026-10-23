@@ -105,6 +105,6 @@ assert.ok(errors.some(err=>/ordered/.test(err)));
 assert.equal(validate(s),true);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R7\.(?:3 · PRECISION & EXPORT|4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS)/);
+assert.match(html,/R7\.(?:3 · PRECISION & EXPORT|4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER)/);
 assert.match(css,/\.keyframe-precision-controls/);
 console.log('ParaCut R7.3 PASS: adaptive export fit, precise XY controls, receipts, drafts and Undo/Redo.');
