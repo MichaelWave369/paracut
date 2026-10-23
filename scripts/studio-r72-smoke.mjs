@@ -26,8 +26,8 @@ assert.deepEqual(setKeyframeSegmentEase(altered,0,'linear'),[
 approx(keyframeCurveAt(old,.5),.5);
 approx(bezier2dAt(0,[.2,.8],[.8,.95]),0);
 approx(bezier2dAt(1,[.2,.8],[.8,.95]),1);
-const different=setKeyframeBezierHandlePosition(old,0,0,.8,.2);
-const strong=setKeyframeBezierHandlePosition(different,0,1,.95,.8);
+const different=setKeyframeBezierHandlePosition(old,0,1,.95,.8);
+const strong=setKeyframeBezierHandlePosition(different,0,0,.8,.2);
 assert.ok(keyframeCurveAt(strong,.25)<keyframeCurveAt(old,.25)-.05);
 assert.ok(curvePathFor(strong).split(' L ').length>15);
 assert.match(keyframeCurveExpression(strong,4,'t'),/if\(lt\(min\(1,max\(0,t\/4\)\)/);
