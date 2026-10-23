@@ -6,13 +6,13 @@ import {spawnSync} from 'node:child_process';
 import {importDraft,validate} from '../apps/desktop/public/studio-core.js';
 import {graphDiagnostics} from './studio-export-benchmark.mjs';
 import {planLocalMp4} from './studio-local-export-core.mjs';
-import {LAB_QUALITIES,LAB_SCENARIOS,LAB_SCHEMA,BENCH_SCHEMA,
+import {LAB_QUALITIES,LAB_SCENARIOS,LAB_DEFAULT_SCENARIOS,LAB_SCHEMA,BENCH_SCHEMA,
  parseLabOptions,buildLabDraft,acceptBenchReceipt,summarizeLab,formatLabReport}
  from './studio-export-lab-core.mjs';
 
 const defaults=parseLabOptions([]);
 assert.deepEqual(defaults.qualities,['compact','balanced']);
-assert.deepEqual(defaults.scenarios,LAB_SCENARIOS);
+assert.deepEqual(defaults.scenarios,LAB_DEFAULT_SCENARIOS);
 assert.deepEqual(LAB_QUALITIES,['compact','balanced','high']);
 assert.equal(defaults.duration,3);
 assert.equal(defaults.repeats,1);

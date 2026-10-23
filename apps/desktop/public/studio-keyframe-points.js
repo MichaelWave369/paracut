@@ -78,17 +78,33 @@ export function approximateBezierExportAt(plan,u){
   }
   return 1;
 }
+// A balanced branch tree evaluates at most ceil(log2(piece count)) interval
+// comparisons for custom-X curves instead of a left-to-right linear scan.
+// Leaf arithmetic is intentionally unchanged from R7.3: same approximation,
+// same validated coefficients, and the same clamp in the caller's `u`.
+export function bezierExportDecisionStats(handles,handlesX){
+  const {segments,observedMaxError}=planBezierExportSegments(handles,handlesX);
+  return {pieces:segments,
+    linearWorstCaseComparisons:segments,
+    balancedWorstCaseComparisons:Math.ceil(Math.log2(segments)),
+    observedMaxError};
+}
 function sampledBezierExpression(u,handles,handlesX){
   const {points}=planBezierExportSegments(handles,handlesX);
-  let expr='1';
-  for(let i=points.length-2;i>=0;i--){
+  const leaf=i=>{
     const a=points[i],b=points[i+1];
-    // Since these are sorted x-intervals, each selected branch is already
-    // bounded by its endpoints; no per-interval min/max filter work is needed.
-    const line='('+n12(a.y)+'+('+n12(b.y-a.y)+')*(('+u+')-'+n12(a.x)+')/'+n12(b.x-a.x)+')';
-    expr='if(lt('+u+','+n12(b.x)+'),'+line+','+expr+')';
-  }
-  return expr;
+    return '('+n12(a.y)+'+('+n12(b.y-a.y)+')*(('+u+')-'+n12(a.x)+')/'+
+      n12(b.x-a.x)+')';
+  };
+  const tree=(left,right)=>{
+    if(right-left===1)return leaf(left);
+    // Keep each path between two actual sample X boundaries. The midpoint
+    // is an integer piece boundary; equal values take the right interval.
+    const middle=left+Math.floor((right-left)/2);
+    return 'if(lt('+u+','+n12(points[middle].x)+'),'+
+      tree(left,middle)+','+tree(middle,right)+')';
+  };
+  return tree(0,points.length-1);
 }
 
 function bezierFactor(u,handles){

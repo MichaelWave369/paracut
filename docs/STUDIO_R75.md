@@ -39,6 +39,7 @@ node scripts/studio-export-lab.mjs --duration 3 --repeats 2 \
 | `v2-static` | Same V1 footage with the same synthetic V2 overlay, static opacity |
 | `v2-linear` | Same V1 + V2 media with a single native linear 0→100% alpha fade (R7.6+) |
 | `v2-bezier` | Same V1 + V2 media with a 2D cubic Bézier animated opacity curve |
+| `v2-bezier-stress` | R7.7 optional multipoint challenge: four steep custom-X cubic segments on the same synthetic V2 media |
 
 A V2 animated/static ratio includes the cost of the selected overlay/alpha filter path, not just the Bézier expression evaluation in isolation. `v1` vs V2 also changes compositing workload. These are practical export scenarios, not controlled single-filter CPU benchmarks. Compare runs only on the **same machine, FFmpeg build, duration, quality and hardware state**. Repetitions produce median values, not statistical significance with 1–3 samples.
 

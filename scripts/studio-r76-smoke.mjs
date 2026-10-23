@@ -93,7 +93,7 @@ assert.equal(faded.receipts.length+2,s.receipts.length);
 
 // The lab adds a native linear V2 case, using precisely the same synthetic
 // clip/overlay as the constant V2 and Bézier cases.
-assert.deepEqual(LAB_SCENARIOS,['v1','v2-static','v2-linear','v2-bezier']);
+assert.deepEqual(LAB_SCENARIOS.slice(0,4),['v1','v2-static','v2-linear','v2-bezier']);
 assert.deepEqual(parseLabOptions(['--scenarios','v2-linear,v2-bezier']).scenarios,
  ['v2-linear','v2-bezier']);
 const draft=importDraft(buildLabDraft({
@@ -122,5 +122,5 @@ assert.equal(report.comparisons[0].bezierVsLinear,1.615);
 assert.match(formatLabReport(report),/custom Bézier\/native linear alpha encode ratio/);
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
-assert.match(html,/R7\.6 · ALPHA FASTPATHS/);
+assert.match(html,/R7\.(?:6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER)/);
 console.log('ParaCut R7.6 PASS: constant/fade native alpha, GEQ fallback, validated drafts, receipt parity, and reproducible linear-vs-Bézier lab.');
