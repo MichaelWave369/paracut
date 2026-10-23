@@ -14,7 +14,7 @@ import {parseLabOptions,LAB_SCENARIOS,LAB_QUALITIES,buildLabDraft,
 const HELP=[
  'ParaCut R7.5 Export Performance Lab: generates its own short synthetic footage.',
  'node scripts/studio-export-lab.mjs [--duration 3] [--repeats 1]',
- '  [--qualities compact,balanced] [--scenarios v1,v2-static,v2-bezier]',
+ '  [--qualities compact,balanced] [--scenarios v1,v2-static,v2-linear,v2-bezier]',
  '  [--report ./result.json] [--ffmpeg /path/to/ffmpeg] [--ffprobe /path/to/ffprobe]',
  'Options: duration 2–10s; repeats 1–3; quality compact|balanced|high.',
  'Report is opt-in and refuses overwrite. Temporary footage and MP4s are removed.',
