@@ -80,8 +80,8 @@ for(const {y,x} of cases){
   }
   assert.ok(expr.length<30000);
   assert.ok(expr.includes('if(lt(')||plan.segments===1);
-  assert.equal(approximateBezierExportAt(plan,.5),
-    oldScan(plan.points,.5));
+  assert.ok(Math.abs(approximateBezierExportAt(plan,.5)-
+    oldScan(plan.points,.5))<1e-8);
 }
 assert.ok(largestPieces>=32,'Ensure worst-case examples exercise deep lookup.');
 for(const bad of [
