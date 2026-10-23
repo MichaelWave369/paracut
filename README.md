@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.3 — Precision Controls & Adaptive MP4 Curves
+
+Enter exact Bézier handle **X and Y percentages** in the selected keyframe lane, then **Apply XY** for one validated, undoable receipt. Timeline graphs sample 2D Bézier curves more densely. Opt-in local MP4 export now adaptively fits custom-X curves to reduce the usual fixed 64-piece FFmpeg expression, retaining a 64-segment ceiling and approximate fidelity. Older R7.1 fixed-X and preset curves keep their existing math. Real-world encoder speedups depend on hardware and content. [R7.3 guide](docs/STUDIO_R73.md).
+
+
 ## ◆ ParaCut Studio R7.2 — Two-Dimensional Bézier Curves
 
 Custom Bézier keyframe controls now move in **time (X) and value (Y)** on the timeline graph. R7.2 preserves the old R7.1 fixed-X behavior for saved curves without `handles_x`; newly dragged horizontal positions become bounded, ordered, receipt-backed optional point data. Program/browser recording inverts the X curve numerically. Local FFmpeg uses a **64-piece sampled approximation** for edited X curves, so export may differ at extreme tangents and complex V2 overlays can cost more CPU. Old drafts, Undo/Redo and validation remain supported. [R7.2 guide](docs/STUDIO_R72.md).
