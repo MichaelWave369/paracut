@@ -8,7 +8,7 @@ export const DEFAULT_BEZIER_X=Object.freeze([1/3,2/3]);
 // Adaptive 2D FFmpeg approximation budget. Older fixed-X curves remain exact.
 export const BEZIER_EXPORT_MAX_SEGMENTS=64;
 export const BEZIER_EXPORT_TARGET_ERROR=.0015; // normalized effect (0.15%)
-const n12=v=>String(Number(v.toFixed(12)));
+const n12=v=>v.toFixed(12).replace(/0+$/,'').replace(/\.$/,'');
 function bezierX(t,x=DEFAULT_BEZIER_X){
   const v=1-t;
   return 3*v*v*t*x[0]+3*v*t*t*x[1]+t*t*t;
