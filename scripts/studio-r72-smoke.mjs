@@ -165,6 +165,6 @@ assert.deepEqual(errors,[]);
 assert.equal(validate(s),true);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R7\.2 · 2D BÉZIER/);
+assert.match(html,/R7\\.(?:2 · 2D BÉZIER|3 · PRECISION & EXPORT)/);
 assert.match(css,/\.keyframe-bezier-handle/);
 console.log('ParaCut R7.2 PASS: 2D handle bounds/inversion, sample FFmpeg graph, old drafts, and pointer/keyboard receipts.');
