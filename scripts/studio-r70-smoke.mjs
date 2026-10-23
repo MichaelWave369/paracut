@@ -141,6 +141,6 @@ assert.equal(validate(state),true);
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R7\.(?:0 · EASING CURVES|1 · CUSTOM BÉZIER|2 · 2D BÉZIER)/);
+assert.match(html,/R7\.(?:0 · EASING CURVES|1 · CUSTOM BÉZIER|2 · 2D BÉZIER|3 · PRECISION & EXPORT)/);
 assert.match(css,/\.keyframe-easing-controls/);
 console.log('ParaCut R7.0 PASS: eased math, visual curve sampling, safe FFmpeg, saved drafts, UI segment changes, receipts and Undo/Redo.');

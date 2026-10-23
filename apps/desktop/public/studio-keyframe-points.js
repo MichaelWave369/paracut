@@ -5,7 +5,10 @@ export const KEYFRAME_POINT_LIMIT=8;
 export const KEYFRAME_EASES=Object.freeze(['linear','ease-in','ease-out','ease-in-out','bezier']);
 export const DEFAULT_BEZIER_HANDLES=Object.freeze([.25,.75]);
 export const DEFAULT_BEZIER_X=Object.freeze([1/3,2/3]);
-const BEZIER_EXPORT_SAMPLES=64;
+// Adaptive 2D FFmpeg approximation budget. Older fixed-X curves remain exact.
+export const BEZIER_EXPORT_MAX_SEGMENTS=64;
+export const BEZIER_EXPORT_TARGET_ERROR=.0015; // normalized effect (0.15%)
+const n12=v=>v.toFixed(12).replace(/0+$/,'').replace(/\.$/,'');
 function bezierX(t,x=DEFAULT_BEZIER_X){
   const v=1-t;
   return 3*v*v*t*x[0]+3*v*t*t*x[1]+t*t*t;
@@ -25,22 +28,68 @@ export function bezier2dAt(u,handles,handlesX=DEFAULT_BEZIER_X){
   if(u>=1)return 1;
   return bezierFactor(invertBezierX(u,handlesX),handles);
 }
+// Fit the cubic by adaptively splitting in parameter time at the worst
+// observed y-vs-x chord error. Splits cost only computation while planning,
+// rather than paying 64 FFmpeg conditionals for every ordinary curve.
+export function planBezierExportSegments(handles,handlesX){
+  if(!Array.isArray(handles)||handles.length!==2||
+    !Array.isArray(handlesX)||handlesX.length!==2||
+    [...handles,...handlesX].some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)||
+    handlesX[0]>handlesX[1])throw Error('Invalid Bézier export handles.');
+  const at=t=>({t,x:bezierX(t,handlesX),y:bezierFactor(t,handles)});
+  const mismatch=(a,b)=>{
+    let worst=0;
+    for(let i=1;i<8;i++){
+      const p=at(a.t+(b.t-a.t)*i/8);
+      const interp=a.y+(b.y-a.y)*(p.x-a.x)/(b.x-a.x);
+      worst=Math.max(worst,Math.abs(p.y-interp));
+    }
+    return worst;
+  };
+  const nodes=[at(0),at(1)];
+  let splits=0;
+  while(splits<BEZIER_EXPORT_MAX_SEGMENTS-1){
+    let largest=BEZIER_EXPORT_TARGET_ERROR,selected=-1;
+    for(let i=0;i<nodes.length-1;i++){
+      const a=nodes[i],b=nodes[i+1],mid=at((a.t+b.t)/2);
+      // Prevent rounded filter constants from creating tiny denominators.
+      if(mid.x-a.x<1e-8||b.x-mid.x<1e-8)continue;
+      const delta=mismatch(a,b);
+      if(delta>largest){largest=delta;selected=i;}
+    }
+    if(selected<0)break;
+    nodes.splice(selected+1,0,at((nodes[selected].t+nodes[selected+1].t)/2));
+    splits++;
+  }
+  // Probe each final interval; this measures sampled error, not an absolute
+  // analytic guarantee between probe points.
+  let observedMaxError=0;
+  for(let i=0;i<nodes.length-1;i++)
+    observedMaxError=Math.max(observedMaxError,mismatch(nodes[i],nodes[i+1]));
+  return {points:nodes,segments:nodes.length-1,observedMaxError};
+}
+export function approximateBezierExportAt(plan,u){
+  if(typeof u!=='number'||!Number.isFinite(u)||!plan?.points?.length)
+    throw Error('Invalid Bézier approximation progress.');
+  const x=Math.max(0,Math.min(1,u)),nodes=plan.points;
+  for(let i=1;i<nodes.length;i++)if(x<=nodes[i].x){
+    const a=nodes[i-1],b=nodes[i],ratio=(x-a.x)/(b.x-a.x);
+    return a.y+(b.y-a.y)*ratio;
+  }
+  return 1;
+}
 function sampledBezierExpression(u,handles,handlesX){
-  // FFmpeg's expression engine has no safe native cubic inverse. Sample in
-  // parameter-time (not evenly in x) to retain edge precision with 64 pieces.
-  // This is a bounded piecewise-linear export approximation, NOT exact inversion.
+  const {points}=planBezierExportSegments(handles,handlesX);
   let expr='1';
-  for(let j=BEZIER_EXPORT_SAMPLES-1;j>=0;j--){
-    const t0=j/BEZIER_EXPORT_SAMPLES,t1=(j+1)/BEZIER_EXPORT_SAMPLES;
-    const x0=bezierX(t0,handlesX),x1=bezierX(t1,handlesX);
-    const y0=bezierFactor(t0,handles),y1=bezierFactor(t1,handles);
-    const ratio='min(1,max(0,(('+u+')-'+n7(x0)+' )/'+n7(x1-x0)+'))';
-    const line='('+n7(y0)+'+('+n7(y1-y0)+')*'+ratio+')';
-    expr='if(lt('+u+','+n7(x1)+'),'+line+','+expr+')';
+  for(let i=points.length-2;i>=0;i--){
+    const a=points[i],b=points[i+1];
+    // Since these are sorted x-intervals, each selected branch is already
+    // bounded by its endpoints; no per-interval min/max filter work is needed.
+    const line='('+n12(a.y)+'+('+n12(b.y-a.y)+')*(('+u+')-'+n12(a.x)+')/'+n12(b.x-a.x)+')';
+    expr='if(lt('+u+','+n12(b.x)+'),'+line+','+expr+')';
   }
   return expr;
 }
-const n7=v=>String(Number(v.toFixed(9)));
 
 function bezierFactor(u,handles){
   const v=1-u;

@@ -416,3 +416,25 @@
 .keyframe-bezier-handle:hover:not(:disabled),.keyframe-bezier-handle:focus-visible{
  outline:2px solid #ffe6ac;outline-offset:2px}
 .keyframe-bezier-handle:disabled{opacity:.5;cursor:default}
+
+/* R7.3: precision authoring controls are separate from graph/clip geometry */
+.keyframe-lane{height:176px}
+.keyframe-easing-controls{bottom:44px}
+.keyframe-precision-controls{position:absolute;left:8px;right:8px;bottom:5px;
+ display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+ font-size:10px;color:#b9eae3;z-index:5}
+.keyframe-precision-controls[hidden]{display:none!important}
+.keyframe-precision-controls label{display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.keyframe-precision-controls input{width:65px;min-width:0;font:inherit;color:#e1fff9;
+ background:#183847;border:1px solid #618d9a;border-radius:5px;padding:5px 4px}
+.keyframe-precision-controls select,.keyframe-precision-controls button{
+ font:inherit;color:#e1fff9;background:#183847;border:1px solid #618d9a;
+ border-radius:5px;padding:5px}
+.keyframe-precision-controls :is(input,select,button):focus-visible{
+ outline:2px solid #a6f3e1;outline-offset:2px}
+@media(max-width:760px){
+ .keyframe-lane{height:216px}
+ .keyframe-easing-controls{bottom:90px}
+ .keyframe-precision-controls{gap:5px;bottom:7px}
+ .keyframe-precision-controls input{width:52px}
+}
