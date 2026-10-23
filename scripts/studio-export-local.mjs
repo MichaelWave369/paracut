@@ -6,23 +6,27 @@ import { existsSync } from 'node:fs';
 import { join, resolve, dirname, basename, isAbsolute, extname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
+import {graphDiagnostics,renderBenchmarkReport} from './studio-export-benchmark.mjs';
 import { importDraft } from '../apps/desktop/public/studio-core.js';
 import { planLocalMp4, shellPreview } from './studio-local-export-core.mjs';
 
 function parseArgs(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
-    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe --quality compact|balanced|high --audio-protect');
+    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe --quality compact|balanced|high --audio-protect --benchmark');
     process.exit(0);
   }
   const opt={},known=new Set(['--draft','--media-dir','--out','--media-map','--ffmpeg','--ffprobe','--quality']);
   for (let i=0;i<argv.length;i++) {
     if(argv[i]==='--dry-run'){opt.dryRun=true;continue;}
     if(argv[i]==='--audio-protect'){opt.protectAudio=true;continue;}
+    if(argv[i]==='--benchmark'){opt.benchmark=true;continue;}
     const key=argv[i];
     if(!known.has(key)||!argv[i+1]||argv[i+1].startsWith('--'))throw Error('Unknown/missing option: '+key);
     opt[key.slice(2).replaceAll('-','_')]=argv[++i];
   }
   if(!opt.draft||!opt.out||(!opt.media_dir&&!opt.media_map))throw Error('Required: --draft, --out and --media-dir or --media-map.');
+  if(opt.dryRun&&opt.benchmark)throw Error('--benchmark measures a real encode and cannot be used with --dry-run.');
   return opt;
 }
 function probe(file,executable) {
@@ -79,12 +83,16 @@ function verify(file,ffprobe,expectedDuration) {
 }
 async function main() {
   const opt=parseArgs(process.argv.slice(2));
+  const started=performance.now();
   const target=resolve(opt.out);
   if(extname(target).toLowerCase()!=='.mp4')throw Error('Output must end in .mp4.');
   if(existsSync(target))throw Error('Output already exists: refusing overwrite '+target);
   const state=importDraft(await readFile(resolve(opt.draft),'utf8'));
   const linked=await relink(state,opt);
+  const relinkedAt=performance.now();
   const plan=planLocalMp4(state,linked,target,{ffmpeg:opt.ffmpeg||'ffmpeg',quality:opt.quality||'balanced',protectAudio:opt.protectAudio===true});
+  const plannedAt=performance.now();
+  const diagnostics=opt.benchmark?graphDiagnostics(state,plan.graph):null;
   console.log('ParaCut local MP4: '+plan.videoClips+' video clips, '+plan.audioSegments+
     ' audio segments, '+plan.transitions+' V1 transitions, '+(plan.overlayClips||0)+' V2 overlays, '+(plan.overlayCrossfades||0)+' V2 transitions, '+(plan.voiceClips||0)+' A2 clips, '+plan.duration+' seconds.');
   console.log('Export quality: '+plan.quality+'; master audio protection: '+(plan.protectAudio?'ON (0.95 sample peak limiter)':'OFF')+'.');
@@ -100,15 +108,24 @@ async function main() {
     await writeFile(join(working,'graph.txt'),plan.graph,'utf8');
     if(plan.ass)await writeFile(join(working,'titles.ass'),plan.ass,'utf8');
     console.log('Rendering locally:',target);
+    const encodeStarted=performance.now();
     const code=await new Promise((done,fail)=>{
       const child=spawn(plan.ffmpeg,plan.args,{cwd:working,stdio:'inherit',shell:false,windowsHide:true});
       child.once('error',fail);
       child.once('close',(exit,signal)=>done({exit,signal}));
     });
     if(code.exit!==0)throw Error('FFmpeg exit '+code.exit+(code.signal?' ('+code.signal+')':''));
+    const encodedAt=performance.now();
     verify(target,opt.ffprobe||'ffprobe',plan.duration);
+    const verifiedAt=performance.now();
     ok=true;
     console.log('Verified local MP4:',target);
+    if(opt.benchmark)console.log(renderBenchmarkReport({
+      mediaSeconds:plan.duration,probeMs:relinkedAt-started,
+      planMs:plannedAt-relinkedAt,encodeMs:encodedAt-encodeStarted,
+      verifyMs:verifiedAt-encodedAt,totalMs:verifiedAt-started,
+      graph:diagnostics
+    }));
   } finally {
     await rm(working,{recursive:true,force:true});
     if(!ok&&existsSync(target))await unlink(target);
