@@ -48,9 +48,42 @@ export function audioKeyframeFilter(clip){
   return "volume='"+expr+
     "':eval=frame";
 }
+// R7.6: use cheaper alpha filters only for mathematically trivial cases.
+// Keep arbitrary Bézier/multi-point animation on the validated GEQ path.
+export function overlayAlphaStrategy(clip){
+  if(clip?.opacity_keyframes===undefined&&clip?.opacity_keyframe_points===undefined)
+    return {kind:'none'};
+  const span=clip?.source?.end-clip?.source?.start;
+  if(typeof span!=='number'||!Number.isFinite(span)||span<=0)
+    throw Error('Invalid overlay alpha clip duration.');
+  const points=clip.opacity_keyframe_points!==undefined
+    ?keyframePointsFor(clip,'opacity_keyframes')
+    :(()=>{
+      const pair=validateKeyframePair(clip.opacity_keyframes);
+      return [{at:0,value:pair.start},{at:1,value:pair.end}];
+    })();
+  const values=points.map(point=>point.value);
+  if(values.every(value=>value===values[0])){
+    if(values[0]===1)return {kind:'identity'};
+    return {kind:'constant',alpha:values[0]};
+  }
+  // Full-range ramps are equivalent to a single alpha fade. Preserve all
+  // other curves on GEQ, including partially opaque ramps and easing presets.
+  if(points.length===2&&!points[0].ease&&points[0].value===0&&points[1].value===1)
+    return {kind:'fade-in',duration:span};
+  if(points.length===2&&!points[0].ease&&points[0].value===1&&points[1].value===0)
+    return {kind:'fade-out',duration:span};
+  return {kind:'geq',duration:span};
+}
 export function overlayKeyframeFilter(clip){
-  if(clip.opacity_keyframes===undefined&&clip.opacity_keyframe_points===undefined)return null;
-  const duration=clip.source.end-clip.source.start;
+  const strategy=overlayAlphaStrategy(clip);
+  if(strategy.kind==='none'||strategy.kind==='identity')return null;
+  if(strategy.kind==='constant')
+    return 'colorchannelmixer=aa='+n(strategy.alpha);
+  if(strategy.kind==='fade-in'||strategy.kind==='fade-out')
+    return 'fade=t='+(strategy.kind==='fade-in'?'in':'out')+
+      ':st=0:d='+n(strategy.duration)+':alpha=1';
+  const duration=strategy.duration;
   // FFmpeg geq alpha evaluates in source-local time before setpts timeline shift.
   // Commas in geq function calls require escaping at the filtergraph level.
   const expr=(clip.opacity_keyframe_points===undefined

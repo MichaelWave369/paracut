@@ -9,7 +9,7 @@ Install the repository dependencies as usual, and ensure `ffmpeg` and `ffprobe` 
 ```bash
 node scripts/studio-export-lab.mjs --duration 3 --repeats 1 \
   --qualities compact,balanced \
-  --scenarios v1,v2-static,v2-bezier
+  --scenarios v1,v2-static,v2-linear,v2-bezier
 ```
 
 Optional report file (never overwrites an existing file):
@@ -19,7 +19,7 @@ node scripts/studio-export-lab.mjs --duration 3 --repeats 2 \
   --qualities compact,balanced,high --report ./paracut-lab-r75.json
 ```
 
-`--duration` accepts integer seconds 2–10; `--repeats` accepts 1–3. Qualities are `compact`, `balanced` and `high`; scenarios can be a subset of `v1`, `v2-static`, `v2-bezier`. `--ffmpeg` and `--ffprobe` can specify local executable paths. Repeats and workloads multiply: the default is six real exports (three scenarios × two qualities × one repeat). Running on a system without the required FFmpeg codec/filter support fails safely with a descriptive error, not a fabricated measurement.
+`--duration` accepts integer seconds 2–10; `--repeats` accepts 1–3. Qualities are `compact`, `balanced` and `high`; scenarios can be a subset of `v1`, `v2-static`, `v2-linear`, `v2-bezier`. `--ffmpeg` and `--ffprobe` can specify local executable paths. Repeats and workloads multiply: as of R7.6 the default is eight real exports (four scenarios × two qualities × one repeat). Running on a system without the required FFmpeg codec/filter support fails safely with a descriptive error, not a fabricated measurement.
 
 ## What the lab actually does
 
@@ -37,6 +37,7 @@ node scripts/studio-export-lab.mjs --duration 3 --repeats 2 \
 | --- | --- |
 | `v1` | Baseline synthetic V1 clip with its own soundtrack |
 | `v2-static` | Same V1 footage with the same synthetic V2 overlay, static opacity |
+| `v2-linear` | Same V1 + V2 media with a single native linear 0→100% alpha fade (R7.6+) |
 | `v2-bezier` | Same V1 + V2 media with a 2D cubic Bézier animated opacity curve |
 
 A V2 animated/static ratio includes the cost of the selected overlay/alpha filter path, not just the Bézier expression evaluation in isolation. `v1` vs V2 also changes compositing workload. These are practical export scenarios, not controlled single-filter CPU benchmarks. Compare runs only on the **same machine, FFmpeg build, duration, quality and hardware state**. Repetitions produce median values, not statistical significance with 1–3 samples.

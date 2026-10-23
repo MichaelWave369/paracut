@@ -21,7 +21,7 @@ nearly(keyframeAt({start:.2,end:.8},-2),.2);
 nearly(keyframeAt({start:.2,end:.8},8),.8);
 assert.match(keyframeTimeExpression({start:.2,end:.8},4,'t'),/t\/4/);
 assert.match(overlayKeyframeFilter({source:{start:0,end:4},
-  opacity_keyframes:{start:0,end:1}}),/geq=r=r\(X\\,Y\).*T\/4/);
+  opacity_keyframes:{start:0,end:1}}),/fade=t=in:st=0:d=4:alpha=1/);
 assert.match(audioKeyframeFilter({source:{start:0,end:4},
   volume_keyframes:{start:1,end:0}}),/volume='1\+\(-1\)\*min\(1,max\(0,t\/4\)\)':eval=frame/);
 assert.equal(audioKeyframeFilter({}),null);
@@ -81,8 +81,8 @@ const tampered=JSON.parse(exportDraft(s));
 tampered.clips[0].opacity_keyframes={start:0,end:1};
 assert.throws(()=>importDraft(JSON.stringify(tampered)),/Opacity keyframes only apply/);
 const withAutomation=planLocalMp4(s,linked,'/tmp/out.mp4');
-assert.match(withAutomation.graph,/geq=r=r\(X\\,Y\).*alpha\(X\\,Y\)/);
-assert.match(withAutomation.graph,/T\/4/);
+assert.match(withAutomation.graph,/fade=t=in:st=0:d=4:alpha=1/);
+assert.doesNotMatch(withAutomation.graph,/geq=r=r\(X\\,Y\)/);
 assert.match(withAutomation.graph,/volume='1\+\(-1\)/);
 assert.match(withAutomation.graph,/volume='0\+\(1\)/);
 assert.ok(withAutomation.args.includes('libx264'));

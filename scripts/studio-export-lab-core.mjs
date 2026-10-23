@@ -2,7 +2,7 @@
 // No real user media, telemetry, arbitrary shell flags, or persisted clip edits.
 import {newStudio,change,exportDraft} from '../apps/desktop/public/studio-core.js';
 
-export const LAB_SCENARIOS=Object.freeze(['v1','v2-static','v2-bezier']);
+export const LAB_SCENARIOS=Object.freeze(['v1','v2-static','v2-linear','v2-bezier']);
 export const LAB_QUALITIES=Object.freeze(['compact','balanced','high']);
 export const LAB_SCHEMA='paracut.export.lab.v1';
 export const BENCH_SCHEMA='paracut.export.benchmark.v1';
@@ -58,6 +58,11 @@ export function buildLabDraft({duration,scenario,mainBytes,overlayBytes}){
   if(scenario!=='v1'){
     state=change(state,{type:'clip.layer.added',
       asset_id:'lab-overlay',track_id:'video-2',start:0});
+    if(scenario==='v2-linear'){
+      state=change(state,{type:'clip.keyframe.points.updated',
+        clip_id:state.video2Clips[0].clip_id,field:'opacity_keyframes',
+        points:[{at:0,value:0},{at:1,value:1}]});
+    }
     if(scenario==='v2-bezier'){
       state=change(state,{type:'clip.keyframe.points.updated',
         clip_id:state.video2Clips[0].clip_id,field:'opacity_keyframes',
@@ -120,10 +125,16 @@ export function summarizeLab({duration,repeats,qualities,scenarios},runs){
   for(const quality of qualities){
     const flat=cells.find(c=>c.quality===quality&&c.scenario==='v2-static');
     const animated=cells.find(c=>c.quality===quality&&c.scenario==='v2-bezier');
+    const linear=cells.find(c=>c.quality===quality&&c.scenario==='v2-linear');
     if(flat&&animated)comparisons.push({
       quality,staticMedianEncodeMs:flat.medianEncodeMs,
       animatedMedianEncodeMs:animated.medianEncodeMs,
       animatedVsStatic:Number((animated.medianEncodeMs/flat.medianEncodeMs).toFixed(3))
+    });
+    if(linear&&animated)comparisons.push({
+      quality,kind:'bezier-vs-linear',linearMedianEncodeMs:linear.medianEncodeMs,
+      animatedMedianEncodeMs:animated.medianEncodeMs,
+      bezierVsLinear:Number((animated.medianEncodeMs/linear.medianEncodeMs).toFixed(3))
     });
   }
   return {schema:LAB_SCHEMA,synthetic:true,duration,repeats,qualities,
@@ -140,8 +151,12 @@ export function formatLabReport(summary){
     cell.scenario+' | '+cell.quality+' | '+(cell.medianEncodeMs/1000).toFixed(3)+
     's | '+(cell.medianTotalMs/1000).toFixed(3)+'s | '+
     cell.realtimeFactor.toFixed(2)+'x | '+cell.graphChars+' | '+cell.adaptivePieces);
-  for(const c of summary.comparisons)lines.push(
-    c.quality+' animated/static V2 encode ratio: '+c.animatedVsStatic.toFixed(2)+'x');
+  for(const c of summary.comparisons)
+    lines.push(c.kind==='bezier-vs-linear'
+      ?c.quality+' custom Bézier/native linear alpha encode ratio: '+
+        c.bezierVsLinear.toFixed(2)+'x'
+      :c.quality+' animated/static V2 encode ratio: '+
+        c.animatedVsStatic.toFixed(2)+'x');
   lines.push(summary.caveat);
   return lines.join('\n');
 }
