@@ -4,6 +4,7 @@ import {pointsField,keyframePointsFor,keyframeCurveAt,addKeyframePoint,
   moveKeyframePoint,removeKeyframePoint,validateKeyframePoints,
   KEYFRAME_POINT_LIMIT,KEYFRAME_EASES,setKeyframeSegmentEase,
   setKeyframeBezierHandle,setKeyframeBezierHandlePosition,DEFAULT_BEZIER_X} from './studio-keyframe-points.js';
+import {graphSample,graphSampleLabel} from './studio-graph-inspector.js';
 import {keyframeLanePlan,keyframePercentFromY}
   from './studio-keyframe-lanes.js';
 
@@ -170,6 +171,7 @@ export function renderMultiPointKeyframeLanes({
       easeSelect.value=points[segment].ease||'linear';
       buildBezierHandles();
       syncPrecision();
+      syncGraphProbe();
     });
     easeSelect.addEventListener('change',()=>{
       if(!editable)return;
@@ -245,6 +247,38 @@ export function renderMultiPointKeyframeLanes({
     precise.append(handleLabel,px.label,py.label,apply);
     lane.append(precise);
     syncPrecision();
+    // Scrub a graph sample without changing timeline position, project data,
+    // ledger receipts or media playback. This is a read-only analytical probe.
+    const probe=doc.createElement('div');
+    probe.className='keyframe-graph-probe';
+    const probeSlider=doc.createElement('input');
+    probeSlider.type='range';probeSlider.step='1';
+    probeSlider.setAttribute('aria-label',property+' graph sample position');
+    const probeValue=doc.createElement('output');
+    probeValue.setAttribute('role','status');
+    probeValue.setAttribute('aria-live','polite');
+    const span=clip.timeline.end-clip.timeline.start;
+    const initialProbe=Number(getPlayhead());
+    let probeTime=Number.isFinite(initialProbe)&&Number.isFinite(span)&&span>0
+      ?clamp((initialProbe-clip.timeline.start)/span,0,1):0;
+    function syncGraphProbe(){
+      const index=readSelection(),a=points[index],b=points[index+1];
+      probeTime=clamp(probeTime,a.at,b.at);
+      probeSlider.min=String(Math.round(a.at*1000));
+      probeSlider.max=String(Math.round(b.at*1000));
+      probeSlider.value=String(Math.round(probeTime*1000));
+      probeSlider.disabled=!editable;
+      probeValue.textContent=graphSampleLabel(
+        graphSample(clip,plan.field,index,probeTime));
+    }
+    probeSlider.addEventListener('input',()=>{
+      const candidate=Number(probeSlider.value)/1000;
+      if(!Number.isFinite(candidate))return;
+      probeTime=candidate;syncGraphProbe();
+    });
+    probe.append(probeSlider,probeValue);
+    lane.append(probe);
+    syncGraphProbe();
     plot.addEventListener('dblclick',event=>{
       if(!editable||event.target!==plot)return;
       const rect=plot.getBoundingClientRect();
