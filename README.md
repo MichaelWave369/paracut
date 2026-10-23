@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.6 — Faster Native Alpha Paths
+
+R7.6 makes simple V2 opacity automation cheaper to render: completely constant opacity uses a native alpha mixer (or no extra filter at 100%), and exactly linear 0→100% / 100→0% ramps use FFmpeg's built-in `fade=...:alpha=1` instead of evaluating `geq` per pixel. **All complex easing, multi-point and Bézier animation still uses the original validated GEQ path.** The synthetic Export Performance Lab now offers `v2-linear` beside static and Bézier workloads for local measurements; no speedup is claimed without running the comparison on real hardware. Saved drafts, browser animation and edit receipts remain unchanged. [R7.6 guide](docs/STUDIO_R76.md).
+
+
 ## ◆ ParaCut Studio R7.5 — Synthetic Export Performance Lab
 
 R7.5 introduces a repeatable, opt-in **local FFmpeg performance lab**. It creates disposable 640×360 test footage and compares V1, static V2 and animated 2D Bézier V2 exports across selected quality presets, reporting measured median encode times and graph complexity. Nothing from your actual videos is read. The normal local exporter also gains a verified machine-readable `--benchmark-json` receipt. Reports are optional, path-free and never overwrite an existing file; all synthetic media and temporary MP4s are cleaned up. No performance claims are made until a real machine completes the benchmarks. [R7.5 guide](docs/STUDIO_R75.md).
