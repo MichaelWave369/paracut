@@ -3,7 +3,7 @@
 import {pointsField,keyframePointsFor,keyframeCurveAt,addKeyframePoint,
   moveKeyframePoint,removeKeyframePoint,validateKeyframePoints,
   KEYFRAME_POINT_LIMIT,KEYFRAME_EASES,setKeyframeSegmentEase,
-  setKeyframeBezierHandle} from './studio-keyframe-points.js';
+  setKeyframeBezierHandle,setKeyframeBezierHandlePosition,DEFAULT_BEZIER_X} from './studio-keyframe-points.js';
 import {keyframeLanePlan,keyframePercentFromY}
   from './studio-keyframe-lanes.js';
 
@@ -62,7 +62,7 @@ export function renderMultiPointKeyframeLanes({
     let bezierButtons=[];
     const bezierPosition=(curve,index,which)=>{
       const a=curve[index],b=curve[index+1];
-      const u=which===0?1/3:2/3;
+      const u=(a.handles_x??DEFAULT_BEZIER_X)[which];
       return {at:a.at+(b.at-a.at)*u,
         value:a.value+(b.value-a.value)*a.handles[which]};
     };
@@ -80,7 +80,10 @@ export function renderMultiPointKeyframeLanes({
         button.style.left=(pos.at*100)+'%';
         button.style.top=((1-pos.value)*100)+'%';
         button.setAttribute('aria-valuenow',String(Math.round(a.handles[which]*100)));
-        button.title='Control '+(which+1)+': '+Math.round(a.handles[which]*100)+'%';
+        const xx=(a.handles_x??DEFAULT_BEZIER_X)[which];
+        button.title='Control '+(which+1)+': X '+Math.round(xx*100)+'% / Y '+
+          Math.round(a.handles[which]*100)+'%';
+        button.setAttribute('aria-valuetext',button.title);
       });
     }
 
@@ -276,27 +279,41 @@ export function renderMultiPointKeyframeLanes({
         control.textContent=which===0?'1':'2';
         control.disabled=!editable;
         control.setAttribute('role','slider');
-        control.setAttribute('aria-label',property+' cubic Bézier control '+(which+1));
+        control.setAttribute('aria-label',property+' cubic Bézier control '+(which+1)+
+          ' — left/right time and up/down value');
         control.setAttribute('aria-valuemin','0');
         control.setAttribute('aria-valuemax','100');
-        control.setAttribute('aria-orientation','vertical');
+        // A 2D control: arrow left/right adjusts time, up/down adjusts value.
         let drag=null;
+        const startX=()=>((points[index].handles_x??DEFAULT_BEZIER_X)[which]);
+        const restrictX=value=>{
+          const pair=points[index].handles_x??DEFAULT_BEZIER_X;
+          return clamp(round(value),which===0?0:pair[0],which===0?pair[1]:1);
+        };
+        function editXY(x,y){
+          return setKeyframeBezierHandlePosition(points,index,which,
+            restrictX(x),clamp(round(y),0,1));
+        }
         function editValue(value){
           return setKeyframeBezierHandle(points,index,which,
             clamp(round(value),0,1));
         }
         control.addEventListener('pointerdown',event=>{
           if(event.button!==0||control.disabled)return;
-          drag={id:event.pointerId,startY:event.clientY,
-            startValue:points[index].handles[which],next:points};
+          drag={id:event.pointerId,startX:event.clientX,startY:event.clientY,
+            x:startX(),y:points[index].handles[which],next:points};
           control.setPointerCapture(event.pointerId);
           event.preventDefault();event.stopPropagation();
         });
         function moved(event){
           const rect=plot.getBoundingClientRect();
-          if(!Number.isFinite(rect.height)||rect.height<=0)
-            throw Error('Invalid Bézier editor height.');
-          return editValue(drag.startValue+(drag.startY-event.clientY)/rect.height);
+          const span=points[index+1].at-points[index].at;
+          if(!Number.isFinite(rect.height)||rect.height<=0||
+            !Number.isFinite(rect.width)||rect.width<=0||span<=0)
+            throw Error('Invalid Bézier editor geometry.');
+          const x=drag.x+(event.clientX-drag.startX)/(rect.width*span);
+          const y=drag.y+(drag.startY-event.clientY)/rect.height;
+          return editXY(x,y);
         }
         control.addEventListener('pointermove',event=>{
           if(!drag||drag.id!==event.pointerId)return;
@@ -329,14 +346,19 @@ export function renderMultiPointKeyframeLanes({
         control.addEventListener('dblclick',event=>event.stopPropagation());
         control.addEventListener('keydown',event=>{
           if(control.disabled)return;
-          const up=event.key==='ArrowUp'||event.key==='ArrowRight';
-          const down=event.key==='ArrowDown'||event.key==='ArrowLeft';
-          if(!up&&!down&&event.key!=='Home'&&event.key!=='End')return;
+          const up=event.key==='ArrowUp',down=event.key==='ArrowDown';
+          const right=event.key==='ArrowRight',left=event.key==='ArrowLeft';
+          if(!up&&!down&&!right&&!left&&event.key!=='Home'&&event.key!=='End')return;
           event.preventDefault();event.stopPropagation();
-          const v=event.key==='Home'?0:event.key==='End'?1:
-            points[index].handles[which]+(up?1:-1)*(event.shiftKey ? 0.1 : 0.05);
           try{
-            commit(editValue(v));
+            if(left||right){
+              const x=startX()+(right?1:-1)*(event.shiftKey?0.1:0.025);
+              commit(editXY(x,points[index].handles[which]));
+            }else{
+              const v=event.key==='Home'?0:event.key==='End'?1:
+                points[index].handles[which]+(up?1:-1)*(event.shiftKey ? 0.1 : 0.05);
+              commit(editValue(v));
+            }
             root.querySelector('[data-keyframe-bezier="'+property+
               '"][data-control-index="'+which+'"]')?.focus({preventScroll:true});
           }catch(e){onError(e.message);}
