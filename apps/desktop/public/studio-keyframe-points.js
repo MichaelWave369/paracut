@@ -4,6 +4,44 @@
 export const KEYFRAME_POINT_LIMIT=8;
 export const KEYFRAME_EASES=Object.freeze(['linear','ease-in','ease-out','ease-in-out','bezier']);
 export const DEFAULT_BEZIER_HANDLES=Object.freeze([.25,.75]);
+export const DEFAULT_BEZIER_X=Object.freeze([1/3,2/3]);
+const BEZIER_EXPORT_SAMPLES=64;
+function bezierX(t,x=DEFAULT_BEZIER_X){
+  const v=1-t;
+  return 3*v*v*t*x[0]+3*v*t*t*x[1]+t*t*t;
+}
+function invertBezierX(u,x){
+  // Ordered x handles make this an invertible, monotone curve even at 0/1.
+  let lo=0,hi=1;
+  for(let i=0;i<30;i++){
+    const mid=(lo+hi)/2;
+    if(bezierX(mid,x)<u)lo=mid;
+    else hi=mid;
+  }
+  return (lo+hi)/2;
+}
+export function bezier2dAt(u,handles,handlesX=DEFAULT_BEZIER_X){
+  if(u<=0)return 0;
+  if(u>=1)return 1;
+  return bezierFactor(invertBezierX(u,handlesX),handles);
+}
+function sampledBezierExpression(u,handles,handlesX){
+  // FFmpeg's expression engine has no safe native cubic inverse. Sample in
+  // parameter-time (not evenly in x) to retain edge precision with 64 pieces.
+  // This is a bounded piecewise-linear export approximation, NOT exact inversion.
+  let expr='1';
+  for(let j=BEZIER_EXPORT_SAMPLES-1;j>=0;j--){
+    const t0=j/BEZIER_EXPORT_SAMPLES,t1=(j+1)/BEZIER_EXPORT_SAMPLES;
+    const x0=bezierX(t0,handlesX),x1=bezierX(t1,handlesX);
+    const y0=bezierFactor(t0,handles),y1=bezierFactor(t1,handles);
+    const ratio='min(1,max(0,(('+u+')-'+n7(x0)+' )/'+n7(x1-x0)+'))';
+    const line='('+n7(y0)+'+('+n7(y1-y0)+')*'+ratio+')';
+    expr='if(lt('+u+','+n7(x1)+'),'+line+','+expr+')';
+  }
+  return expr;
+}
+const n7=v=>String(Number(v.toFixed(9)));
+
 function bezierFactor(u,handles){
   const v=1-u;
   return 3*v*v*u*handles[0]+3*v*u*u*handles[1]+u*u*u;
@@ -15,15 +53,17 @@ function bezierExpression(u,handles){
     '+('+u+')*('+u+')*('+u+'))';
 }
 
-function easingAt(u,kind='linear',handles=DEFAULT_BEZIER_HANDLES){
-  if(kind==='bezier')return bezierFactor(u,handles);
+function easingAt(u,kind='linear',handles=DEFAULT_BEZIER_HANDLES,handlesX){
+  if(kind==='bezier')return handlesX
+    ?bezier2dAt(u,handles,handlesX):bezierFactor(u,handles);
   if(kind==='ease-in')return u*u;
   if(kind==='ease-out')return 1-(1-u)*(1-u);
   if(kind==='ease-in-out')return u*u*(3-2*u);
   return u;
 }
-function easingExpression(u,kind='linear',handles=DEFAULT_BEZIER_HANDLES){
-  if(kind==='bezier')return bezierExpression(u,handles);
+function easingExpression(u,kind='linear',handles=DEFAULT_BEZIER_HANDLES,handlesX){
+  if(kind==='bezier')return handlesX
+    ?sampledBezierExpression(u,handles,handlesX):bezierExpression(u,handles);
   if(kind==='ease-in')return '('+u+')*('+u+')';
   if(kind==='ease-out')return '1-(1-('+u+'))*(1-('+u+'))';
   if(kind==='ease-in-out')return '('+u+')*('+u+')*(3-2*('+u+'))';
@@ -42,8 +82,12 @@ export function validateKeyframePoints(raw){
     throw Error('Keyframe curve must contain 2–8 points.');
   const points=raw.map((p,index)=>{
     if(!p||typeof p!=='object'||Array.isArray(p)||
-      (Object.keys(p).length<2||Object.keys(p).length>4)||
-      Object.keys(p).some(k=>!['at','value','ease','handles'].includes(k))||
+      (Object.keys(p).length<2||Object.keys(p).length>5)||
+      Object.keys(p).some(k=>!['at','value','ease','handles','handles_x'].includes(k))||
+      (p.handles_x!==undefined&&(
+        p.ease!=='bezier'||!Array.isArray(p.handles_x)||p.handles_x.length!==2||
+        p.handles_x.some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1)||
+        p.handles_x[0]>p.handles_x[1]))||
       (p.ease==='bezier'
         ?(!Array.isArray(p.handles)||p.handles.length!==2||
           p.handles.some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0||v>1))
@@ -56,7 +100,8 @@ export function validateKeyframePoints(raw){
       throw Error('Invalid keyframe curve point.');
     return {at:round(p.at),value:round(p.value),
       ...(p.ease!==undefined&&p.ease!=='linear'?{ease:p.ease}:{}) ,
-      ...(p.ease==='bezier'?{handles:p.handles.map(round)}:{})};
+      ...(p.ease==='bezier'?{handles:p.handles.map(round)}:{}),
+      ...(p.handles_x!==undefined?{handles_x:p.handles_x.map(round)}:{})};
   });
   if(points[0].at!==0||points.at(-1).at!==1)
     throw Error('Keyframe curve endpoints must be at 0 and 1.');
@@ -85,7 +130,7 @@ export function keyframeCurveAt(raw,progress){
   for(let i=1;i<points.length;i++){
     const a=points[i-1],b=points[i];
     if(u<=b.at)return a.value+(b.value-a.value)*
-      easingAt((u-a.at)/(b.at-a.at),a.ease,a.handles);
+      easingAt((u-a.at)/(b.at-a.at),a.ease,a.handles,a.handles_x);
   }
   return points.at(-1).value;
 }
@@ -112,7 +157,8 @@ export function moveKeyframePoint(raw,index,at,value){
     (index===points.length-1&&candidate.at!==1))
     throw Error('Start and End keyframe times are fixed.');
   points[index]={...candidate,...(points[index].ease?{ease:points[index].ease}:{}),
-    ...(points[index].handles?{handles:[...points[index].handles]}:{})};
+    ...(points[index].handles?{handles:[...points[index].handles]}:{}),
+    ...(points[index].handles_x?{handles_x:[...points[index].handles_x]}:{})};
   return validateKeyframePoints(points);
 }
 export function setKeyframeSegmentEase(raw,index,ease){
@@ -120,9 +166,10 @@ export function setKeyframeSegmentEase(raw,index,ease){
   if(!Number.isInteger(index)||index<0||index>=points.length-1)
     throw Error('Invalid keyframe segment index.');
   if(!KEYFRAME_EASES.includes(ease))throw Error('Invalid keyframe easing mode.');
-  const {ease:oldEase,handles:oldHandles,...base}=points[index];
+  const {ease:oldEase,handles:oldHandles,handles_x:oldX,...base}=points[index];
   points[index]=ease==='linear'?base:ease==='bezier'
-    ?{...base,ease,handles:oldEase==='bezier'?oldHandles:[...DEFAULT_BEZIER_HANDLES]}
+    ?{...base,ease,handles:oldEase==='bezier'?oldHandles:[...DEFAULT_BEZIER_HANDLES],
+       ...(oldEase==='bezier'&&oldX?{handles_x:oldX}:{})}
     :{...base,ease};
   return validateKeyframePoints(points);
 }
@@ -137,6 +184,20 @@ export function setKeyframeBezierHandle(raw,index,which,value){
   const handles=[...points[index].handles];
   handles[which]=round(value);
   points[index]={...points[index],handles};
+  return validateKeyframePoints(points);
+}
+export function setKeyframeBezierHandlePosition(raw,index,which,x,y){
+  const points=validateKeyframePoints(raw);
+  if(!Number.isInteger(index)||index<0||index>=points.length-1||
+    points[index].ease!=='bezier')throw Error('Invalid Bézier segment index.');
+  if(!Number.isInteger(which)||which<0||which>1||
+    ![x,y].every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1))
+    throw Error('Invalid Bézier 2D handle coordinates.');
+  const px=[...(points[index].handles_x??DEFAULT_BEZIER_X)];
+  const py=[...points[index].handles];
+  px[which]=round(x);py[which]=round(y);
+  if(px[0]>px[1])throw Error('Bézier X handles must remain ordered.');
+  points[index]={...points[index],handles:py,handles_x:px};
   return validateKeyframePoints(points);
 }
 export function removeKeyframePoint(raw,index){
@@ -157,7 +218,7 @@ export function keyframeCurveExpression(raw,duration,variable='t'){
     const slope=n(b.value-a.value),width=n(right-left);
     const rel=left===0?variable:'('+variable+'-'+n(left)+')';
     const u='min(1,max(0,'+rel+'/'+width+'))';
-    const line=n(a.value)+'+('+slope+')*('+easingExpression(u,a.ease,a.handles)+')';
+    const line=n(a.value)+'+('+slope+')*('+easingExpression(u,a.ease,a.handles,a.handles_x)+')';
     expression='if(lt('+variable+','+n(right)+'),'+line+','+expression+')';
   }
   return expression;
