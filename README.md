@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.2 — Two-Dimensional Bézier Curves
+
+Custom Bézier keyframe controls now move in **time (X) and value (Y)** on the timeline graph. R7.2 preserves the old R7.1 fixed-X behavior for saved curves without `handles_x`; newly dragged horizontal positions become bounded, ordered, receipt-backed optional point data. Program/browser recording inverts the X curve numerically. Local FFmpeg uses a **64-piece sampled approximation** for edited X curves, so export may differ at extreme tangents and complex V2 overlays can cost more CPU. Old drafts, Undo/Redo and validation remain supported. [R7.2 guide](docs/STUDIO_R72.md).
+
+
 ## ◆ ParaCut Studio R7.1 — Editable Custom Bézier Easing
 
 R7.1 adds **Custom Bézier** as a fifth per-segment animation mode, with two orange vertical-control handles directly on the keyframe graph. Drag or keyboard-adjust the handles, then release to commit one validated receipt; Undo/Redo, saved drafts, Program preview, browser recording and local FFmpeg MP4 all retain bounded cubic easing behavior. Handles have fixed one-third/two-thirds horizontal placement for exact, secure render math; full 2D tangents are deferred. Older R7.0 easing presets and legacy linear projects are unchanged. [R7.1 guide](docs/STUDIO_R71.md).
