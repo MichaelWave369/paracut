@@ -2,7 +2,12 @@
 // No real user media, telemetry, arbitrary shell flags, or persisted clip edits.
 import {newStudio,change,exportDraft} from '../apps/desktop/public/studio-core.js';
 
-export const LAB_SCENARIOS=Object.freeze(['v1','v2-static','v2-linear','v2-bezier']);
+export const LAB_SCENARIOS=Object.freeze([
+  'v1','v2-static','v2-linear','v2-bezier','v2-bezier-stress'
+]);
+export const LAB_DEFAULT_SCENARIOS=Object.freeze([
+  'v1','v2-static','v2-linear','v2-bezier'
+]);
 export const LAB_QUALITIES=Object.freeze(['compact','balanced','high']);
 export const LAB_SCHEMA='paracut.export.lab.v1';
 export const BENCH_SCHEMA='paracut.export.benchmark.v1';
@@ -32,7 +37,7 @@ export function parseLabOptions(argv){
     return values;
   }
   const qualities=list('--qualities',['compact','balanced'],LAB_QUALITIES);
-  const scenarios=list('--scenarios',LAB_SCENARIOS,LAB_SCENARIOS);
+  const scenarios=list('--scenarios',LAB_DEFAULT_SCENARIOS,LAB_SCENARIOS);
   const report=opts['--report'];
   if(report!==undefined&&(!report.trim()||!report.endsWith('.json')))
     throw Error('Lab report output must be a .json path.');
@@ -68,6 +73,19 @@ export function buildLabDraft({duration,scenario,mainBytes,overlayBytes}){
         clip_id:state.video2Clips[0].clip_id,field:'opacity_keyframes',
         points:[{at:0,value:.15,ease:'bezier',handles:[.12,.91],
           handles_x:[.1,.77]},{at:1,value:.95}]});
+    }
+    if(scenario==='v2-bezier-stress'){
+      // Four strongly curved segments exercise a deeper search workload,
+      // without introducing arbitrary source media or project expressions.
+      state=change(state,{type:'clip.keyframe.points.updated',
+        clip_id:state.video2Clips[0].clip_id,field:'opacity_keyframes',
+        points:[
+          {at:0,value:.05,ease:'bezier',handles:[1,0],handles_x:[0,1]},
+          {at:.25,value:.95,ease:'bezier',handles:[0,1],handles_x:[.8,.98]},
+          {at:.5,value:.15,ease:'bezier',handles:[1,0],handles_x:[.02,.2]},
+          {at:.75,value:.85,ease:'bezier',handles:[0,0],handles_x:[.5,.5]},
+          {at:1,value:.1}
+        ]});
     }
   }
   return exportDraft(state);
