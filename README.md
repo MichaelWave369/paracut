@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.4 — Graph Inspector & Real Export Benchmarks
+
+The selected clip's keyframe lane now includes a **read-only Graph Probe**: scrub within an animation segment and inspect its absolute timeline time, clip-relative position, interpolated value and easing type. Sampling creates **no edits or ledger receipts**. Local FFmpeg exports gain an optional `--benchmark` switch that times source probing, planning, real encoding and verification and reports adaptive-Bézier graph complexity without transmitting or storing performance telemetry. Benchmarking requires a real export; dry-run combinations are deliberately rejected. Existing drafts, render behavior, animation curves and Undo/Redo remain unchanged. [R7.4 guide](docs/STUDIO_R74.md).
+
+
 ## ◆ ParaCut Studio R7.3 — Precision Controls & Adaptive MP4 Curves
 
 Enter exact Bézier handle **X and Y percentages** in the selected keyframe lane, then **Apply XY** for one validated, undoable receipt. Timeline graphs sample 2D Bézier curves more densely. Opt-in local MP4 export now adaptively fits custom-X curves to reduce the usual fixed 64-piece FFmpeg expression, retaining a 64-segment ceiling and approximate fidelity. Older R7.1 fixed-X and preset curves keep their existing math. Real-world encoder speedups depend on hardware and content. [R7.3 guide](docs/STUDIO_R73.md).

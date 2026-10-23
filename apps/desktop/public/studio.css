@@ -438,3 +438,20 @@
  .keyframe-precision-controls{gap:5px;bottom:7px}
  .keyframe-precision-controls input{width:52px}
 }
+
+/* R7.4: read-only graph probe, laid out between curve and editing controls */
+.keyframe-lane{height:228px}
+.keyframe-graph-probe{position:absolute;top:96px;left:8px;right:8px;
+ z-index:5;display:flex;gap:9px;align-items:center;
+ font-size:10px;color:#b8e4df}
+.keyframe-graph-probe input[type=range]{width:95px;min-width:55px;flex:0 0 95px;
+ accent-color:#f0bd88;cursor:ew-resize}
+.keyframe-graph-probe output{min-width:0;line-height:1.4;overflow-wrap:anywhere}
+.keyframe-easing-controls{bottom:62px}
+@media(max-width:760px){
+ .keyframe-lane{height:275px}
+ .keyframe-graph-probe{top:95px;flex-wrap:wrap;gap:3px}
+ .keyframe-graph-probe input[type=range]{flex:0 0 100px}
+ .keyframe-easing-controls{bottom:90px}
+ .keyframe-precision-controls{bottom:7px}
+}
