@@ -61,7 +61,8 @@ export function titleMotionAt(title,time){
   }
   if(exits){
     const factor=distance*titleMotionProgress(Math.max(0,Math.min(1,1-remaining/fo)),ease);
-    return {x:-delta.x*factor,y:-delta.y*factor};
+    const x=-delta.x*factor,y=-delta.y*factor;
+    return {x:x||0,y:y||0}; // Canonicalize negative zero on stationary axes.
   }
   return {x:0,y:0};
 }
