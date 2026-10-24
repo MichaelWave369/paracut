@@ -1561,6 +1561,118 @@ $('marker-prev').addEventListener('click',()=>
   jumpToMarker(navigateMarker(state.markers,playhead,'previous')));
 $('marker-next').addEventListener('click',()=>
   jumpToMarker(navigateMarker(state.markers,playhead,'next')));
+// R8.4: Position a selected saved T1 title directly in Program.
+// Pointer, numeric and keyboard changes are pending form state ONLY.
+function refreshPlacementUI(){
+  const point=stagedTitlePlacement||titleAnchor({position:$('title-position').value});
+  $('title-x').value=String(point.x);
+  $('title-y').value=String(point.y);
+  $('title-place-toggle').disabled=exporting||!editingTitleId;
+  $('title-place-reset').disabled=exporting;
+  $('title-x').disabled=exporting;
+  $('title-y').disabled=exporting;
+  $('title-place-toggle').setAttribute('aria-pressed',String(titlePlacementArmed));
+  $('title-place-toggle').textContent=titlePlacementArmed
+    ?'Stop Placing (Keep Draft)':'Place Selected Title in Program';
+  $('title-place-status').textContent=stagedTitlePlacement
+    ?'Custom X '+point.x+' · Y '+point.y+
+      ' · not saved. Drag selected title in Program or Save Title to commit.'
+    :'Anchor position (no custom coordinates). Use X/Y or Place to set a draft.';
+}
+function stageTitlePlacement(point){
+  const checked=titlePlacementFields(point);
+  stagedTitlePlacement={x:checked.title_x,y:checked.title_y};
+  refreshPlacementUI();
+  showTitleAt(playhead);
+  refreshTitleDeck();
+}
+$('title-place-toggle').addEventListener('click',()=>{
+  if(exporting||!editingTitleId)return;
+  titlePlacementArmed=!titlePlacementArmed;
+  titleDrag=null;
+  if(titlePlacementArmed){
+    const title=state.titles.find(t=>t.title_id===editingTitleId);
+    if(!title){titlePlacementArmed=false;refreshPlacementUI();return;}
+    if(!stagedTitlePlacement)stagedTitlePlacement=titleAnchor(title);
+    stopPlayback();
+    // Seek into the title's interior, not its fully transparent first frame.
+    const center=(title.start+title.end)/2;
+    if(!visibleTitle(state,playhead)||visibleTitle(state,playhead)?.title_id!==title.title_id)
+      void seekTo(Math.min(center,Math.max(0,duration(state)-.001)));
+    else showTitleAt(playhead);
+  }
+  refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
+  if(titlePlacementArmed)$('title-preview').focus({preventScroll:true});
+});
+$('title-place-reset').addEventListener('click',()=>{
+  if(exporting)return;
+  stagedTitlePlacement=null;titlePlacementArmed=false;titleDrag=null;
+  refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
+  status('Original anchored title position staged. Save Title to commit.');
+});
+for(const id of ['title-x','title-y']){
+  $(id).addEventListener('change',()=>{
+    if(exporting)return;
+    try{
+      const x=Number($('title-x').value),y=Number($('title-y').value);
+      stageTitlePlacement({x,y});
+    }catch(e){status(e.message,true);refreshPlacementUI();}
+  });
+}
+const titleHandle=$('title-preview');
+titleHandle.addEventListener('pointerdown',event=>{
+  const visible=visibleTitle(state,playhead);
+  if(!titlePlacementArmed||exporting||event.button!==0||
+    visible?.title_id!==editingTitleId)return;
+  event.preventDefault();
+  titleDrag={pointer:event.pointerId,
+    sx:event.clientX,sy:event.clientY,
+    original:stagedTitlePlacement||titleAnchor(visible)};
+  titleHandle.setPointerCapture(event.pointerId);
+  titleHandle.classList.add('dragging');
+});
+titleHandle.addEventListener('pointermove',event=>{
+  if(!titleDrag||titleDrag.pointer!==event.pointerId||exporting)return;
+  const rect=titleHandle.parentElement.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  try{
+    const moved=titleNudgePlacement(titleDrag.original,
+      (event.clientX-titleDrag.sx)*1280/rect.width,
+      (event.clientY-titleDrag.sy)*720/rect.height,
+      {snap:$('title-place-snap').checked});
+    stageTitlePlacement(moved);
+  }catch(e){status(e.message,true);}
+});
+function finishPlacementDrag(event,abort=false){
+  if(!titleDrag||titleDrag.pointer!==event.pointerId)return;
+  const original=titleDrag.original;titleDrag=null;
+  titleHandle.classList.remove('dragging');
+  if(titleHandle.hasPointerCapture(event.pointerId))
+    titleHandle.releasePointerCapture(event.pointerId);
+  if(abort)stageTitlePlacement(original);
+  status(abort?'Title drag canceled; original pending location restored.':
+    'Title location staged. Save Title Changes to commit.');
+}
+titleHandle.addEventListener('pointerup',event=>finishPlacementDrag(event));
+titleHandle.addEventListener('pointercancel',event=>finishPlacementDrag(event,true));
+titleHandle.addEventListener('keydown',event=>{
+  if(!titlePlacementArmed||exporting||!editingTitleId)return;
+  if(event.key==='Escape'){
+    event.preventDefault();
+    if(titleDrag){stageTitlePlacement(titleDrag.original);titleDrag=null;}
+    titlePlacementArmed=false;titleHandle.classList.remove('dragging');
+    refreshPlacementUI();showTitleAt(playhead);return;
+  }
+  const move={ArrowLeft:[-1,0],ArrowRight:[1,0],
+    ArrowUp:[0,-1],ArrowDown:[0,1]}[event.key];
+  if(!move)return;
+  event.preventDefault();
+  const visible=state.titles.find(t=>t.title_id===editingTitleId);
+  if(!visible)return;
+  const base=stagedTitlePlacement||titleAnchor(visible),step=event.shiftKey?10:1;
+  stageTitlePlacement(titleNudgePlacement(base,move[0]*step,move[1]*step));
+});
+
 // R8.0 Creative Title Deck: controls remain pending until explicit Add/Save.
 function titleDeckDraft(){
   return {text:$('title-text').value,
@@ -1687,7 +1799,7 @@ for(const recipe of TITLE_RECIPES){
 for(const id of ['title-text','title-start','title-end',
   'title-position','title-size','title-color','title-motion','title-motion-ease',
   'title-motion-distance','title-fade-in','title-fade-out']){
-  $(id).addEventListener('input',()=>{selectedTitleRecipe=null;selectedTitleRhythm=null;refreshTitleDeck();});
+  $(id).addEventListener('input',()=>{selectedTitleRecipe=null;selectedTitleRhythm=null;refreshPlacementUI();refreshTitleDeck();});
   $(id).addEventListener('change',refreshTitleDeck);
 }
 $('title-deck-scrub').addEventListener('input',refreshTitleDeck);
