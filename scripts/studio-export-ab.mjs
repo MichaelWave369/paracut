@@ -114,7 +114,9 @@ async function main(){
       hashes.set(repeat+':'+mode,digest);
       runs.push({
         mode,repeat,mediaSeconds:benchmark.mediaSeconds,
-        encodeMs:benchmark.encodeMs,totalMs:benchmark.totalMs,graph:benchmark.graph
+        probeMs:benchmark.probeMs,planMs:benchmark.planMs,
+        encodeMs:benchmark.encodeMs,verifyMs:benchmark.verifyMs,
+        totalMs:benchmark.totalMs,graph:benchmark.graph
       });
     }
     for(let repeat=1;repeat<=opts.repeats;repeat++){
