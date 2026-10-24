@@ -68,7 +68,7 @@ assert.throws(()=>titlePlacementAtPointer({width:0,height:720,left:0,top:0},
  1,1),/geometry/);
 
 const historic=buildAss([base],5);
-assert.ok(!historic.includes('\\pos('));
+assert.ok(historic.includes('\\pos(640,360)'),'R8.3 hold was already anchored via ASS pos');
 const legacyMotion=buildAss([{...base,motion:'slide-left',
  motion_ease:'linear',motion_distance:100}],5);
 assert.ok(legacyMotion.includes('\\move(840,360,640,360)'));
