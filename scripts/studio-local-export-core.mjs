@@ -6,6 +6,7 @@ import {audioKeyframeFilter,overlayKeyframeFilter} from '../apps/desktop/public/
 import {validateBezierLookup} from '../apps/desktop/public/studio-keyframe-points.js';
 import {titleMotionExportPhases} from '../apps/desktop/public/studio-title-motion.js';
 import {titlePlacement} from '../apps/desktop/public/studio-title-placement.js';
+import {titleScaledFont,titleScale} from '../apps/desktop/public/studio-title-transform.js';
 import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 import { applyExportOptions } from './studio-r57-export-options.mjs';
 
@@ -37,7 +38,8 @@ export function buildAss(titles, length) {
     const absolute=titlePlacement(t);
     const atXY=absolute||{x:640,y:{top:60,middle:360,bottom:660}[t.position??'bottom']};
     for(const phase of titleMotionExportPhases(t,length)){
-      const fixed='\\an'+(absolute?5:position)+'\\fs'+size+'\\c&H'+color+'&';
+      const fontSize=titleScale(t)===100?size:titleScaledFont(t);
+      const fixed='\\an'+(absolute?5:position)+'\\fs'+fontSize+'\\c&H'+color+'&';
       const fades='\\fad('+Math.round(phase.fadeIn*1000)+','+
         Math.round(phase.fadeOut*1000)+')';
       const moving=phase.kind==='enter'||phase.kind==='exit';
