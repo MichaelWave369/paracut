@@ -141,7 +141,7 @@ for(const payload of [
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.(?:4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE)/);
+assert.match(html,/R8\.(?:4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO)/);
 for(const name of ['title-x','title-y','title-place-toggle','title-place-reset',
  'title-place-snap','title-place-status'])assert.ok(html.includes('id="'+name+'"'));
 assert.ok(html.includes('aria-pressed="false"'));
