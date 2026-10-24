@@ -10,7 +10,7 @@ import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample,titleDeckReadout} from './studio-title-deck.js';
-import {titleMotionAt,titleMotionId,TITLE_MOTIONS} from './studio-title-motion.js';
+import {titleMotionAt,titleMotionId,titleMotionEaseId,titleMotionDistance,titleMotionProgress} from './studio-title-motion.js';
 import {TITLE_RHYTHMS,TITLE_DURATION_CHOICES,titleRhythmFields,
   retimeTitleDraft,titleFadeFromPercent,titlePhaseMap,titleTimingReadout}
   from './studio-title-timing.js';
@@ -719,6 +719,8 @@ function loadTitleForEdit(title) {
   $('title-size').value = style.size;
   $('title-color').value = style.color;
   $('title-motion').value = titleMotionId(title);
+  $('title-motion-ease').value=titleMotionEaseId(title);
+  $('title-motion-distance').value=String(titleMotionDistance(title));
   $('title-fade-in').value = String(style.fade_in);
   $('title-fade-out').value = String(style.fade_out);
   $('add-title').textContent = 'Save Title Changes';
@@ -733,6 +735,8 @@ function resetTitleEditor() {
   $('title-size').value = 'medium';
   $('title-color').value = 'white';
   $('title-motion').value='none';
+  $('title-motion-ease').value='linear';
+  $('title-motion-distance').value='100';
   $('title-fade-in').value = '0';
   $('title-fade-out').value = '0';
   $('add-title').textContent = '+ Add Text Overlay';
@@ -1539,6 +1543,8 @@ function titleDeckDraft(){
     start:Number($('title-start').value),end:Number($('title-end').value),
     position:$('title-position').value,size:$('title-size').value,
     color:$('title-color').value,motion:$('title-motion').value,
+    motion_ease:$('title-motion-ease').value,
+    motion_distance:Number($('title-motion-distance').value),
     fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value)};
 }
 function refreshTitleTiming(draft){
@@ -1598,12 +1604,24 @@ function refreshTitleDeck(){
     text.style.translate=(offset.x*(stage.clientWidth||1280)/1280)+'px '+
       (offset.y*(stage.clientHeight||720)/720)+'px';
     readout.textContent=titleDeckReadout(sample);
-    refreshTitleTiming(titleDeckDraft());
+    const form=titleDeckDraft();
+    const ease=titleMotionEaseId(form),dist=titleMotionDistance(form);
+    $('title-motion-distance-value').textContent=dist+'%';
+    const points=Array.from({length:21},(_,i)=>{
+      const progress=i/20;
+      return (i===0?'M ':'L ')+(18+204*progress).toFixed(2)+' '+
+        (92-80*titleMotionProgress(progress,ease)).toFixed(2);
+    }).join(' ');
+    $('title-motion-curve-line').setAttribute('d',points);
+    $('title-motion-curve-readout').textContent=
+      ease+' · '+dist+'% travel · draft only';
+    refreshTitleTiming(form);
   }catch(e){
     text.textContent='Check title settings';
     text.style.opacity='0.35';
     text.style.translate='0px 0px';
     readout.textContent=e.message+' · no project changes';
+    $('title-motion-curve-readout').textContent=e.message+' · draft only';
     $('title-timing-readout').textContent=e.message+' · no project changes';
     for(const id of ['title-timing-entry','title-timing-hold','title-timing-exit'])
       $(id).style.width='0%';
@@ -1631,7 +1649,8 @@ for(const recipe of TITLE_RECIPES){
   });
 }
 for(const id of ['title-text','title-start','title-end',
-  'title-position','title-size','title-color','title-motion','title-fade-in','title-fade-out']){
+  'title-position','title-size','title-color','title-motion','title-motion-ease',
+  'title-motion-distance','title-fade-in','title-fade-out']){
   $(id).addEventListener('input',()=>{selectedTitleRecipe=null;selectedTitleRhythm=null;refreshTitleDeck();});
   $(id).addEventListener('change',refreshTitleDeck);
 }
@@ -1715,6 +1734,8 @@ $('add-title').addEventListener('click', () => {
     start: Number($('title-start').value), end: Number($('title-end').value),
     position: $('title-position').value, size: $('title-size').value, color: $('title-color').value,
     motion:$('title-motion').value,
+    motion_ease:$('title-motion-ease').value,
+    motion_distance:Number($('title-motion-distance').value),
     fade_in: Number($('title-fade-in').value), fade_out: Number($('title-fade-out').value)
   };
   const wasEditing = editingTitleId;

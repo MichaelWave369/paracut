@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.3 — Motion Curve Studio
+
+R8.3 adds **four safe title-movement easing curves** (Linear, Ease In, Ease Out, Smooth), adjustable **50–150% motion travel**, and a live SVG curve preview to the Creative Title Deck. The same animation model now drives Program, browser Canvas output and **piecewise ASS local FFmpeg export** with bounded events and opacity interpolation. Older R8.2 title projects retain their original Linear defaults and local subtitle behavior, while the familiar Add/Save command still handles every ledger-backed title edit. [R8.3 guide](docs/STUDIO_R83.md).
+
+
 ## ◆ ParaCut Studio R8.2 — Shared Title Motion
 
 R8.2 adds four **fade-linked title motion** options: Still, Float Up, Slide Left, and Slide Right. Movement uses one bounded time/displacement model shared between the Program Monitor, Title Deck audition, browser canvas export and **local FFmpeg ASS** entrance/hold/exit events. Old drafts without an optional `motion` field retain the same ASS output, with no changes to saved draft schema, source media or the edit ledger. Normal Add/Save remains the only title commit; the preset itself cannot inject arbitrary instructions. [R8.2 guide](docs/STUDIO_R82.md).

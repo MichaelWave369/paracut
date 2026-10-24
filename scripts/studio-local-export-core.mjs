@@ -4,7 +4,7 @@ import { extname, resolve } from 'node:path';
 import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
 import {audioKeyframeFilter,overlayKeyframeFilter} from '../apps/desktop/public/studio-keyframes.js';
 import {validateBezierLookup} from '../apps/desktop/public/studio-keyframe-points.js';
-import {titleMotionPhases} from '../apps/desktop/public/studio-title-motion.js';
+import {titleMotionExportPhases} from '../apps/desktop/public/studio-title-motion.js';
 import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 import { applyExportOptions } from './studio-r57-export-options.mjs';
 
@@ -34,18 +34,28 @@ export function buildAss(titles, length) {
     if(!position||!size||!color)throw Error('Invalid title styling.');
     const escaped=t.text.replace(/[\r\n]/g,' ').replaceAll('\\','＼').replaceAll('{','｛').replaceAll('}','｝');
     const anchor={top:60,middle:360,bottom:660}[t.position??'bottom'];
-    for(const phase of titleMotionPhases(t,length)){
+    for(const phase of titleMotionExportPhases(t,length)){
       const fixed='\\an'+position+'\\fs'+size+'\\c&H'+color+'&';
       const fades='\\fad('+Math.round(phase.fadeIn*1000)+','+
         Math.round(phase.fadeOut*1000)+')';
       const moving=phase.kind==='enter'||phase.kind==='exit';
       const fromX=Math.round(640+phase.from.x),fromY=Math.round(anchor+phase.from.y);
       const toX=Math.round(640+phase.to.x),toY=Math.round(anchor+phase.to.y);
-      const placement=phase.kind==='legacy'?'':moving
+      const placement=phase.kind==='legacy'?'':(moving||phase.kind==='eased-piece')
         ?'\\move('+fromX+','+fromY+','+toX+','+toY+')'
         :'\\pos(640,'+anchor+')';
+      // Eased movement needs piecewise linear ASS events, but ordinary
+      // fade presets remain the exact historical native \fad path.
+      const opacityHex=value=>Math.round(255*(1-Math.max(0,Math.min(1,value))))
+        .toString(16).toUpperCase().padStart(2,'0');
+      const animatedAlpha=phase.kind==='eased-piece'
+        ?'\\alpha&H'+opacityHex(phase.opacityFrom)+'&'+
+          '\\t(0,'+Math.round((phase.end-phase.start)*1000)+
+          ',\\alpha&H'+opacityHex(phase.opacityTo)+'&)':'';
+      const styleTags=fixed+placement+(phase.kind==='eased-piece'
+        ?animatedAlpha:fades);
       rows.push('Dialogue: 0,'+at(phase.start)+','+at(phase.end)+
-        ',Default,,0,0,0,,{'+fixed+placement+fades+'}'+escaped);
+        ',Default,,0,0,0,,{'+styleTags+'}'+escaped);
     }
   }
   return rows.join('\n')+'\n';

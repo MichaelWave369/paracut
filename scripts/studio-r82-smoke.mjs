@@ -98,9 +98,9 @@ assert.throws(()=>change(state,{type:'title.updated',title_id:id,
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
-assert.match(html,/R8\.2 · TITLE MOTION/);
+assert.match(html,/R8\.(?:2 · TITLE MOTION|3 · MOTION CURVES)/);
 assert.match(html,/id="title-motion"/);
-assert.match(html,/at least 0\.03s/);
+assert.match(html,/(?:at least 0\.03s|under 0\.03s)/);
 for(const value of TITLE_MOTIONS)assert.ok(html.includes('value="'+value+'"'));
 assert.ok(js.includes('node.style.translate='));
 assert.ok(js.includes('ctx.translate(motion.x,motion.y)'));
