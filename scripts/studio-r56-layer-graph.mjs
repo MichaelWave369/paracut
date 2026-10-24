@@ -17,13 +17,13 @@ function motion(c,full,w,h){
   if(type==='rise')return [String(x0),y0+'+('+n(h*.75)+')*('+wave+')'];
   throw Error('Unsupported V2 motion.');
 }
-function overlayPart(c,i,input,lane){
+function overlayPart(c,i,input,lane,bezierLookup='balanced'){
   const full=(c.overlay_layout||'pip')==='full',w=full?1280:420,h=full?720:220;
   const filters=['['+input+':v:0]trim=start='+n(c.source.start)+':duration='+n(len(c)),
     'setpts=PTS-STARTPTS','fps=30','scale='+w+':'+h+':force_original_aspect_ratio=decrease',
     'pad='+w+':'+h+':(ow-iw)/2:(oh-ih)/2:color=black','setsar=1',
     ...colorFFmpegFilters(c),'format=rgba'];
-  const animatedAlpha=overlayKeyframeFilter(c);
+  const animatedAlpha=overlayKeyframeFilter(c,{bezierLookup});
   if(animatedAlpha)filters.push(animatedAlpha);
   const prev=i>0?(lane[i-1].transition_out_seconds||0):0,next=c.transition_out_seconds||0;
   for(const [direction,d] of [['in',c.visual_fade_in||0],['out',c.visual_fade_out||0],['in',prev],['out',next]])
@@ -48,7 +48,7 @@ function gain(state,track){
   if((mix.a1.solo||mix.a2.solo)&&!ch?.solo)return 0;
   return ch?.muted?0:ch?.gain??1;
 }
-export function planLayeredMp4(state,mediaByAsset,output,{ffmpeg='ffmpeg',buildAss}={}){
+export function planLayeredMp4(state,mediaByAsset,output,{ffmpeg='ffmpeg',buildAss,bezierLookup='balanced'}={}){
   if(!state?.clips?.length)throw Error('A video clip is required.');
   for(const lane of [state.clips,state.audioClips,state.video2Clips,state.audio2Clips])
     if(lane.length>32)throw Error('Local export limit: 32 clips per lane.');
@@ -77,7 +77,7 @@ export function planLayeredMp4(state,mediaByAsset,output,{ffmpeg='ffmpeg',buildA
   }
   const offset=state.clips.length+state.audioClips.length;
   for(let i=0;i<state.video2Clips.length;i++){
-    const p=overlayPart(state.video2Clips[i],i,offset+i,state.video2Clips),label='composited'+i;
+    const p=overlayPart(state.video2Clips[i],i,offset+i,state.video2Clips,bezierLookup),label='composited'+i;
     graph.push(p.graph);
     graph.push('['+last+'][layer'+i+']overlay=x=\''+p.xy[0]+'\':y=\''+p.xy[1]+'\':eval=frame:eof_action=pass:repeatlast=0:shortest=0['+label+']');
     last=label;
@@ -94,7 +94,7 @@ export function planLayeredMp4(state,mediaByAsset,output,{ffmpeg='ffmpeg',buildA
     const filters=['['+index+':a:0]atrim=start='+n(c.source.start)+':duration='+n(length),
       'asetpts=PTS-STARTPTS','aresample=48000',
       'aformat=sample_fmts=fltp:channel_layouts=stereo','volume='+n((c.volume??1)*bus)];
-    const animatedVolume=audioKeyframeFilter(c);
+    const animatedVolume=audioKeyframeFilter(c,{bezierLookup});
     if(animatedVolume)filters.push(animatedVolume);
     if(c.fade_in>0)filters.push('afade=t=in:st=0:d='+n(c.fade_in));
     if(c.fade_out>0)filters.push('afade=t=out:st='+n(length-c.fade_out)+':d='+n(c.fade_out));
