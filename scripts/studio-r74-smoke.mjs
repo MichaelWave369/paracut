@@ -132,6 +132,6 @@ assert.deepEqual(errors,[]);
 assert.equal(validate(state),true);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R7\.(?:4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B)/);
+assert.match(html,/R7\.(?:4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)/);
 assert.match(css,/\.keyframe-graph-probe/);
 console.log('ParaCut R7.4 PASS: read-only graph probe, safe benchmark stats, real-encode flag contract, draft/undo and FFmpeg diagnostics.');
