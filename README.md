@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.8 — Controlled A/B Export Proof Lab
+
+R7.8 lets you compare the **same synthetic Bézier footage and animation** with both the historical R7.6 sequential chord lookup and R7.7's balanced tree. An opt-in `studio-export-ab.mjs` runner alternates experiment order, uses the exact same draft/settings, verifies every real H.264/AAC MP4, compares **decoded video-frame MD5 streams**, and reports median measured encoder times and the old/new ratio. Normal editing/export remains balanced by default; no new draft fields, telemetry or source-media access. The report is optional and never overwrites another file. [R7.8 guide](docs/STUDIO_R78.md).
+
+
 ## ◆ ParaCut Studio R7.7 — Balanced Bézier Export Expressions
 
 Complex custom-X Bézier MP4 exports now use a balanced FFmpeg decision tree to find the appropriate adaptive chord. Worst-case interval comparisons drop from **N** to **ceil(log2 N)**, e.g. 64 chords require at most six branch decisions instead of 64, while **the same validated fit and interpolation leaves remain in place**. The synthetic export lab adds an opt-in `v2-bezier-stress` workload with four challenging curve segments; default lab scenarios stay unchanged. No saved draft, receipt or browser preview changes, and no unmeasured wall-clock speedup is claimed. [R7.7 guide](docs/STUDIO_R77.md).

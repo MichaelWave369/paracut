@@ -39,12 +39,12 @@ export function keyframeTimeExpression(pair,duration,variable='t') {
   return n(p.start)+'+('+n(p.end-p.start)+')*min(1,max(0,'+
     variable+'/'+n(duration)+'))';
 }
-export function audioKeyframeFilter(clip){
+export function audioKeyframeFilter(clip,{bezierLookup='balanced'}={}){
   if(clip.volume_keyframes===undefined&&clip.volume_keyframe_points===undefined)return null;
   const span=clip.source.end-clip.source.start;
   const expr=clip.volume_keyframe_points===undefined
     ?keyframeTimeExpression(clip.volume_keyframes,span,'t')
-    :keyframeCurveExpression(clip.volume_keyframe_points,span,'t');
+    :keyframeCurveExpression(clip.volume_keyframe_points,span,'t',{bezierLookup});
   return "volume='"+expr+
     "':eval=frame";
 }
@@ -75,7 +75,7 @@ export function overlayAlphaStrategy(clip){
     return {kind:'fade-out',duration:span};
   return {kind:'geq',duration:span};
 }
-export function overlayKeyframeFilter(clip){
+export function overlayKeyframeFilter(clip,{bezierLookup='balanced'}={}){
   const strategy=overlayAlphaStrategy(clip);
   if(strategy.kind==='none'||strategy.kind==='identity')return null;
   if(strategy.kind==='constant')
@@ -88,7 +88,7 @@ export function overlayKeyframeFilter(clip){
   // Commas in geq function calls require escaping at the filtergraph level.
   const expr=(clip.opacity_keyframe_points===undefined
     ?keyframeTimeExpression(clip.opacity_keyframes,duration,'T')
-    :keyframeCurveExpression(clip.opacity_keyframe_points,duration,'T'))
+    :keyframeCurveExpression(clip.opacity_keyframe_points,duration,'T',{bezierLookup}))
     .replace(/,/g,'\\,');
   return 'geq=r=r(X\\,Y):g=g(X\\,Y):b=b(X\\,Y):a=alpha(X\\,Y)*('+expr+')';
 }

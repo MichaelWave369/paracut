@@ -8,15 +8,16 @@ import { tmpdir } from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import {graphDiagnostics,renderBenchmarkReport} from './studio-export-benchmark.mjs';
+import {validateBezierLookup} from '../apps/desktop/public/studio-keyframe-points.js';
 import { importDraft } from '../apps/desktop/public/studio-core.js';
 import { planLocalMp4, shellPreview } from './studio-local-export-core.mjs';
 
 function parseArgs(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
-    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe --quality compact|balanced|high --audio-protect --benchmark --benchmark-json');
+    console.log('ParaCut local MP4:\nnode scripts/studio-export-local.mjs --draft cut.json --media-dir ./sources --out ./movie.mp4 [--dry-run]\nOptional: --media-map paths.json --ffmpeg /path/to/ffmpeg --ffprobe /path/to/ffprobe --quality compact|balanced|high --audio-protect --benchmark --benchmark-json --bezier-lookup balanced|linear');
     process.exit(0);
   }
-  const opt={},known=new Set(['--draft','--media-dir','--out','--media-map','--ffmpeg','--ffprobe','--quality']);
+  const opt={},known=new Set(['--draft','--media-dir','--out','--media-map','--ffmpeg','--ffprobe','--quality','--bezier-lookup']);
   for (let i=0;i<argv.length;i++) {
     if(argv[i]==='--dry-run'){opt.dryRun=true;continue;}
     if(argv[i]==='--audio-protect'){opt.protectAudio=true;continue;}
@@ -28,6 +29,7 @@ function parseArgs(argv) {
   }
   if(!opt.draft||!opt.out||(!opt.media_dir&&!opt.media_map))throw Error('Required: --draft, --out and --media-dir or --media-map.');
   if(opt.dryRun&&(opt.benchmark||opt.benchmarkJson))throw Error('Benchmarking measures a real encode and cannot be used with --dry-run.');
+  validateBezierLookup(opt.bezier_lookup??'balanced');
   return opt;
 }
 function probe(file,executable) {
@@ -91,7 +93,7 @@ async function main() {
   const state=importDraft(await readFile(resolve(opt.draft),'utf8'));
   const linked=await relink(state,opt);
   const relinkedAt=performance.now();
-  const plan=planLocalMp4(state,linked,target,{ffmpeg:opt.ffmpeg||'ffmpeg',quality:opt.quality||'balanced',protectAudio:opt.protectAudio===true});
+  const plan=planLocalMp4(state,linked,target,{ffmpeg:opt.ffmpeg||'ffmpeg',quality:opt.quality||'balanced',protectAudio:opt.protectAudio===true,bezierLookup:opt.bezier_lookup??'balanced'});
   const plannedAt=performance.now();
   const diagnostics=(opt.benchmark||opt.benchmarkJson)?graphDiagnostics(state,plan.graph):null;
   console.log('ParaCut local MP4: '+plan.videoClips+' video clips, '+plan.audioSegments+
@@ -130,7 +132,7 @@ async function main() {
       const report=renderBenchmarkReport(record);
       if(opt.benchmark)console.log(report);
       if(opt.benchmarkJson)console.log('PARACUT_BENCH_JSON '+JSON.stringify({
-        schema:'paracut.export.benchmark.v1',...record
+        schema:'paracut.export.benchmark.v1',bezierLookup:opt.bezier_lookup??'balanced',...record
       }));
     }
   } finally {

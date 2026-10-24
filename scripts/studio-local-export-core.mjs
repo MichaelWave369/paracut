@@ -3,6 +3,7 @@
 import { extname, resolve } from 'node:path';
 import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
 import {audioKeyframeFilter,overlayKeyframeFilter} from '../apps/desktop/public/studio-keyframes.js';
+import {validateBezierLookup} from '../apps/desktop/public/studio-keyframe-points.js';
 import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 import { applyExportOptions } from './studio-r57-export-options.mjs';
 
@@ -38,12 +39,13 @@ export function buildAss(titles, length) {
   return rows.join('\n')+'\n';
 }
 
-export function planLocalMp4(state, mediaByAsset, output, {ffmpeg='ffmpeg',quality='balanced',protectAudio=false}={}) {
+export function planLocalMp4(state, mediaByAsset, output, {ffmpeg='ffmpeg',quality='balanced',protectAudio=false,bezierLookup='balanced'}={}) {
+  validateBezierLookup(bezierLookup);
   const mix=state?.audioMix;
   const advanced=Boolean(state?.video2Clips?.length || state?.audio2Clips?.length ||
     (mix && (mix.duckA1 || ['a1','a2'].some(k=>mix[k]?.gain!==1 ||
       mix[k]?.muted || mix[k]?.solo))));
-  if(advanced)return applyExportOptions(planLayeredMp4(state,mediaByAsset,output,{ffmpeg,buildAss}),{quality,protectAudio});
+  if(advanced)return applyExportOptions(planLayeredMp4(state,mediaByAsset,output,{ffmpeg,buildAss,bezierLookup}),{quality,protectAudio});
   if(!state?.clips?.length)throw Error('A video clip is required.');
   if(state.clips.length>32||state.audioClips.length>32)throw Error('Local export limit: 32 clips per lane.');
   const length=state.clips.at(-1).timeline.end;
@@ -82,7 +84,7 @@ export function planLocalMp4(state, mediaByAsset, output, {ffmpeg='ffmpeg',quali
       '['+index+':a:0]atrim=start='+n(c.source.start)+':duration='+n(span),
       'asetpts=PTS-STARTPTS','aresample=48000',
       'aformat=sample_fmts=fltp:channel_layouts=stereo','volume='+n(c.volume??1)];
-    const animatedVolume=audioKeyframeFilter(c);
+    const animatedVolume=audioKeyframeFilter(c,{bezierLookup});
     if(animatedVolume)filters.push(animatedVolume);
     if(c.fade_in>0)filters.push('afade=t=in:st=0:d='+n(c.fade_in));
     if(c.fade_out>0)filters.push('afade=t=out:st='+n(span-c.fade_out)+':d='+n(c.fade_out));

@@ -89,7 +89,13 @@ export function bezierExportDecisionStats(handles,handlesX){
     balancedWorstCaseComparisons:Math.ceil(Math.log2(segments)),
     observedMaxError};
 }
-function sampledBezierExpression(u,handles,handlesX){
+export const BEZIER_LOOKUP_MODES=Object.freeze(['balanced','linear']);
+export function validateBezierLookup(mode){
+  if(!BEZIER_LOOKUP_MODES.includes(mode))throw Error('Invalid Bézier lookup mode.');
+  return mode;
+}
+function sampledBezierExpression(u,handles,handlesX,lookup='balanced'){
+  validateBezierLookup(lookup);
   const {points}=planBezierExportSegments(handles,handlesX);
   const leaf=i=>{
     const a=points[i],b=points[i+1];
@@ -104,6 +110,15 @@ function sampledBezierExpression(u,handles,handlesX){
     return 'if(lt('+u+','+n12(points[middle].x)+'),'+
       tree(left,middle)+','+tree(middle,right)+')';
   };
+  if(lookup==='linear'){
+    // Exact R7.3/R7.6 sequential compiler, retained only as an explicit,
+    // testable comparison baseline. The chord fit and leaf code are shared.
+    let expression='1';
+    for(let i=points.length-2;i>=0;i--)
+      expression='if(lt('+u+','+n12(points[i+1].x)+'),'+
+        leaf(i)+','+expression+')';
+    return expression;
+  }
   return tree(0,points.length-1);
 }
 
@@ -126,9 +141,9 @@ function easingAt(u,kind='linear',handles=DEFAULT_BEZIER_HANDLES,handlesX){
   if(kind==='ease-in-out')return u*u*(3-2*u);
   return u;
 }
-function easingExpression(u,kind='linear',handles=DEFAULT_BEZIER_HANDLES,handlesX){
+function easingExpression(u,kind='linear',handles=DEFAULT_BEZIER_HANDLES,handlesX,lookup='balanced'){
   if(kind==='bezier')return handlesX
-    ?sampledBezierExpression(u,handles,handlesX):bezierExpression(u,handles);
+    ?sampledBezierExpression(u,handles,handlesX,lookup):bezierExpression(u,handles);
   if(kind==='ease-in')return '('+u+')*('+u+')';
   if(kind==='ease-out')return '1-(1-('+u+'))*(1-('+u+'))';
   if(kind==='ease-in-out')return '('+u+')*('+u+')*(3-2*('+u+'))';
@@ -272,7 +287,8 @@ export function removeKeyframePoint(raw,index){
   points.splice(index,1);
   return validateKeyframePoints(points);
 }
-export function keyframeCurveExpression(raw,duration,variable='t'){
+export function keyframeCurveExpression(raw,duration,variable='t',{bezierLookup='balanced'}={}){
+  validateBezierLookup(bezierLookup);
   const points=validateKeyframePoints(raw);
   if(typeof duration!=='number'||!Number.isFinite(duration)||duration<=0||
     !['t','T'].includes(variable))throw Error('Invalid keyframe expression duration.');
@@ -283,7 +299,7 @@ export function keyframeCurveExpression(raw,duration,variable='t'){
     const slope=n(b.value-a.value),width=n(right-left);
     const rel=left===0?variable:'('+variable+'-'+n(left)+')';
     const u='min(1,max(0,'+rel+'/'+width+'))';
-    const line=n(a.value)+'+('+slope+')*('+easingExpression(u,a.ease,a.handles,a.handles_x)+')';
+    const line=n(a.value)+'+('+slope+')*('+easingExpression(u,a.ease,a.handles,a.handles_x,bezierLookup)+')';
     expression='if(lt('+variable+','+n(right)+'),'+line+','+expression+')';
   }
   return expression;
