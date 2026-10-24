@@ -12,6 +12,7 @@ import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample,titleDeckReadout} from './studio-title-deck.js';
 import {titleMotionAt,titleMotionId,titleMotionEaseId,titleMotionDistance,titleMotionProgress} from './studio-title-motion.js';
 import {titlePlacement,titleAnchor,titlePlacementFields,titleNudgePlacement} from './studio-title-placement.js';
+import {titleScale,titleScaleFields,titleScaledFont,titleResizeDelta} from './studio-title-transform.js';
 import {TITLE_RHYTHMS,TITLE_DURATION_CHOICES,titleRhythmFields,
   retimeTitleDraft,titleFadeFromPercent,titlePhaseMap,titleTimingReadout}
   from './studio-title-timing.js';
@@ -88,6 +89,7 @@ let editingTitleId = null;
 let selectedTitleRecipe=null; // audition only, never stored in project drafts
 let selectedTitleRhythm=null; // staged local animation preset only
 let stagedTitlePlacement=null,titlePlacementArmed=false,titleDrag=null;
+let stagedTitleScale=100,titleResizeDrag=null,safeGuidesVisible=false;
 let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
@@ -529,14 +531,32 @@ function showTitleAt(at) {
   const node = $('title-preview');
   node.hidden = !title;
   node.textContent = title?.text || '';
-  if (!title) return;
-  const preview=editingTitleId===title.title_id&&stagedTitlePlacement
-    ?{...title,...titlePlacementFields(stagedTitlePlacement)}:title;
+  const resizeHandle=$('title-resize-handle');
+  resizeHandle.hidden=!title||!titlePlacementArmed||
+    editingTitleId!==title?.title_id;
+  if(!title)return;
+  // Staged reset-to-anchor must discard prior custom coordinates in preview.
+  const {title_x:priorX,title_y:priorY,...plainTitle}=title;
+  const preview=editingTitleId===title.title_id
+    ?{...plainTitle,...titlePlacementFields(stagedTitlePlacement),
+      title_scale:stagedTitleScale}:title;
   const style = titleStyle(preview);
   const motion=titleMotionAt(preview,at),rect=node.parentElement;
   node.style.translate=(motion.x*(rect?.clientWidth||1280)/1280)+'px '+
     (motion.y*(rect?.clientHeight||720)/720)+'px';
   const custom=titlePlacement(preview);
+  node.style.fontSize=titleScale(preview)!==100
+    ?(titleScaledFont(preview)*(rect?.clientHeight||720)/720)+'px':'';
+  const anchorPoint=titleAnchor(preview);
+  const measure=titleScaledFont(preview);
+  const handleX=Math.min(1200,anchorPoint.x+
+    Math.max(65,Math.min(225,title.text.length*measure*.27)));
+  const handleY=Math.min(660,anchorPoint.y+Math.max(30,measure*.7));
+  resizeHandle.style.left=(100*handleX/1280)+'%';
+  resizeHandle.style.top=(100*handleY/720)+'%';
+  resizeHandle.setAttribute('aria-label',
+    'Resize '+title.text.slice(0,32)+'. Current '+titleScale(preview)+
+    ' percent. Arrow keys adjust five percent; Shift ten.');
   if(custom){
     node.style.left=(100*custom.x/1280)+'%';
     node.style.top=(100*custom.y/720)+'%';
@@ -734,7 +754,8 @@ function loadTitleForEdit(title) {
   $('title-start').value = String(title.start);
   $('title-end').value = String(title.end);
   const style = titleStyle(title);
-  titlePlacementArmed=false;titleDrag=null;stagedTitlePlacement=titlePlacement(title);
+  titlePlacementArmed=false;titleDrag=null;titleResizeDrag=null;
+  stagedTitlePlacement=titlePlacement(title);stagedTitleScale=titleScale(title);
   $('title-position').value = style.position;
   $('title-size').value = style.size;
   $('title-color').value = style.color;
@@ -751,7 +772,8 @@ function loadTitleForEdit(title) {
 }
 function resetTitleEditor() {
   editingTitleId = null;
-  titlePlacementArmed=false;titleDrag=null;stagedTitlePlacement=null;
+  titlePlacementArmed=false;titleDrag=null;titleResizeDrag=null;
+  stagedTitlePlacement=null;stagedTitleScale=100;
   $('title-text').value = '';
   $('title-position').value = 'bottom';
   $('title-size').value = 'medium';
@@ -866,7 +888,7 @@ function drawTitleOnCanvas(ctx, title, at) {
   ctx.globalAlpha = opacity;
   const motion=titleMotionAt(title,at);
   ctx.translate(motion.x,motion.y);
-  const size = fontSizes[style.size];
+  const size = titleScale(title)===100?fontSizes[style.size]:titleScaledFont(title);
   ctx.font = 'bold ' + size + 'px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
@@ -1569,6 +1591,12 @@ function refreshPlacementUI(){
   $('title-y').value=String(point.y);
   $('title-place-toggle').disabled=exporting||!editingTitleId;
   $('title-place-reset').disabled=exporting;
+  $('title-scale').disabled=exporting;
+  $('title-scale').value=String(stagedTitleScale);
+  $('title-scale-value').textContent=stagedTitleScale+'%';
+  $('title-safe-guides').hidden=!safeGuidesVisible;
+  $('title-safe-toggle').setAttribute('aria-pressed',String(safeGuidesVisible));
+  $('title-safe-toggle').textContent=safeGuidesVisible?'Hide Safe-Area Guides':'Show Safe-Area Guides';
   $('title-x').disabled=exporting;
   $('title-y').disabled=exporting;
   $('title-place-toggle').setAttribute('aria-pressed',String(titlePlacementArmed));
@@ -1589,7 +1617,7 @@ function stageTitlePlacement(point){
 $('title-place-toggle').addEventListener('click',()=>{
   if(exporting||!editingTitleId)return;
   titlePlacementArmed=!titlePlacementArmed;
-  titleDrag=null;
+  titleDrag=null;titleResizeDrag=null;
   if(titlePlacementArmed){
     const title=state.titles.find(t=>t.title_id===editingTitleId);
     if(!title){titlePlacementArmed=false;refreshPlacementUI();return;}
@@ -1606,7 +1634,7 @@ $('title-place-toggle').addEventListener('click',()=>{
 });
 $('title-place-reset').addEventListener('click',()=>{
   if(exporting)return;
-  stagedTitlePlacement=null;titlePlacementArmed=false;titleDrag=null;
+  stagedTitlePlacement=null;titlePlacementArmed=false;titleDrag=null;titleResizeDrag=null;
   refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
   status('Original anchored title position staged. Save Title to commit.');
 });
@@ -1660,7 +1688,9 @@ titleHandle.addEventListener('keydown',event=>{
   if(event.key==='Escape'){
     event.preventDefault();
     if(titleDrag){stageTitlePlacement(titleDrag.original);titleDrag=null;}
-    titlePlacementArmed=false;titleHandle.classList.remove('dragging');
+    titlePlacementArmed=false;titleResizeDrag=null;
+    $('title-resize-handle').classList.remove('dragging');
+    titleHandle.classList.remove('dragging');
     refreshPlacementUI();showTitleAt(playhead);return;
   }
   const move={ArrowLeft:[-1,0],ArrowRight:[1,0],
@@ -1673,6 +1703,66 @@ titleHandle.addEventListener('keydown',event=>{
   stageTitlePlacement(titleNudgePlacement(base,move[0]*step,move[1]*step));
 });
 
+// R8.5: Safe guides never touch project media, canvas or export.
+$('title-safe-toggle').addEventListener('click',()=>{
+  safeGuidesVisible=!safeGuidesVisible;
+  refreshPlacementUI();
+});
+function stageTitleScale(value){
+  stagedTitleScale=titleScale({title_scale:value});
+  refreshPlacementUI();
+  refreshTitleDeck();
+  showTitleAt(playhead);
+}
+$('title-scale').addEventListener('input',event=>{
+  if(exporting)return;
+  try{stageTitleScale(Number(event.target.value));}
+  catch(e){status(e.message,true);refreshPlacementUI();}
+});
+const resizeHandle=$('title-resize-handle');
+resizeHandle.addEventListener('pointerdown',event=>{
+  const visible=visibleTitle(state,playhead);
+  if(!titlePlacementArmed||exporting||event.button!==0||
+    visible?.title_id!==editingTitleId)return;
+  event.preventDefault();event.stopPropagation();
+  titleResizeDrag={pointer:event.pointerId,sx:event.clientX,scale:stagedTitleScale};
+  resizeHandle.setPointerCapture(event.pointerId);
+  resizeHandle.classList.add('dragging');
+});
+resizeHandle.addEventListener('pointermove',event=>{
+  if(!titleResizeDrag||titleResizeDrag.pointer!==event.pointerId||exporting)return;
+  const rect=resizeHandle.parentElement.getBoundingClientRect();
+  try{stageTitleScale(titleResizeDelta(titleResizeDrag.scale,
+    event.clientX-titleResizeDrag.sx,rect.width));}
+  catch(e){status(e.message,true);}
+});
+function finishTitleResize(event,cancel=false){
+  if(!titleResizeDrag||titleResizeDrag.pointer!==event.pointerId)return;
+  const original=titleResizeDrag.scale;titleResizeDrag=null;
+  resizeHandle.classList.remove('dragging');
+  if(resizeHandle.hasPointerCapture(event.pointerId))
+    resizeHandle.releasePointerCapture(event.pointerId);
+  if(cancel)stageTitleScale(original);
+  status(cancel?'Title resize canceled; prior draft scale restored.':
+    'Title size staged. Save Title Changes to commit.');
+}
+resizeHandle.addEventListener('pointerup',e=>finishTitleResize(e));
+resizeHandle.addEventListener('pointercancel',e=>finishTitleResize(e,true));
+resizeHandle.addEventListener('keydown',event=>{
+  if(exporting||!titlePlacementArmed||!editingTitleId)return;
+  if(event.key==='Escape'){
+    event.preventDefault();
+    if(titleResizeDrag){stageTitleScale(titleResizeDrag.scale);titleResizeDrag=null;}
+    titlePlacementArmed=false;resizeHandle.classList.remove('dragging');
+    refreshPlacementUI();showTitleAt(playhead);return;
+  }
+  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
+  event.preventDefault();
+  const sign=['ArrowRight','ArrowUp'].includes(event.key)?1:-1;
+  const step=event.shiftKey?10:5;
+  stageTitleScale(Math.min(200,Math.max(50,stagedTitleScale+sign*step)));
+});
+
 // R8.0 Creative Title Deck: controls remain pending until explicit Add/Save.
 function titleDeckDraft(){
   return {text:$('title-text').value,
@@ -1681,9 +1771,8 @@ function titleDeckDraft(){
     color:$('title-color').value,motion:$('title-motion').value,
     motion_ease:$('title-motion-ease').value,
     motion_distance:Number($('title-motion-distance').value),
-    ...titlePlacementFields(stagedTitlePlacement),
-    fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value),
-    ...titlePlacementFields(stagedTitlePlacement)};
+    title_scale:stagedTitleScale,
+    fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value)};
 }
 function refreshTitleTiming(draft){
   const map=titlePhaseMap(draft);
@@ -1736,6 +1825,8 @@ function refreshTitleDeck(){
     text.dataset.size=sample.size;
     text.dataset.color=sample.color;
     text.style.opacity=String(sample.opacity);
+    text.style.fontSize=stagedTitleScale===100?'':
+      Math.round(({small:13,medium:18,large:24}[sample.size])*stagedTitleScale/100)+'px';
     const absolute=titlePlacement(titleDeckDraft());
     if(absolute){
       text.style.left=(100*absolute.x/1280)+'%';
@@ -1767,6 +1858,7 @@ function refreshTitleDeck(){
   }catch(e){
     text.textContent='Check title settings';
     text.style.opacity='0.35';
+    text.style.fontSize='';
     text.style.translate='0px 0px';
     readout.textContent=e.message+' · no project changes';
     $('title-motion-curve-readout').textContent=e.message+' · draft only';
@@ -1884,6 +1976,8 @@ $('add-title').addEventListener('click', () => {
     motion:$('title-motion').value,
     motion_ease:$('title-motion-ease').value,
     motion_distance:Number($('title-motion-distance').value),
+    ...titlePlacementFields(stagedTitlePlacement),
+    ...titleScaleFields(stagedTitleScale),
     fade_in: Number($('title-fade-in').value), fade_out: Number($('title-fade-out').value)
   };
   const wasEditing = editingTitleId;

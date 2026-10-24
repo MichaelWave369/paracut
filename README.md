@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.5 — Visual Title Transforms
+
+R8.5 adds **drag-to-resize** title handles, a **50–200% title scale** slider with 5% steps, and optional **action/title safe-area guides** in Program Monitor. It also fixes an R8.4 issue where title X/Y placement was shown in preview but missing from the Save command. Preview controls remain pending until Add/Save, and the existing browser Canvas and local FFmpeg ASS title renderers honor saved scaling and XY. Legacy titles remain compatible and output unchanged. [R8.5 guide](docs/STUDIO_R85.md).
+
+
 ## ◆ ParaCut Studio R8.4 — Direct Title Placement
 
 R8.4 makes T1 titles **draggable in the Program Monitor**: explicitly arm placement on a selected title, drag with optional guide snapping, nudge with arrow keys (Shift+arrows = 10px), or set precise X/Y coordinates in the 1280×720 composition. Only **Save Title** records an edit; Cancel or Reset to Anchor preserves the original behavior. Browser Canvas and local ASS+FFmpeg use the same custom center coordinates with existing motion curves. Older projects without an explicit XY pair generate unchanged ASS events. [R8.4 guide](docs/STUDIO_R84.md).
