@@ -187,6 +187,6 @@ assert.deepEqual(errors,[]);
 assert.equal(validate(s),true);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R7\.(?:1 · CUSTOM BÉZIER|2 · 2D BÉZIER|3 · PRECISION & EXPORT|4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B)/);
+assert.match(html,/R7\.(?:1 · CUSTOM BÉZIER|2 · 2D BÉZIER|3 · PRECISION & EXPORT|4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)/);
 assert.match(css,/\.keyframe-bezier-handle/);
 console.log('ParaCut R7.1 PASS: bounded Bézier math, FFmpeg, project validation, drag/cancel, keyboard, receipts and Undo/Redo.');
