@@ -11,6 +11,7 @@ import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample,titleDeckReadout} from './studio-title-deck.js';
 import {titleMotionAt,titleMotionId,titleMotionEaseId,titleMotionDistance,titleMotionProgress} from './studio-title-motion.js';
+import {titlePlacement,titleAnchor,titlePlacementFields,titleNudgePlacement} from './studio-title-placement.js';
 import {TITLE_RHYTHMS,TITLE_DURATION_CHOICES,titleRhythmFields,
   retimeTitleDraft,titleFadeFromPercent,titlePhaseMap,titleTimingReadout}
   from './studio-title-timing.js';
@@ -86,6 +87,7 @@ let draggedClipId = null;
 let editingTitleId = null;
 let selectedTitleRecipe=null; // audition only, never stored in project drafts
 let selectedTitleRhythm=null; // staged local animation preset only
+let stagedTitlePlacement=null,titlePlacementArmed=false,titleDrag=null;
 let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
@@ -528,10 +530,27 @@ function showTitleAt(at) {
   node.hidden = !title;
   node.textContent = title?.text || '';
   if (!title) return;
-  const style = titleStyle(title);
-  const motion=titleMotionAt(title,at),rect=node.parentElement;
+  const preview=editingTitleId===title.title_id&&stagedTitlePlacement
+    ?{...title,...titlePlacementFields(stagedTitlePlacement)}:title;
+  const style = titleStyle(preview);
+  const motion=titleMotionAt(preview,at),rect=node.parentElement;
   node.style.translate=(motion.x*(rect?.clientWidth||1280)/1280)+'px '+
     (motion.y*(rect?.clientHeight||720)/720)+'px';
+  const custom=titlePlacement(preview);
+  if(custom){
+    node.style.left=(100*custom.x/1280)+'%';
+    node.style.top=(100*custom.y/720)+'%';
+    node.style.right='auto';node.style.bottom='auto';
+    node.style.width='84%';node.style.transform='translate(-50%,-50%)';
+  }else{
+    for(const key of ['left','top','right','bottom','width','transform'])
+      node.style[key]='';
+  }
+  node.classList.toggle('placing',titlePlacementArmed&&editingTitleId===title.title_id);
+  node.tabIndex=titlePlacementArmed&&editingTitleId===title.title_id?0:-1;
+  node.setAttribute('aria-label',titlePlacementArmed
+    ?'Drag title to place. Arrow keys nudge by one pixel, Shift by ten.'
+    :'Title preview');
   node.dataset.position = style.position;
   node.dataset.size = style.size;
   node.dataset.color = style.color;
@@ -715,6 +734,7 @@ function loadTitleForEdit(title) {
   $('title-start').value = String(title.start);
   $('title-end').value = String(title.end);
   const style = titleStyle(title);
+  titlePlacementArmed=false;titleDrag=null;stagedTitlePlacement=titlePlacement(title);
   $('title-position').value = style.position;
   $('title-size').value = style.size;
   $('title-color').value = style.color;
@@ -725,11 +745,13 @@ function loadTitleForEdit(title) {
   $('title-fade-out').value = String(style.fade_out);
   $('add-title').textContent = 'Save Title Changes';
   $('cancel-title-edit').hidden = false;
-  selectedTitleRecipe=null;selectedTitleRhythm=null;refreshTitleDeck();
+  selectedTitleRecipe=null;selectedTitleRhythm=null;
+  refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
   drawTitles();
 }
 function resetTitleEditor() {
   editingTitleId = null;
+  titlePlacementArmed=false;titleDrag=null;stagedTitlePlacement=null;
   $('title-text').value = '';
   $('title-position').value = 'bottom';
   $('title-size').value = 'medium';
@@ -742,6 +764,7 @@ function resetTitleEditor() {
   $('add-title').textContent = '+ Add Text Overlay';
   $('cancel-title-edit').hidden = true;
   selectedTitleRecipe=null;selectedTitleRhythm=null;
+  refreshPlacementUI();showTitleAt(playhead);
   $('title-deck-scrub').value='50';
   refreshTitleDeck();
 }
@@ -854,13 +877,14 @@ function drawTitleOnCanvas(ctx, title, at) {
     else lines[idx] += ' ' + word;
   }
   const shown = lines.slice(0,4);
-  const center = style.position === 'top' ? 120 : style.position === 'middle' ? 360 : 620;
+  const placement=titleAnchor(title);
+  const center=placement.y;
   const start = center - (shown.length - 1) * (size * 1.08 / 2);
   shown.forEach((line,i) => {
     const y = start + size * 1.08 * i;
     ctx.lineWidth = 8; ctx.strokeStyle = '#000d';
-    ctx.strokeText(line, 640, y, maxWidth);
-    ctx.fillStyle = colors[style.color]; ctx.fillText(line, 640, y, maxWidth);
+    ctx.strokeText(line, placement.x, y, maxWidth);
+    ctx.fillStyle = colors[style.color]; ctx.fillText(line, placement.x, y, maxWidth);
   });
   ctx.restore();
 }
@@ -1537,6 +1561,118 @@ $('marker-prev').addEventListener('click',()=>
   jumpToMarker(navigateMarker(state.markers,playhead,'previous')));
 $('marker-next').addEventListener('click',()=>
   jumpToMarker(navigateMarker(state.markers,playhead,'next')));
+// R8.4: Position a selected saved T1 title directly in Program.
+// Pointer, numeric and keyboard changes are pending form state ONLY.
+function refreshPlacementUI(){
+  const point=stagedTitlePlacement||titleAnchor({position:$('title-position').value});
+  $('title-x').value=String(point.x);
+  $('title-y').value=String(point.y);
+  $('title-place-toggle').disabled=exporting||!editingTitleId;
+  $('title-place-reset').disabled=exporting;
+  $('title-x').disabled=exporting;
+  $('title-y').disabled=exporting;
+  $('title-place-toggle').setAttribute('aria-pressed',String(titlePlacementArmed));
+  $('title-place-toggle').textContent=titlePlacementArmed
+    ?'Stop Placing (Keep Draft)':'Place Selected Title in Program';
+  $('title-place-status').textContent=stagedTitlePlacement
+    ?'Custom X '+point.x+' · Y '+point.y+
+      ' · not saved. Drag selected title in Program or Save Title to commit.'
+    :'Anchor position (no custom coordinates). Use X/Y or Place to set a draft.';
+}
+function stageTitlePlacement(point){
+  const checked=titlePlacementFields(point);
+  stagedTitlePlacement={x:checked.title_x,y:checked.title_y};
+  refreshPlacementUI();
+  showTitleAt(playhead);
+  refreshTitleDeck();
+}
+$('title-place-toggle').addEventListener('click',()=>{
+  if(exporting||!editingTitleId)return;
+  titlePlacementArmed=!titlePlacementArmed;
+  titleDrag=null;
+  if(titlePlacementArmed){
+    const title=state.titles.find(t=>t.title_id===editingTitleId);
+    if(!title){titlePlacementArmed=false;refreshPlacementUI();return;}
+    if(!stagedTitlePlacement)stagedTitlePlacement=titleAnchor(title);
+    stopPlayback();
+    // Seek into the title's interior, not its fully transparent first frame.
+    const center=(title.start+title.end)/2;
+    if(!visibleTitle(state,playhead)||visibleTitle(state,playhead)?.title_id!==title.title_id)
+      void seekTo(Math.min(center,Math.max(0,duration(state)-.001)));
+    else showTitleAt(playhead);
+  }
+  refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
+  if(titlePlacementArmed)$('title-preview').focus({preventScroll:true});
+});
+$('title-place-reset').addEventListener('click',()=>{
+  if(exporting)return;
+  stagedTitlePlacement=null;titlePlacementArmed=false;titleDrag=null;
+  refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
+  status('Original anchored title position staged. Save Title to commit.');
+});
+for(const id of ['title-x','title-y']){
+  $(id).addEventListener('change',()=>{
+    if(exporting)return;
+    try{
+      const x=Number($('title-x').value),y=Number($('title-y').value);
+      stageTitlePlacement({x,y});
+    }catch(e){status(e.message,true);refreshPlacementUI();}
+  });
+}
+const titleHandle=$('title-preview');
+titleHandle.addEventListener('pointerdown',event=>{
+  const visible=visibleTitle(state,playhead);
+  if(!titlePlacementArmed||exporting||event.button!==0||
+    visible?.title_id!==editingTitleId)return;
+  event.preventDefault();
+  titleDrag={pointer:event.pointerId,
+    sx:event.clientX,sy:event.clientY,
+    original:stagedTitlePlacement||titleAnchor(visible)};
+  titleHandle.setPointerCapture(event.pointerId);
+  titleHandle.classList.add('dragging');
+});
+titleHandle.addEventListener('pointermove',event=>{
+  if(!titleDrag||titleDrag.pointer!==event.pointerId||exporting)return;
+  const rect=titleHandle.parentElement.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  try{
+    const moved=titleNudgePlacement(titleDrag.original,
+      (event.clientX-titleDrag.sx)*1280/rect.width,
+      (event.clientY-titleDrag.sy)*720/rect.height,
+      {snap:$('title-place-snap').checked});
+    stageTitlePlacement(moved);
+  }catch(e){status(e.message,true);}
+});
+function finishPlacementDrag(event,abort=false){
+  if(!titleDrag||titleDrag.pointer!==event.pointerId)return;
+  const original=titleDrag.original;titleDrag=null;
+  titleHandle.classList.remove('dragging');
+  if(titleHandle.hasPointerCapture(event.pointerId))
+    titleHandle.releasePointerCapture(event.pointerId);
+  if(abort)stageTitlePlacement(original);
+  status(abort?'Title drag canceled; original pending location restored.':
+    'Title location staged. Save Title Changes to commit.');
+}
+titleHandle.addEventListener('pointerup',event=>finishPlacementDrag(event));
+titleHandle.addEventListener('pointercancel',event=>finishPlacementDrag(event,true));
+titleHandle.addEventListener('keydown',event=>{
+  if(!titlePlacementArmed||exporting||!editingTitleId)return;
+  if(event.key==='Escape'){
+    event.preventDefault();
+    if(titleDrag){stageTitlePlacement(titleDrag.original);titleDrag=null;}
+    titlePlacementArmed=false;titleHandle.classList.remove('dragging');
+    refreshPlacementUI();showTitleAt(playhead);return;
+  }
+  const move={ArrowLeft:[-1,0],ArrowRight:[1,0],
+    ArrowUp:[0,-1],ArrowDown:[0,1]}[event.key];
+  if(!move)return;
+  event.preventDefault();
+  const visible=state.titles.find(t=>t.title_id===editingTitleId);
+  if(!visible)return;
+  const base=stagedTitlePlacement||titleAnchor(visible),step=event.shiftKey?10:1;
+  stageTitlePlacement(titleNudgePlacement(base,move[0]*step,move[1]*step));
+});
+
 // R8.0 Creative Title Deck: controls remain pending until explicit Add/Save.
 function titleDeckDraft(){
   return {text:$('title-text').value,
@@ -1545,7 +1681,9 @@ function titleDeckDraft(){
     color:$('title-color').value,motion:$('title-motion').value,
     motion_ease:$('title-motion-ease').value,
     motion_distance:Number($('title-motion-distance').value),
-    fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value)};
+    ...titlePlacementFields(stagedTitlePlacement),
+    fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value),
+    ...titlePlacementFields(stagedTitlePlacement)};
 }
 function refreshTitleTiming(draft){
   const map=titlePhaseMap(draft);
@@ -1598,6 +1736,16 @@ function refreshTitleDeck(){
     text.dataset.size=sample.size;
     text.dataset.color=sample.color;
     text.style.opacity=String(sample.opacity);
+    const absolute=titlePlacement(titleDeckDraft());
+    if(absolute){
+      text.style.left=(100*absolute.x/1280)+'%';
+      text.style.top=(100*absolute.y/720)+'%';
+      text.style.right='auto';text.style.bottom='auto';
+      text.style.width='82%';text.style.transform='translate(-50%,-50%)';
+    }else{
+      for(const key of ['left','top','right','bottom','width','transform'])
+        text.style[key]='';
+    }
     const offset=titleMotionAt(titleDeckDraft(),sample.seconds>=titleDeckDraft().end
       ?titleDeckDraft().end-.001:sample.seconds);
     const stage=$('title-deck-stage');
@@ -1651,7 +1799,7 @@ for(const recipe of TITLE_RECIPES){
 for(const id of ['title-text','title-start','title-end',
   'title-position','title-size','title-color','title-motion','title-motion-ease',
   'title-motion-distance','title-fade-in','title-fade-out']){
-  $(id).addEventListener('input',()=>{selectedTitleRecipe=null;selectedTitleRhythm=null;refreshTitleDeck();});
+  $(id).addEventListener('input',()=>{selectedTitleRecipe=null;selectedTitleRhythm=null;refreshPlacementUI();refreshTitleDeck();});
   $(id).addEventListener('change',refreshTitleDeck);
 }
 $('title-deck-scrub').addEventListener('input',refreshTitleDeck);

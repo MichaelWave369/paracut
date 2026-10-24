@@ -122,5 +122,5 @@ assert.equal(report.comparisons[0].bezierVsLinear,1.615);
 assert.match(formatLabReport(report),/custom Bézier\/native linear alpha encode ratio/);
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
-assert.match(html,/R7\.(?:6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)|R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES)/);
+assert.match(html,/R7\.(?:6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)|R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT)/);
 console.log('ParaCut R7.6 PASS: constant/fade native alpha, GEQ fallback, validated drafts, receipt parity, and reproducible linear-vs-Bézier lab.');

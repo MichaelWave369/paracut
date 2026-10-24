@@ -199,6 +199,7 @@ export function audioLevelAt(clip, timelineTime) {
     fadeOut > 0 ? volume * Math.min(1, remaining / fadeOut) : volume));
 }
 import {titleMotionId,titleMotionEaseId,titleMotionDistance} from './studio-title-motion.js';
+import {titlePlacement,titlePlacementFields} from './studio-title-placement.js';
 export const TITLE_POSITION = ['top','middle','bottom'];
 export const TITLE_SIZE = ['small','medium','large'];
 export const TITLE_COLOR = ['white','mint','gold'];
@@ -226,6 +227,7 @@ function validateTitle(title) {
       title.end > 86400) throw Error('Invalid title overlay.');
   const style = titleStyle(title);
   titleMotionId(title);titleMotionEaseId(title);titleMotionDistance(title);
+  titlePlacement(title);
   if (!TITLE_POSITION.includes(style.position) || !TITLE_SIZE.includes(style.size) ||
       !TITLE_COLOR.includes(style.color) || !finite(style.fade_in) ||
       !finite(style.fade_out) || style.fade_in < 0 || style.fade_out < 0 ||
@@ -244,7 +246,8 @@ function titleFromInput(data, titleId) {
     fade_in:round(style.fade_in), fade_out:round(style.fade_out),
     ...(data.motion===undefined?{}:{motion:titleMotionId(data)}),
     ...(data.motion_ease===undefined?{}:{motion_ease:titleMotionEaseId(data)}),
-    ...(data.motion_distance===undefined?{}:{motion_distance:titleMotionDistance(data)}) };
+    ...(data.motion_distance===undefined?{}:{motion_distance:titleMotionDistance(data)}),
+    ...titlePlacementFields(titlePlacement(data)) };
   validateTitle(title);
   return title;
 }
