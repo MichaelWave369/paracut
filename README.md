@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.1 — Creative Title Timing Lab
+
+R8.1 expands the R8.0 Creative Title Deck with five **entrance/hold/exit timing rhythms**, buttons for 1.5s/3s/5s title lengths, two constrained fade-percent sliders and a live phase diagram with five fixed audition positions. Duration changes preserve fade proportions and clamp to V1. All controls stage only the familiar T1 title fields; **Add/Save** is still the only action that changes a project or creates a receipt. No new draft fields or export renderer changes. [R8.1 guide](docs/STUDIO_R81.md).
+
+
 ## ◆ ParaCut Studio R8.0 — Creative Title Deck
 
 R8.0 returns to the creative editing experience with **six ready-made title looks** (Cinema, Lower Third, Chapter, Quote, Caption, End Card), a **miniature title preview with live fade audition**, and a **Start at Playhead** shortcut. Recipes only fill the existing validated title fields; previews, look changes and scrubbing do not alter saved projects or generate receipts. The existing **Add Text Overlay / Save Title Changes** command still commits the title as one undoable edit, with the same Program and local MP4 renderer used in earlier versions. No new draft format, fonts, effect expressions or online service. [R8.0 guide](docs/STUDIO_R80.md).
