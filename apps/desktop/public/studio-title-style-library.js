@@ -31,9 +31,9 @@ export function titleStyleLook(source){
  if(!isRecord(source))throw Error('Invalid title style look.');
  for(const key of Object.keys(source))
    if(!ALLOWED_LOOK.has(key))throw Error('Unknown title style field: '+key);
- const position=source.position??'bottom';
- const size=source.size??'medium';
- const color=source.color??'white';
+ const position=source.position===undefined?'bottom':source.position;
+ const size=source.size===undefined?'medium':source.size;
+ const color=source.color===undefined?'white':source.color;
  if(!POSITIONS.includes(position)||!SIZES.includes(size)||!COLORS.includes(color))
    throw Error('Invalid title appearance.');
  const motion=titleMotionId(source),motion_ease=titleMotionEaseId(source);
