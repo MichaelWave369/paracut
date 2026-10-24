@@ -1703,6 +1703,66 @@ titleHandle.addEventListener('keydown',event=>{
   stageTitlePlacement(titleNudgePlacement(base,move[0]*step,move[1]*step));
 });
 
+// R8.5: Safe guides never touch project media, canvas or export.
+$('title-safe-toggle').addEventListener('click',()=>{
+  safeGuidesVisible=!safeGuidesVisible;
+  refreshPlacementUI();
+});
+function stageTitleScale(value){
+  stagedTitleScale=titleScale({title_scale:value});
+  refreshPlacementUI();
+  refreshTitleDeck();
+  showTitleAt(playhead);
+}
+$('title-scale').addEventListener('input',event=>{
+  if(exporting)return;
+  try{stageTitleScale(Number(event.target.value));}
+  catch(e){status(e.message,true);refreshPlacementUI();}
+});
+const resizeHandle=$('title-resize-handle');
+resizeHandle.addEventListener('pointerdown',event=>{
+  const visible=visibleTitle(state,playhead);
+  if(!titlePlacementArmed||exporting||event.button!==0||
+    visible?.title_id!==editingTitleId)return;
+  event.preventDefault();event.stopPropagation();
+  titleResizeDrag={pointer:event.pointerId,sx:event.clientX,scale:stagedTitleScale};
+  resizeHandle.setPointerCapture(event.pointerId);
+  resizeHandle.classList.add('dragging');
+});
+resizeHandle.addEventListener('pointermove',event=>{
+  if(!titleResizeDrag||titleResizeDrag.pointer!==event.pointerId||exporting)return;
+  const rect=resizeHandle.parentElement.getBoundingClientRect();
+  try{stageTitleScale(titleResizeDelta(titleResizeDrag.scale,
+    event.clientX-titleResizeDrag.sx,rect.width));}
+  catch(e){status(e.message,true);}
+});
+function finishTitleResize(event,cancel=false){
+  if(!titleResizeDrag||titleResizeDrag.pointer!==event.pointerId)return;
+  const original=titleResizeDrag.scale;titleResizeDrag=null;
+  resizeHandle.classList.remove('dragging');
+  if(resizeHandle.hasPointerCapture(event.pointerId))
+    resizeHandle.releasePointerCapture(event.pointerId);
+  if(cancel)stageTitleScale(original);
+  status(cancel?'Title resize canceled; prior draft scale restored.':
+    'Title size staged. Save Title Changes to commit.');
+}
+resizeHandle.addEventListener('pointerup',e=>finishTitleResize(e));
+resizeHandle.addEventListener('pointercancel',e=>finishTitleResize(e,true));
+resizeHandle.addEventListener('keydown',event=>{
+  if(exporting||!titlePlacementArmed||!editingTitleId)return;
+  if(event.key==='Escape'){
+    event.preventDefault();
+    if(titleResizeDrag){stageTitleScale(titleResizeDrag.scale);titleResizeDrag=null;}
+    titlePlacementArmed=false;resizeHandle.classList.remove('dragging');
+    refreshPlacementUI();showTitleAt(playhead);return;
+  }
+  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
+  event.preventDefault();
+  const sign=['ArrowRight','ArrowUp'].includes(event.key)?1:-1;
+  const step=event.shiftKey?10:5;
+  stageTitleScale(Math.min(200,Math.max(50,stagedTitleScale+sign*step)));
+});
+
 // R8.0 Creative Title Deck: controls remain pending until explicit Add/Save.
 function titleDeckDraft(){
   return {text:$('title-text').value,
