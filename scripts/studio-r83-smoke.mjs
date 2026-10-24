@@ -123,7 +123,7 @@ assert.equal(buildAss(historic.titles,5),oldAss);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.3 · MOTION CURVES/);
+assert.match(html,/R8\.(?:3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT)/);
 for(const value of TITLE_MOTION_EASES)assert.ok(html.includes('value="'+value+'"'));
 for(const id of ['title-motion-ease','title-motion-distance','title-motion-distance-value','title-motion-curve-line','title-motion-curve-graph','title-motion-curve-readout'])
  assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
