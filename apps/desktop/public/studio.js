@@ -13,6 +13,9 @@ import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample
 import {titleMotionAt,titleMotionId,titleMotionEaseId,titleMotionDistance,titleMotionProgress} from './studio-title-motion.js';
 import {titlePlacement,titleAnchor,titlePlacementFields,titleNudgePlacement} from './studio-title-placement.js';
 import {titleScale,titleScaleFields,titleScaledFont,titleResizeDelta} from './studio-title-transform.js';
+import {TITLE_ALIGNMENTS,TITLE_TRANSFORM_PRESETS,titleAlignmentPoint,titleAlignmentId,
+  titleTransformPreset,titleTransformClipboard,titleTransformReadout}
+  from './studio-title-align.js';
 import {TITLE_RHYTHMS,TITLE_DURATION_CHOICES,titleRhythmFields,
   retimeTitleDraft,titleFadeFromPercent,titlePhaseMap,titleTimingReadout}
   from './studio-title-timing.js';
@@ -90,6 +93,7 @@ let selectedTitleRecipe=null; // audition only, never stored in project drafts
 let selectedTitleRhythm=null; // staged local animation preset only
 let stagedTitlePlacement=null,titlePlacementArmed=false,titleDrag=null;
 let stagedTitleScale=100,titleResizeDrag=null,safeGuidesVisible=false;
+let copiedTitleTransform=null; // clipboard lives only in this Studio session
 let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
@@ -1606,6 +1610,36 @@ function refreshPlacementUI(){
     ?'Custom X '+point.x+' · Y '+point.y+
       ' · not saved. Drag selected title in Program or Save Title to commit.'
     :'Anchor position (no custom coordinates). Use X/Y or Place to set a draft.';
+  refreshTitleLayoutUI();
+}
+function refreshTitleLayoutUI(){
+  const active=titleAlignmentId(stagedTitlePlacement);
+  for(const item of TITLE_ALIGNMENTS){
+    const button=document.querySelector('[data-title-align="'+item.id+'"]');
+    button.disabled=exporting;
+    button.setAttribute('aria-pressed',String(active===item.id));
+  }
+  for(const p of TITLE_TRANSFORM_PRESETS){
+    const expected=titleTransformPreset(p.id);
+    const selected=stagedTitlePlacement!==null&&
+      stagedTitlePlacement.x===expected.placement.x&&
+      stagedTitlePlacement.y===expected.placement.y&&stagedTitleScale===expected.scale;
+    const button=document.querySelector('[data-title-layout="'+p.id+'"]');
+    button.disabled=exporting;
+    button.setAttribute('aria-pressed',String(selected));
+  }
+  $('title-transform-copy').disabled=exporting;
+  $('title-transform-paste').disabled=exporting||!copiedTitleTransform;
+  $('title-layout-readout').textContent=titleTransformReadout(stagedTitlePlacement,stagedTitleScale);
+}
+function stageTitleTransform(point,scale){
+  const snapshot=titleTransformClipboard(point,scale);
+  stagedTitlePlacement=snapshot.placement;
+  stagedTitleScale=snapshot.scale;
+  selectedTitleRecipe=null;
+  refreshPlacementUI();
+  refreshTitleDeck();
+  showTitleAt(playhead);
 }
 function stageTitlePlacement(point){
   const checked=titlePlacementFields(point);
@@ -1701,6 +1735,45 @@ titleHandle.addEventListener('keydown',event=>{
   if(!visible)return;
   const base=stagedTitlePlacement||titleAnchor(visible),step=event.shiftKey?10:1;
   stageTitlePlacement(titleNudgePlacement(base,move[0]*step,move[1]*step));
+});
+
+// R8.6: a persistent-in-session clipboard and static, allowlisted layouts.
+// None of these controls commits a project action; Add/Save Title still does.
+for(const option of TITLE_ALIGNMENTS){
+  document.querySelector('[data-title-align="'+option.id+'"]')
+    .addEventListener('click',()=>{
+      if(exporting)return;
+      try{
+        stageTitleTransform(titleAlignmentPoint(option.id),stagedTitleScale);
+        status(option.label+' alignment staged. Save Title to commit.');
+      }catch(e){status(e.message,true);refreshPlacementUI();}
+    });
+}
+for(const preset of TITLE_TRANSFORM_PRESETS){
+  document.querySelector('[data-title-layout="'+preset.id+'"]')
+    .addEventListener('click',()=>{
+      if(exporting)return;
+      try{
+        const staged=titleTransformPreset(preset.id);
+        stageTitleTransform(staged.placement,staged.scale);
+        status(preset.label+' layout staged. Save Title to commit.');
+      }catch(e){status(e.message,true);refreshPlacementUI();}
+    });
+}
+$('title-transform-copy').addEventListener('click',()=>{
+  if(exporting)return;
+  try{
+    copiedTitleTransform=titleTransformClipboard(stagedTitlePlacement,stagedTitleScale);
+    refreshPlacementUI();
+    status('Title position and size copied for this Studio session.');
+  }catch(e){status(e.message,true);}
+});
+$('title-transform-paste').addEventListener('click',()=>{
+  if(exporting||!copiedTitleTransform)return;
+  try{
+    stageTitleTransform(copiedTitleTransform.placement,copiedTitleTransform.scale);
+    status('Copied title transform staged. Save Title to commit.');
+  }catch(e){status(e.message,true);refreshPlacementUI();}
 });
 
 // R8.5: Safe guides never touch project media, canvas or export.
