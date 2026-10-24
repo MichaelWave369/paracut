@@ -13,6 +13,7 @@ import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample
 import {titleMotionAt,titleMotionId,titleMotionEaseId,titleMotionDistance,titleMotionProgress} from './studio-title-motion.js';
 import {titlePlacement,titleAnchor,titlePlacementFields,titleNudgePlacement} from './studio-title-placement.js';
 import {titleScale,titleScaleFields,titleScaledFont,titleResizeDelta} from './studio-title-transform.js';
+import {titleBatchPlan,titleBatchSummary,TITLE_BATCH_MODES} from './studio-title-batch.js';
 import {TITLE_ALIGNMENTS,TITLE_TRANSFORM_PRESETS,titleAlignmentPoint,titleAlignmentId,
   titleTransformPreset,titleTransformClipboard,titleTransformReadout}
   from './studio-title-align.js';
@@ -94,6 +95,7 @@ let selectedTitleRhythm=null; // staged local animation preset only
 let stagedTitlePlacement=null,titlePlacementArmed=false,titleDrag=null;
 let stagedTitleScale=100,titleResizeDrag=null,safeGuidesVisible=false;
 let copiedTitleTransform=null; // clipboard lives only in this Studio session
+const multiTitleIds=new Set(); // local T1 selection; never saved in project
 let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
@@ -852,6 +854,9 @@ function markerFormValues(){
     color:$('marker-color').value};
 }
 function drawTitles() {
+  // Reconcile selection on deletes, draft imports, Undo/Redo or project reset.
+  const existing=new Set(state.titles.map(t=>t.title_id));
+  for(const id of multiTitleIds)if(!existing.has(id))multiTitleIds.delete(id);
   const list = $('title-list'), track = $('title-track');
   list.replaceChildren(); track.replaceChildren();
   if (!state.titles.length) {
@@ -860,7 +865,22 @@ function drawTitles() {
     track.append(empty);
   }
   for (const title of state.titles) {
-    const row = document.createElement('div'); row.className = 'title-item' + (title.title_id === editingTitleId ? ' editing' : '');
+    const row = document.createElement('div');
+    row.className = 'title-item' + (title.title_id === editingTitleId ? ' editing' : '')+
+      (multiTitleIds.has(title.title_id)?' batch-selected':'');
+    const toggleLabel=document.createElement('label');
+    toggleLabel.className='title-batch-check';
+    const toggle=document.createElement('input');
+    toggle.type='checkbox';toggle.className='title-batch-select';
+    toggle.checked=multiTitleIds.has(title.title_id);toggle.disabled=exporting;
+    toggle.setAttribute('aria-label','Select title '+title.text.slice(0,50)+' for batch styling');
+    toggle.addEventListener('change',()=>{
+      if(toggle.checked)multiTitleIds.add(title.title_id);
+      else multiTitleIds.delete(title.title_id);
+      row.classList.toggle('batch-selected',toggle.checked);
+      refreshTitleBatch();
+    });
+    toggleLabel.append(toggle);
     const label = document.createElement('span'); label.textContent = title.text;
     const times = document.createElement('small'); times.textContent = fmt(title.start) + ' → ' + fmt(title.end);
     label.append(times);
@@ -870,7 +890,7 @@ function drawTitles() {
     const del = document.createElement('button'); del.type = 'button'; del.textContent = 'Delete';
     del.title = 'Delete title'; del.disabled = exporting;
     del.addEventListener('click', () => edit({type:'title.deleted',title_id:title.title_id}));
-    row.append(label,editButton,del); list.append(row);
+    row.append(toggleLabel,label,editButton,del); list.append(row);
     const chip = document.createElement('button'); chip.type='button'; chip.className='title-chip';
     chip.textContent = title.text.length > 28 ? title.text.slice(0,28) + '…' : title.text;
     chip.title = 'Seek to ' + fmt(title.start); chip.disabled = exporting;
@@ -879,6 +899,7 @@ function drawTitles() {
     chip.style.width=String(Math.max(.3,100*(title.end-title.start)/timelineExtent()))+'%';
     track.append(chip);
   }
+  refreshTitleBatch();
 }
 function drawTitleOnCanvas(ctx, title, at) {
   if (!title) return;
@@ -1262,7 +1283,7 @@ function stopPlayback() {
 function edit(command) {
   if (exporting) return status('Finish or cancel export before editing.', true);
   try {
-    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','clip.keyframes.updated','clip.keyframe.points.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted','marker.added','marker.updated','marker.deleted'].includes(command.type)) {
+    if (['clip.source-audio.muted','clip.audio.updated','clip.overlay.updated','clip.color.updated','clip.keyframes.updated','clip.keyframe.points.updated','mixer.updated','mixer.duck.updated','title.added','title.updated','title.deleted','title.batch.styled','marker.added','marker.updated','marker.deleted'].includes(command.type)) {
       // Audio-only edit: update the currently audible clip without pausing playback.
       state = change(state, command);
       const onScreen = activeClip(state, Math.min(playhead, Math.max(0, duration(state) - .001)));
