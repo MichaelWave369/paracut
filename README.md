@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.0 — Creative Title Deck
+
+R8.0 returns to the creative editing experience with **six ready-made title looks** (Cinema, Lower Third, Chapter, Quote, Caption, End Card), a **miniature title preview with live fade audition**, and a **Start at Playhead** shortcut. Recipes only fill the existing validated title fields; previews, look changes and scrubbing do not alter saved projects or generate receipts. The existing **Add Text Overlay / Save Title Changes** command still commits the title as one undoable edit, with the same Program and local MP4 renderer used in earlier versions. No new draft format, fonts, effect expressions or online service. [R8.0 guide](docs/STUDIO_R80.md).
+
+
 ## ◆ ParaCut Studio R7.9 — Export Diagnostics Inspector
 
 R7.9 adds a **read-only local benchmark report inspector** that explains R7.8 controlled A/B and R7.5 scenario-lab measurements. New controlled A/B reports preserve safe per-run timings for source probing, planning, real FFmpeg encoding and output verification, plus frame-parity checks, pair-by-pair ratios and cautious follow-up recommendations. Historical aggregate-only reports remain readable, but missing phase measurements are explicitly marked unavailable. The inspector performs **no media access, network calls, report modifications or hidden output writes**. Renderer defaults, saved project schema and the ledger are unchanged. [R7.9 guide](docs/STUDIO_R79.md).
