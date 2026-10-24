@@ -23,7 +23,8 @@ function parse(argv){
 async function main(){
   const path=parse(process.argv.slice(2));
   if(path===null){console.log(HELP);return;}
-  const info=await stat(path);
+  let info;
+  try{info=await stat(path);}catch{throw Error('Cannot read local report file.');}
   if(!info.isFile()||info.size<=0||info.size>512000)
     throw Error('Report must be a regular JSON file of at most 500 KiB.');
   let data;
