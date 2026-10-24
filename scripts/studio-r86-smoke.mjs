@@ -154,7 +154,7 @@ assert.equal(importDraft(unchangedDraft).titles.length,0);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.(?:6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO)/);
+assert.match(html,/R8\.(?:6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY)/);
 for(const a of TITLE_ALIGNMENTS){
   assert.ok(html.includes('data-title-align="'+a.id+'"'));
 }
