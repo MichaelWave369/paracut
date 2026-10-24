@@ -201,6 +201,7 @@ export function audioLevelAt(clip, timelineTime) {
 import {titleMotionId,titleMotionEaseId,titleMotionDistance} from './studio-title-motion.js';
 import {titlePlacement,titlePlacementFields} from './studio-title-placement.js';
 import {titleScale,titleScaleFields} from './studio-title-transform.js';
+import {titleBatchPlan} from './studio-title-batch.js';
 export const TITLE_POSITION = ['top','middle','bottom'];
 export const TITLE_SIZE = ['small','medium','large'];
 export const TITLE_COLOR = ['white','mint','gold'];
@@ -554,6 +555,11 @@ export function change(state, command) {
     if (index < 0) throw Error('Title not found.');
     titles[index] = titleFromInput(command.title, command.title_id);
     titles.sort((a,b) => a.start - b.start);
+  } else if (type === 'title.batch.styled') {
+    // Check every affected title before committing; one undo snapshot.
+    const plan=titleBatchPlan(titles,command);
+    for(const candidate of plan.titles)validateTitle(candidate);
+    titles=plan.titles;
   } else if (type === 'title.deleted') {
     if (!titles.some(t => t.title_id === command.title_id)) throw Error('Title not found.');
     titles = titles.filter(t => t.title_id !== command.title_id);
@@ -659,7 +665,14 @@ export function change(state, command) {
       ...(type==='mixer.updated'?{lane:command.lane,gain:command.gain,muted:command.muted,solo:command.solo}:{}),
       ...(type==='mixer.duck.updated'?{enabled:command.enabled}:{}),
       ...(type==='clip.layer.added'||type==='clip.layer.moved'?{start:command.start,track_id:command.track_id||null}:{}),
-      ...(type === 'title.added' || type === 'title.updated' ? { title: command.title.text.slice(0,100) } : {}) })] };
+      ...(type === 'title.added' || type === 'title.updated' ? { title: command.title.text.slice(0,100) } : {}),
+       ...(type === 'title.batch.styled' ? {
+         title_ids:[...command.title_ids],title_count:command.title_ids.length,
+         mode:command.mode,fields:command.mode==='transform'
+           ?['title_x','title_y','title_scale']
+           :command.mode==='appearance'?['color','size']
+           :['title_x','title_y','title_scale','color','size']
+       } : {}) })] };
   validate(next);
   return next;
 }
