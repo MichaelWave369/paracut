@@ -558,3 +558,16 @@
 .screen #title-resize-handle[hidden]{display:none}
 .screen #title-resize-handle:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .screen #title-resize-handle.dragging{background:#36786b;cursor:grabbing}
+
+/* R8.6 title-safe alignment / reusable layout workbench */
+.title-align-workbench{display:grid;gap:9px;margin-top:7px;padding:11px;background:#0c202e;border:1px solid #386982;border-radius:9px}
+.title-align-workbench h4{margin:0;color:#bbede2;font-size:11px;letter-spacing:.045em}
+.title-align-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;max-width:234px}
+.title-align-grid button{min-height:36px;padding:5px;font-size:18px;font-weight:700;border:1px solid #47687c;border-radius:6px}
+.title-layout-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.title-layout-presets button{font-size:11px;min-height:34px;padding:7px 5px}
+.title-align-grid button[aria-pressed="true"],.title-layout-presets button[aria-pressed="true"]{background:#295b52;border-color:#9af9dd;color:#fff}
+.title-layout-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.title-layout-actions button{font-size:11px;padding:8px}
+.title-align-workbench button:focus-visible{outline:2px solid #caffed;outline-offset:2px}
+.title-align-workbench output{line-height:1.5}
