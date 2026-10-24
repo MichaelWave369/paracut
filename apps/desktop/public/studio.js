@@ -853,6 +853,69 @@ function markerFormValues(){
     label:$('marker-label').value,note:$('marker-note').value,
     color:$('marker-color').value};
 }
+// R8.7: preview is a pure plan, never a speculative project edit.
+function titleBatchCommand(){
+  const mode=$('title-batch-mode').value;
+  if(!TITLE_BATCH_MODES.includes(mode))throw Error('Choose valid batch fields.');
+  return {type:'title.batch.styled',mode,
+    title_ids:state.titles.filter(t=>multiTitleIds.has(t.title_id)).map(t=>t.title_id),
+    ...(mode==='appearance'?{}:{transform:titleTransformClipboard(
+      stagedTitlePlacement,stagedTitleScale)}),
+    ...(mode==='transform'?{}:{appearance:{
+      color:$('title-color').value,size:$('title-size').value}})
+  };
+}
+function refreshTitleBatch(){
+  const count=multiTitleIds.size,mode=$('title-batch-mode').value;
+  $('title-batch-count').textContent=count+' of '+state.titles.length+
+    ' title'+(state.titles.length===1?'':'s')+' selected';
+  $('title-batch-all').disabled=exporting||state.titles.length<2||
+    count===state.titles.length;
+  $('title-batch-clear').disabled=exporting||!count;
+  $('title-batch-mode').disabled=exporting;
+  const apply=$('title-batch-apply');
+  apply.disabled=exporting||count<2;
+  if(count<2){
+    $('title-batch-preview').textContent=
+      'Choose at least two T1 checkboxes. Current editor controls are the source.';
+    return;
+  }
+  try{
+    const command=titleBatchCommand();
+    const plan=titleBatchPlan(state.titles,command);
+    const sample=plan.titles.filter(t=>multiTitleIds.has(t.title_id)).slice(0,3)
+      .map(t=>t.text.slice(0,20)).join(', ');
+    $('title-batch-preview').textContent=
+      titleBatchSummary(count,mode)+' · '+sample+(count>3?' …':'')+
+      ' · 1 undo step / 1 receipt';
+  }catch(error){
+    apply.disabled=true;
+    $('title-batch-preview').textContent=error.message+' · no changes';
+  }
+}
+$('title-batch-mode').addEventListener('change',refreshTitleBatch);
+$('title-batch-all').addEventListener('click',()=>{
+  if(exporting)return;
+  for(const t of state.titles)multiTitleIds.add(t.title_id);
+  drawTitles();
+});
+$('title-batch-clear').addEventListener('click',()=>{
+  if(exporting)return;
+  multiTitleIds.clear();drawTitles();
+});
+$('title-batch-apply').addEventListener('click',()=>{
+  if(exporting||multiTitleIds.size<2)return;
+  try{
+    const command=titleBatchCommand();
+    titleBatchPlan(state.titles,command); // validate all targets before edit
+    const before=state.receipts.length;
+    edit(command);
+    if(state.receipts.length>before)
+      status(command.title_ids.length+' titles styled in one undoable edit ✓');
+    refreshTitleBatch();
+  }catch(error){status(error.message,true);refreshTitleBatch();}
+});
+
 function drawTitles() {
   // Reconcile selection on deletes, draft imports, Undo/Redo or project reset.
   const existing=new Set(state.titles.map(t=>t.title_id));
@@ -1963,6 +2026,7 @@ function refreshTitleDeck(){
       document.querySelector('[data-title-rhythm="'+rhythm.id+'"]')
         .setAttribute('aria-pressed','false');
   }
+  refreshTitleBatch();
 }
 for(const recipe of TITLE_RECIPES){
   const button=document.querySelector('[data-title-recipe="'+recipe.id+'"]');
