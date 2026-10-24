@@ -77,7 +77,7 @@ const pair3=[
 const more=diagnoseABRuns(stable3,[...runs,...pair3]);
 assert.equal(more.priority,'confirm-with-longer-fixtures');
 const noisy=diagnoseABRuns(stable3,[...runs,
- {...pair3[0],encodeMs:1700},{...pair3[1],encodeMs:2450}]);
+ {...pair3[0],encodeMs:1700},{...pair3[1],encodeMs:2450,totalMs:2900}]);
 assert.equal(noisy.priority,'repeat-under-controlled-conditions');
 assert.equal(noisy.ratioDirection,'mixed');
 
