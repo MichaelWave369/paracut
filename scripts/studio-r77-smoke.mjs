@@ -146,5 +146,5 @@ assert.deepEqual(redo(undo(state)).video2Clips[0].opacity_keyframe_points,points
 assert.deepEqual(importDraft(exportDraft(state)).video2Clips[0].opacity_keyframe_points,points);
 assert.equal(importDraft(initial).video2Clips[0].opacity_keyframe_points,undefined);
 const body=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
-assert.match(body,/R7\.(?:7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)|R8\.0 · CREATIVE TITLE DECK/);
+assert.match(body,/R7\.(?:7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)|R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB)/);
 console.log('ParaCut R7.7 PASS: balanced FFmpeg expression parity to prior samples, logarithmic decision bounds, multipoint lab and old draft/receipt invariants.');
