@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.6 — Align & Reuse
+
+R8.6 brings **nine-point title-safe alignment**, **six reusable layout recipes**, and a **session-only Copy/Paste Transform** workflow to the existing T1 Program placement/resize tools. Align and reuse exact custom X/Y plus scale without changing text, timing, motion, audio, export format, or the draft schema. Everything stays preview-only until the usual Add/Save Title receipt, and the existing browser Canvas/FFmpeg renderers honor the saved fields without further changes. [R8.6 guide](docs/STUDIO_R86.md).
+
+
 ## ◆ ParaCut Studio R8.5 — Visual Title Transforms
 
 R8.5 adds **drag-to-resize** title handles, a **50–200% title scale** slider with 5% steps, and optional **action/title safe-area guides** in Program Monitor. It also fixes an R8.4 issue where title X/Y placement was shown in preview but missing from the Save command. Preview controls remain pending until Add/Save, and the existing browser Canvas and local FFmpeg ASS title renderers honor saved scaling and XY. Legacy titles remain compatible and output unchanged. [R8.5 guide](docs/STUDIO_R85.md).
