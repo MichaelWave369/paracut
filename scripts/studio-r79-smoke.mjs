@@ -175,5 +175,5 @@ try{
 }finally{rmSync(temp,{recursive:true,force:true});}
 
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
-assert.match(html,/(?:R7\.9 · EXPORT DIAGNOSTICS|R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO))/);
+assert.match(html,/(?:R7\.9 · EXPORT DIAGNOSTICS|R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY))/);
 console.log('ParaCut R7.9 PASS: conservative phase analysis, pair stability, parity gate, old/new reports, read-only CLI and no project mutation.');
