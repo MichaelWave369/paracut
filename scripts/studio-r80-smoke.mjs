@@ -118,7 +118,7 @@ assert.equal(importDraft(JSON.stringify(legacy)).titles[0].fade_in,undefined);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO)/);
+assert.match(html,/R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY)/);
 for(const r of TITLE_RECIPES)
  assert.ok(html.includes('data-title-recipe="'+r.id+'"'),'Missing recipe '+r.id);
 for(const id of ['title-deck-recipes','title-deck-stage','title-deck-text',
