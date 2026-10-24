@@ -11,6 +11,7 @@ import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample,titleDeckReadout} from './studio-title-deck.js';
 import {titleMotionAt,titleMotionId,titleMotionEaseId,titleMotionDistance,titleMotionProgress} from './studio-title-motion.js';
+import {titlePlacement,titleAnchor,titlePlacementFields,titleNudgePlacement} from './studio-title-placement.js';
 import {TITLE_RHYTHMS,TITLE_DURATION_CHOICES,titleRhythmFields,
   retimeTitleDraft,titleFadeFromPercent,titlePhaseMap,titleTimingReadout}
   from './studio-title-timing.js';
@@ -86,6 +87,7 @@ let draggedClipId = null;
 let editingTitleId = null;
 let selectedTitleRecipe=null; // audition only, never stored in project drafts
 let selectedTitleRhythm=null; // staged local animation preset only
+let stagedTitlePlacement=null,titlePlacementArmed=false,titleDrag=null;
 let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
@@ -528,10 +530,27 @@ function showTitleAt(at) {
   node.hidden = !title;
   node.textContent = title?.text || '';
   if (!title) return;
-  const style = titleStyle(title);
-  const motion=titleMotionAt(title,at),rect=node.parentElement;
+  const preview=editingTitleId===title.title_id&&stagedTitlePlacement
+    ?{...title,...titlePlacementFields(stagedTitlePlacement)}:title;
+  const style = titleStyle(preview);
+  const motion=titleMotionAt(preview,at),rect=node.parentElement;
   node.style.translate=(motion.x*(rect?.clientWidth||1280)/1280)+'px '+
     (motion.y*(rect?.clientHeight||720)/720)+'px';
+  const custom=titlePlacement(preview);
+  if(custom){
+    node.style.left=(100*custom.x/1280)+'%';
+    node.style.top=(100*custom.y/720)+'%';
+    node.style.right='auto';node.style.bottom='auto';
+    node.style.width='84%';node.style.transform='translate(-50%,-50%)';
+  }else{
+    for(const key of ['left','top','right','bottom','width','transform'])
+      node.style[key]='';
+  }
+  node.classList.toggle('placing',titlePlacementArmed&&editingTitleId===title.title_id);
+  node.tabIndex=titlePlacementArmed&&editingTitleId===title.title_id?0:-1;
+  node.setAttribute('aria-label',titlePlacementArmed
+    ?'Drag title to place. Arrow keys nudge by one pixel, Shift by ten.'
+    :'Title preview');
   node.dataset.position = style.position;
   node.dataset.size = style.size;
   node.dataset.color = style.color;
@@ -715,6 +734,7 @@ function loadTitleForEdit(title) {
   $('title-start').value = String(title.start);
   $('title-end').value = String(title.end);
   const style = titleStyle(title);
+  titlePlacementArmed=false;titleDrag=null;stagedTitlePlacement=titlePlacement(title);
   $('title-position').value = style.position;
   $('title-size').value = style.size;
   $('title-color').value = style.color;
@@ -725,11 +745,13 @@ function loadTitleForEdit(title) {
   $('title-fade-out').value = String(style.fade_out);
   $('add-title').textContent = 'Save Title Changes';
   $('cancel-title-edit').hidden = false;
-  selectedTitleRecipe=null;selectedTitleRhythm=null;refreshTitleDeck();
+  selectedTitleRecipe=null;selectedTitleRhythm=null;
+  refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
   drawTitles();
 }
 function resetTitleEditor() {
   editingTitleId = null;
+  titlePlacementArmed=false;titleDrag=null;stagedTitlePlacement=null;
   $('title-text').value = '';
   $('title-position').value = 'bottom';
   $('title-size').value = 'medium';
@@ -742,6 +764,7 @@ function resetTitleEditor() {
   $('add-title').textContent = '+ Add Text Overlay';
   $('cancel-title-edit').hidden = true;
   selectedTitleRecipe=null;selectedTitleRhythm=null;
+  refreshPlacementUI();showTitleAt(playhead);
   $('title-deck-scrub').value='50';
   refreshTitleDeck();
 }
@@ -854,13 +877,14 @@ function drawTitleOnCanvas(ctx, title, at) {
     else lines[idx] += ' ' + word;
   }
   const shown = lines.slice(0,4);
-  const center = style.position === 'top' ? 120 : style.position === 'middle' ? 360 : 620;
+  const placement=titleAnchor(title);
+  const center=placement.y;
   const start = center - (shown.length - 1) * (size * 1.08 / 2);
   shown.forEach((line,i) => {
     const y = start + size * 1.08 * i;
     ctx.lineWidth = 8; ctx.strokeStyle = '#000d';
-    ctx.strokeText(line, 640, y, maxWidth);
-    ctx.fillStyle = colors[style.color]; ctx.fillText(line, 640, y, maxWidth);
+    ctx.strokeText(line, placement.x, y, maxWidth);
+    ctx.fillStyle = colors[style.color]; ctx.fillText(line, placement.x, y, maxWidth);
   });
   ctx.restore();
 }
@@ -1545,7 +1569,9 @@ function titleDeckDraft(){
     color:$('title-color').value,motion:$('title-motion').value,
     motion_ease:$('title-motion-ease').value,
     motion_distance:Number($('title-motion-distance').value),
-    fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value)};
+    ...titlePlacementFields(stagedTitlePlacement),
+    fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value),
+    ...titlePlacementFields(stagedTitlePlacement)};
 }
 function refreshTitleTiming(draft){
   const map=titlePhaseMap(draft);
@@ -1598,6 +1624,16 @@ function refreshTitleDeck(){
     text.dataset.size=sample.size;
     text.dataset.color=sample.color;
     text.style.opacity=String(sample.opacity);
+    const absolute=titlePlacement(titleDeckDraft());
+    if(absolute){
+      text.style.left=(100*absolute.x/1280)+'%';
+      text.style.top=(100*absolute.y/720)+'%';
+      text.style.right='auto';text.style.bottom='auto';
+      text.style.width='82%';text.style.transform='translate(-50%,-50%)';
+    }else{
+      for(const key of ['left','top','right','bottom','width','transform'])
+        text.style[key]='';
+    }
     const offset=titleMotionAt(titleDeckDraft(),sample.seconds>=titleDeckDraft().end
       ?titleDeckDraft().end-.001:sample.seconds);
     const stage=$('title-deck-stage');
