@@ -9,6 +9,7 @@ import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } fro
 import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
+import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample,titleDeckReadout} from './studio-title-deck.js';
 import {validateKeyframePair} from './studio-keyframes.js';
 import {renderMultiPointKeyframeLanes} from './studio-multipoint-view.js';
 import {keyframePointsFor,pointsField} from './studio-keyframe-points.js';
@@ -79,6 +80,7 @@ let soundSerial = 0;
 let liveBusMeters=null,liveMeterUnavailable=false;
 let draggedClipId = null;
 let editingTitleId = null;
+let selectedTitleRecipe=null; // audition only, never stored in project drafts
 let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
@@ -712,6 +714,7 @@ function loadTitleForEdit(title) {
   $('title-fade-out').value = String(style.fade_out);
   $('add-title').textContent = 'Save Title Changes';
   $('cancel-title-edit').hidden = false;
+  selectedTitleRecipe=null;refreshTitleDeck();
   drawTitles();
 }
 function resetTitleEditor() {
@@ -724,6 +727,9 @@ function resetTitleEditor() {
   $('title-fade-out').value = '0';
   $('add-title').textContent = '+ Add Text Overlay';
   $('cancel-title-edit').hidden = true;
+  selectedTitleRecipe=null;
+  $('title-deck-scrub').value='50';
+  refreshTitleDeck();
 }
 function jumpToMarker(marker){
   if(!marker||exporting)return;
@@ -1515,6 +1521,82 @@ $('marker-prev').addEventListener('click',()=>
   jumpToMarker(navigateMarker(state.markers,playhead,'previous')));
 $('marker-next').addEventListener('click',()=>
   jumpToMarker(navigateMarker(state.markers,playhead,'next')));
+// R8.0 Creative Title Deck: controls remain pending until explicit Add/Save.
+function titleDeckDraft(){
+  return {text:$('title-text').value,
+    start:Number($('title-start').value),end:Number($('title-end').value),
+    position:$('title-position').value,size:$('title-size').value,
+    color:$('title-color').value,
+    fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value)};
+}
+function refreshTitleDeck(){
+  for(const recipe of TITLE_RECIPES){
+    const button=document.querySelector('[data-title-recipe="'+recipe.id+'"]');
+    if(button){
+      button.setAttribute('aria-pressed',String(selectedTitleRecipe===recipe.id));
+      button.disabled=exporting;
+    }
+  }
+  $('title-deck-at-playhead').disabled=exporting||!state.clips.length;
+  const text=$('title-deck-text'),readout=$('title-deck-readout');
+  try{
+    const sample=titleDeckSample(titleDeckDraft(),Number($('title-deck-scrub').value));
+    text.textContent=sample.text;
+    text.dataset.position=sample.position;
+    text.dataset.size=sample.size;
+    text.dataset.color=sample.color;
+    text.style.opacity=String(sample.opacity);
+    readout.textContent=titleDeckReadout(sample);
+  }catch(e){
+    text.textContent='Check title settings';
+    text.style.opacity='0.35';
+    readout.textContent=e.message+' · no project changes';
+  }
+}
+for(const recipe of TITLE_RECIPES){
+  const button=document.querySelector('[data-title-recipe="'+recipe.id+'"]');
+  button.addEventListener('click',()=>{
+    if(exporting)return;
+    try{
+      const form=titleDeckDraft();
+      const style=titleRecipeFields(recipe.id,form.end-form.start);
+      for(const [key,value] of Object.entries({
+        'title-position':style.position,'title-size':style.size,
+        'title-color':style.color,'title-fade-in':style.fade_in,
+        'title-fade-out':style.fade_out
+      }))$(key).value=String(value);
+      selectedTitleRecipe=recipe.id;
+      refreshTitleDeck();
+      status(recipe.label+' look auditioned. Add/Save Title to commit.');
+    }catch(e){status(e.message,true);refreshTitleDeck();}
+  });
+}
+for(const id of ['title-text','title-start','title-end',
+  'title-position','title-size','title-color','title-fade-in','title-fade-out']){
+  $(id).addEventListener('input',()=>{selectedTitleRecipe=null;refreshTitleDeck();});
+  $(id).addEventListener('change',refreshTitleDeck);
+}
+$('title-deck-scrub').addEventListener('input',refreshTitleDeck);
+$('title-deck-at-playhead').addEventListener('click',()=>{
+  if(exporting||!state.clips.length)return;
+  try{
+    const form=titleDeckDraft();
+    const seconds=form.end>form.start?form.end-form.start:3;
+    const placement=titlePlacementAtPlayhead(playhead,duration(state),seconds);
+    $('title-start').value=String(placement.start);
+    $('title-end').value=String(placement.end);
+    const fades=form.fade_in+form.fade_out,span=placement.end-placement.start;
+    if(Number.isFinite(fades)&&fades>span&&
+       form.fade_in>=0&&form.fade_out>=0){
+      const scale=span/fades;
+      const inFade=Math.min(span,Math.floor(form.fade_in*scale*1000)/1000);
+      $('title-fade-in').value=String(inFade);
+      $('title-fade-out').value=String(Math.max(0,Math.floor((span-inFade)*1000)/1000));
+    }
+    selectedTitleRecipe=null;refreshTitleDeck();
+    status('Title timing staged at playhead. Add/Save Title to commit.');
+  }catch(e){status(e.message,true);refreshTitleDeck();}
+});
 $('add-title').addEventListener('click', () => {
   const title = {
     text: $('title-text').value.trim(),
