@@ -539,3 +539,22 @@
 .screen #title-preview.placing{pointer-events:auto;cursor:grab;touch-action:none;outline:1px dashed #9bf0df;outline-offset:5px;user-select:none}
 .screen #title-preview.placing:focus-visible{outline:3px solid #b4ffeb;outline-offset:5px}
 .screen #title-preview.placing.dragging{cursor:grabbing}
+
+/* R8.5 visual title transforms. Guides stay in Program, never in exports. */
+.title-transform-size{display:grid;gap:5px;padding:7px 0}
+.title-transform-size label{display:flex;justify-content:space-between;font-size:11px;color:#c1dce9}
+.title-transform-size input{width:100%;accent-color:#86ead3}
+#title-safe-toggle[aria-pressed="true"]{background:#28524a;border-color:#92e8cc;color:#fff}
+.title-safe-guides{position:absolute;inset:0;pointer-events:none;z-index:5}
+.title-safe-guides[hidden]{display:none}
+.title-guide-action{position:absolute;inset:10%;border:1px dashed rgba(243,217,111,.8)}
+.title-guide-title{position:absolute;inset:20%;border:1px dashed rgba(131,231,205,.88)}
+.title-safe-guides span{position:absolute;left:5px;top:3px;font-size:9px;letter-spacing:.02em;color:#eaf7ed;
+ text-shadow:0 1px 3px #000;background:#071421a6;padding:2px 4px;border-radius:3px}
+.screen #title-preview{z-index:7}
+.screen #title-resize-handle{position:absolute;z-index:8;width:32px;height:32px;min-width:32px;padding:0;
+ border:2px solid #aff5d9;background:#164a53;color:#fff;line-height:1;border-radius:8px;
+ box-shadow:0 2px 8px #000a;touch-action:none;cursor:nwse-resize}
+.screen #title-resize-handle[hidden]{display:none}
+.screen #title-resize-handle:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.screen #title-resize-handle.dragging{background:#36786b;cursor:grabbing}
