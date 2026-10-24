@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.8 — Title Style Library
+
+R8.8 lets you **save a reusable title look** (alignment/X-Y, scale, color, font size, movement/easing) into a browser-local library and preview it on another title or in another project. Up to 24 approved looks survive project switches on the same origin; explicit versioned **JSON export/import** provides a portable backup, with whole-file validation and confirmation before replacing local looks. Saving or previewing styles never changes project receipts until Add/Save Title. The existing Program, Canvas MP4/WebM, and FFmpeg ASS paths consume the same validated title fields. [R8.8 guide](docs/STUDIO_R88.md).
+
+
 ## ◆ ParaCut Studio R8.7 — Multi-Title Studio
 
 R8.7 adds an **atomic multi-select T1 styling workflow**: tick title checkboxes, Select All or Clear, stage source styling through the existing title editor, and apply only **transform** (X/Y + scale), **appearance** (color + Small/Medium/Large), or **both**. One click creates one ledger receipt and one Undo checkpoint, while every target retains its own text, timing, fades and motion. Existing Program, browser Canvas and FFmpeg ASS renderers consume the validated title fields without a new draft schema or video pipeline. [R8.7 guide](docs/STUDIO_R87.md).

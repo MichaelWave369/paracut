@@ -14,6 +14,10 @@ import {titleMotionAt,titleMotionId,titleMotionEaseId,titleMotionDistance,titleM
 import {titlePlacement,titleAnchor,titlePlacementFields,titleNudgePlacement} from './studio-title-placement.js';
 import {titleScale,titleScaleFields,titleScaledFont,titleResizeDelta} from './studio-title-transform.js';
 import {titleBatchPlan,titleBatchSummary,TITLE_BATCH_MODES} from './studio-title-batch.js';
+import {TITLE_LIBRARY_KEY,TITLE_LIBRARY_MAX,TITLE_LIBRARY_MAX_BYTES,
+ titleLibraryEmpty,titleLibraryParse,titleLibraryValidate,titleLibraryAdd,
+ titleLibraryDelete,titleLibraryFind,titleLibrarySerialize,titleLibraryReplace,
+ titleStyleFromTitle} from './studio-title-style-library.js';
 import {TITLE_ALIGNMENTS,TITLE_TRANSFORM_PRESETS,titleAlignmentPoint,titleAlignmentId,
   titleTransformPreset,titleTransformClipboard,titleTransformReadout}
   from './studio-title-align.js';
@@ -96,6 +100,14 @@ let stagedTitlePlacement=null,titlePlacementArmed=false,titleDrag=null;
 let stagedTitleScale=100,titleResizeDrag=null,safeGuidesVisible=false;
 let copiedTitleTransform=null; // clipboard lives only in this Studio session
 const multiTitleIds=new Set(); // local T1 selection; never saved in project
+let titleLookLibrary=titleLibraryEmpty(),titleLookStorageWarning='';
+try{
+  const raw=window.localStorage.getItem(TITLE_LIBRARY_KEY);
+  if(raw!==null)titleLookLibrary=titleLibraryParse(raw);
+}catch(e){
+  titleLookStorageWarning='Stored title looks could not be read: '+e.message+
+    '. Export/Import a valid library or Save Current Look to replace them.';
+}
 let draggingTrimEdge = null;
 const esc = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const fmt = seconds => {
@@ -1919,6 +1931,123 @@ resizeHandle.addEventListener('keydown',event=>{
   const step=event.shiftKey?10:5;
   stageTitleScale(Math.min(200,Math.max(50,stagedTitleScale+sign*step)));
 });
+
+// R8.8 Title Style Library: standalone validated looks, same-origin persistence.
+// The library never enters a project draft/receipt. "Preview Look" only stages.
+function refreshTitleLookLibrary(chooseId=null){
+  const select=$('title-style-select');
+  const selected=chooseId??select.value;
+  select.replaceChildren();
+  const emptyOption=document.createElement('option');
+  emptyOption.value='';emptyOption.textContent=titleLookLibrary.styles.length?
+    'Choose a saved look':'No saved looks yet';
+  select.append(emptyOption);
+  for(const look of titleLookLibrary.styles){
+    const option=document.createElement('option');
+    option.value=look.id;option.textContent=look.name;
+    select.append(option);
+  }
+  select.value=titleLookLibrary.styles.some(s=>s.id===selected)?selected:'';
+  $('title-library-count').textContent=titleLookLibrary.styles.length+
+    ' / '+TITLE_LIBRARY_MAX+' saved';
+  $('title-style-save').disabled=exporting||
+    titleLookLibrary.styles.length>=TITLE_LIBRARY_MAX;
+  $('title-style-select').disabled=exporting||!titleLookLibrary.styles.length;
+  $('title-style-apply').disabled=exporting||!select.value;
+  $('title-style-delete').disabled=exporting||!select.value;
+  $('title-style-export').disabled=exporting||!titleLookLibrary.styles.length;
+  $('title-style-import').disabled=exporting;
+  $('title-style-name').disabled=exporting;
+  if(titleLookStorageWarning)reportTitleLook(titleLookStorageWarning,true);
+}
+function reportTitleLook(message,error=false){
+  $('title-style-library-status').textContent=message;
+  $('title-style-library-status').classList.toggle('library-error',error);
+}
+function persistTitleLooks(candidate){
+  // Local storage commit happens before updating the live list; quota/denial
+  // never produces a false success or an out-of-sync selector.
+  const data=titleLibrarySerialize(candidate);
+  window.localStorage.setItem(TITLE_LIBRARY_KEY,data);
+  titleLookLibrary=titleLibraryValidate(candidate);
+  titleLookStorageWarning='';
+}
+$('title-style-select').addEventListener('change',()=>refreshTitleLookLibrary());
+$('title-style-save').addEventListener('click',()=>{
+  if(exporting)return;
+  try{
+    const name=$('title-style-name').value;
+    const look=titleStyleFromTitle({
+      ...titleDeckDraft(),...titlePlacementFields(stagedTitlePlacement)
+    });
+    const id=uuid().replaceAll('-','_');
+    const next=titleLibraryAdd(titleLookLibrary,{id,name,look});
+    persistTitleLooks(next);
+    refreshTitleLookLibrary(id);
+    reportTitleLook('Saved "'+name.trim()+'" locally. Reusable in this browser across projects.');
+    $('title-style-name').value='';
+  }catch(e){reportTitleLook(e.message,true);status(e.message,true);}
+});
+$('title-style-apply').addEventListener('click',()=>{
+  if(exporting)return;
+  try{
+    const item=titleLibraryFind(titleLookLibrary,$('title-style-select').value);
+    const look=item.look;
+    for(const [id,value] of Object.entries({
+      'title-position':look.position,'title-size':look.size,'title-color':look.color,
+      'title-motion':look.motion,'title-motion-ease':look.motion_ease,
+      'title-motion-distance':look.motion_distance
+    }))$(id).value=String(value);
+    stagedTitlePlacement=titlePlacement(look);
+    stagedTitleScale=titleScale(look);
+    selectedTitleRecipe=null;selectedTitleRhythm=null;
+    refreshPlacementUI();refreshTitleDeck();showTitleAt(playhead);
+    reportTitleLook('Previewing "'+item.name+'". Add/Save Title to commit; text, timing and fades untouched.');
+    status('Title look previewed. Save Title to commit.');
+  }catch(e){reportTitleLook(e.message,true);status(e.message,true);}
+});
+$('title-style-delete').addEventListener('click',()=>{
+  if(exporting)return;
+  try{
+    const item=titleLibraryFind(titleLookLibrary,$('title-style-select').value);
+    if(!confirm('Delete saved title look "'+item.name+'"? This cannot be undone.'))return;
+    persistTitleLooks(titleLibraryDelete(titleLookLibrary,item.id));
+    refreshTitleLookLibrary('');
+    reportTitleLook('Deleted "'+item.name+'" from this browser. Project titles unchanged.');
+  }catch(e){reportTitleLook(e.message,true);status(e.message,true);}
+});
+$('title-style-export').addEventListener('click',()=>{
+  if(exporting)return;
+  try{
+    const text=titleLibrarySerialize(titleLookLibrary);
+    download('paracut-title-styles-v1.json',new Blob([text],{type:'application/json'}));
+    reportTitleLook('Exported validated title looks. Keep the JSON to use on another device.');
+  }catch(e){reportTitleLook(e.message,true);status(e.message,true);}
+});
+$('title-style-import').addEventListener('click',()=>{
+  if(exporting)return;
+  $('title-style-import-file').click();
+});
+$('title-style-import-file').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];
+  event.target.value='';
+  if(!file||exporting)return;
+  try{
+    if(file.size>TITLE_LIBRARY_MAX_BYTES)throw Error('Title style import exceeds 16 KB.');
+    const raw=await file.text();
+    if(exporting)return;
+    const replacement=titleLibraryReplace(titleLookLibrary,raw);
+    // Invalid files fail before this irreversible confirmation.
+    if(!confirm('Replace all '+titleLookLibrary.styles.length+
+      ' locally saved title looks with '+replacement.styles.length+
+      ' imported looks? Export a backup first. Project titles are not changed.'))return;
+    persistTitleLooks(replacement);
+    refreshTitleLookLibrary('');
+    reportTitleLook('Imported '+replacement.styles.length+
+      ' validated looks. No project edits or receipts were created.');
+  }catch(e){reportTitleLook(e.message,true);status(e.message,true);}
+});
+refreshTitleLookLibrary();
 
 // R8.0 Creative Title Deck: controls remain pending until explicit Add/Save.
 function titleDeckDraft(){
