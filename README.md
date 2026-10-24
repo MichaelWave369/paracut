@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.2 — Shared Title Motion
+
+R8.2 adds four **fade-linked title motion** options: Still, Float Up, Slide Left, and Slide Right. Movement uses one bounded time/displacement model shared between the Program Monitor, Title Deck audition, browser canvas export and **local FFmpeg ASS** entrance/hold/exit events. Old drafts without an optional `motion` field retain the same ASS output, with no changes to saved draft schema, source media or the edit ledger. Normal Add/Save remains the only title commit; the preset itself cannot inject arbitrary instructions. [R8.2 guide](docs/STUDIO_R82.md).
+
+
 ## ◆ ParaCut Studio R8.1 — Creative Title Timing Lab
 
 R8.1 expands the R8.0 Creative Title Deck with five **entrance/hold/exit timing rhythms**, buttons for 1.5s/3s/5s title lengths, two constrained fade-percent sliders and a live phase diagram with five fixed audition positions. Duration changes preserve fade proportions and clamp to V1. All controls stage only the familiar T1 title fields; **Add/Save** is still the only action that changes a project or creates a receipt. No new draft fields or export renderer changes. [R8.1 guide](docs/STUDIO_R81.md).
