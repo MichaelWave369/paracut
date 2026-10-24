@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R7.9 — Export Diagnostics Inspector
+
+R7.9 adds a **read-only local benchmark report inspector** that explains R7.8 controlled A/B and R7.5 scenario-lab measurements. New controlled A/B reports preserve safe per-run timings for source probing, planning, real FFmpeg encoding and output verification, plus frame-parity checks, pair-by-pair ratios and cautious follow-up recommendations. Historical aggregate-only reports remain readable, but missing phase measurements are explicitly marked unavailable. The inspector performs **no media access, network calls, report modifications or hidden output writes**. Renderer defaults, saved project schema and the ledger are unchanged. [R7.9 guide](docs/STUDIO_R79.md).
+
+
 ## ◆ ParaCut Studio R7.8 — Controlled A/B Export Proof Lab
 
 R7.8 lets you compare the **same synthetic Bézier footage and animation** with both the historical R7.6 sequential chord lookup and R7.7's balanced tree. An opt-in `studio-export-ab.mjs` runner alternates experiment order, uses the exact same draft/settings, verifies every real H.264/AAC MP4, compares **decoded video-frame MD5 streams**, and reports median measured encoder times and the old/new ratio. Normal editing/export remains balanced by default; no new draft fields, telemetry or source-media access. The report is optional and never overwrites another file. [R7.8 guide](docs/STUDIO_R78.md).
