@@ -1,6 +1,7 @@
 // R7.8 controlled A/B reporting. Pure validated statistics, no filesystem,
 // arbitrary filter expressions, device IDs, user media or network calls.
 import {BENCH_SCHEMA} from './studio-export-lab-core.mjs';
+import {diagnoseABRuns,formatDiagnostics} from './studio-export-diagnostics-core.mjs';
 export const AB_SCHEMA='paracut.export.ab.v1';
 export const AB_MODES=Object.freeze(['linear','balanced']);
 export const AB_SCENARIOS=Object.freeze(['v2-bezier','v2-bezier-stress']);
@@ -97,7 +98,6 @@ export function summarizeAB(opts,runs){
       adaptivePieces:group[0].graph.optimizedPieces
     };
   }
-  const frameMatches=runs.filter(r=>r.framesMatch===true).length;
   if(runs.some(r=>typeof r.framesMatch!=='boolean'))
     throw Error('Incomplete A/B decoded frame parity checks.');
   // Every pair is either verified matching or explicitly reported as a difference.
@@ -108,12 +108,21 @@ export function summarizeAB(opts,runs){
   });
   const allFrameMatches=paired.every(p=>p.framesMatch);
   const speedRatio=metrics.linear.medianEncodeMs/metrics.balanced.medianEncodeMs;
+  const diagnostics=diagnoseABRuns(opts,runs);
+  const hasDetailedPhases=runs.every(r=>
+    ['probeMs','planMs','verifyMs'].every(field=>typeof r[field]==='number'));
+  const diagnosticSamples=hasDetailedPhases?runs.map(r=>({
+    mode:r.mode,repeat:r.repeat,probeMs:r.probeMs,planMs:r.planMs,
+    encodeMs:r.encodeMs,verifyMs:r.verifyMs,totalMs:r.totalMs,
+    framesMatch:r.framesMatch
+  })):null;
   return {schema:AB_SCHEMA,synthetic:true,scenario:opts.scenario,
     quality:opts.quality,duration:opts.duration,repeats:opts.repeats,
     alternatingOrder:true,metrics,
     balancedSpeedRatio:Number(speedRatio.toFixed(4)),
     pairedVideoFramesMatch:allFrameMatches,
-    decodedFramePairs:paired,
+    decodedFramePairs:paired,diagnostics,
+    ...(diagnosticSamples?{diagnosticSamples}:{}),
     caveat:'Same generated media and draft; only Bézier lookup mode differs. Local encode ratios are measured, sensitive to host noise, and not guaranteed across machines.'};
 }
 export function formatABReport(s){
@@ -131,6 +140,7 @@ export function formatABReport(s){
       (s.pairedVideoFramesMatch?'YES':'NO; inspect output differences'),
     'Old graph chars: '+s.metrics.linear.graphChars+
       ' | New graph chars: '+s.metrics.balanced.graphChars,
-    s.caveat
+    s.caveat,
+    ...(s.diagnostics?["",formatDiagnostics(s.diagnostics)]:[])
   ].join('\n');
 }
