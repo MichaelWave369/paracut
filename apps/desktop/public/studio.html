@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b111b">
-  <title>ParaCut Studio R8.6 · Align & Reuse</title>
+  <title>ParaCut Studio R8.7 · Multi-Title Studio</title>
   <link rel="stylesheet" href="./studio.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R8.6 · ALIGN & REUSE</small></span></a>
+    <a class="brand" href="./studio.html"><span class="brand-mark">◩</span><span>PARACUT <b>STUDIO</b><small>R8.7 · MULTI-TITLE STUDIO</small></span></a>
     <div class="project-area"><label for="project-name" class="sr-only">Project name</label><input id="project-name" value="Untitled Cut" maxlength="100" aria-label="Project name"><span class="pill">LOCAL • YOUR FILES STAY HERE</span></div>
     <div class="top-actions">
       <button id="new-project" title="Start a fresh project">New</button>
@@ -166,7 +166,7 @@
         <div id="title-track" class="title-track"><span class="empty-timeline">Add timed text in the Titles panel.</span></div>
         <div id="storyboard-playhead" class="storyboard-playhead" aria-hidden="true"></div>
         </div></div>
-        <p class="tip">R6.9 · MULTI-POINT KEYFRAMES are preserved. R8.6 adds nine safe-area alignment points, six reusable title layouts and copy/paste transform workflows. R8.5 adds a title-resize handle, bounded font scaling, safe-area guides and a placement Save repair. R8.4 adds direct drag-and-nudge title positioning on the Program Monitor with export-safe 1280×720 coordinates. R8.3 adds validated motion easing curves and adjustable travel distance, including piecewise FFmpeg motion. R8.2 adds bounded title movement shared by Program, browser export and local ASS. R8.1 adds animation rhythms, fade-budget handles and proportional title retiming. R8.0 adds a Creative Title Deck with one-click looks, safe fade audition and placement at the playhead. R7.9 added a read-only Export Diagnostics Inspector that interprets local synthetic benchmark reports, timing stages, run consistency and video-frame parity without changing media. R7.8 provides an opt-in local CLI to compare sequential and balanced Bézier exports using the same synthetic project and verified video frame hashes. R7.7 compiles complex Custom-X Bézier export expressions into a balanced interval decision tree without changing the saved curve. R7.6 uses FFmpeg native alpha fades for simple full-range linear ramps and alpha mixers for constant opacity, preserving the GEQ path for complex Bézier/multi-point effects. R7.5 includes an opt-in synthetic Export Performance Lab via the local CLI (see docs/STUDIO_R75.md). R7.4 added a read-only Graph Probe slider beneath the curve, showing the selected segment's timeline time and opacity/volume value without editing the project. R7.3 added exact X/Y percentage entry beneath the curve: select a handle, enter both percentages, then Apply XY for one ledger-backed edit. The 2D editor stays intact. R7.2 made Custom Bézier truly 2D: drag each orange handle left/right to change timing and up/down to change acceleration. Focus a handle and use Left/Right for time (2.5%), Up/Down for value (5%), Shift for larger steps, or Home/End for value extremes. Horizontal handles must remain ordered. Browser preview uses exact inverse-curve solving; FFmpeg exports use a bounded sampled approximation for custom X positions. Scrub the Program Monitor to preview. Each easing change is one receipt; old drafts remain linear. Double-click the curve or use + Point at Playhead to add a point, drag diamonds to edit, and Delete a focused interior point to remove it.</p>
+        <p class="tip">R6.9 · MULTI-POINT KEYFRAMES are preserved. R8.7 adds atomic selection-based T1 styling with one undo/receipt for many titles. R8.6 adds nine safe-area alignment points, six reusable title layouts and copy/paste transform workflows. R8.5 adds a title-resize handle, bounded font scaling, safe-area guides and a placement Save repair. R8.4 adds direct drag-and-nudge title positioning on the Program Monitor with export-safe 1280×720 coordinates. R8.3 adds validated motion easing curves and adjustable travel distance, including piecewise FFmpeg motion. R8.2 adds bounded title movement shared by Program, browser export and local ASS. R8.1 adds animation rhythms, fade-budget handles and proportional title retiming. R8.0 adds a Creative Title Deck with one-click looks, safe fade audition and placement at the playhead. R7.9 added a read-only Export Diagnostics Inspector that interprets local synthetic benchmark reports, timing stages, run consistency and video-frame parity without changing media. R7.8 provides an opt-in local CLI to compare sequential and balanced Bézier exports using the same synthetic project and verified video frame hashes. R7.7 compiles complex Custom-X Bézier export expressions into a balanced interval decision tree without changing the saved curve. R7.6 uses FFmpeg native alpha fades for simple full-range linear ramps and alpha mixers for constant opacity, preserving the GEQ path for complex Bézier/multi-point effects. R7.5 includes an opt-in synthetic Export Performance Lab via the local CLI (see docs/STUDIO_R75.md). R7.4 added a read-only Graph Probe slider beneath the curve, showing the selected segment's timeline time and opacity/volume value without editing the project. R7.3 added exact X/Y percentage entry beneath the curve: select a handle, enter both percentages, then Apply XY for one ledger-backed edit. The 2D editor stays intact. R7.2 made Custom Bézier truly 2D: drag each orange handle left/right to change timing and up/down to change acceleration. Focus a handle and use Left/Right for time (2.5%), Up/Down for value (5%), Shift for larger steps, or Home/End for value extremes. Horizontal handles must remain ordered. Browser preview uses exact inverse-curve solving; FFmpeg exports use a bounded sampled approximation for custom X positions. Scrub the Program Monitor to preview. Each easing change is one receipt; old drafts remain linear. Double-click the curve or use + Point at Playhead to add a point, drag diamonds to edit, and Delete a focused interior point to remove it.</p>
         <p class="tip">Press V for Selection, C for Razor; click a targeted clip to split precisely where you click. J jogs one 30fps frame backward, K stops, L plays forward (press again for 2×). Target buttons affect Razor only, not Source Insert/Replace. No reverse-audio playback yet.</p>
         <p class="tip">Use V1 for sequential cuts and V2 for timed overlays. A1 is your primary soundtrack; A2 places voiceovers/FX at specific times. V1 crossfades still work. Two touching V2 clips can dissolve into each other; remove the dissolve before moving or trimming either joined clip. Layered clips can be dragged or moved precisely from Inspector. Snap aligns clip starts/ends with playhead, titles, and other track boundaries; zoom reveals details.</p>
       </div>
@@ -362,7 +362,7 @@
       <div class="panel-title" id="titles-workspace-anchor"><h2>Titles &amp; Overlays</h2><span class="tiny">T1</span></div>
       <div class="title-editor">
         <div class="title-deck" aria-label="Creative Title Deck">
-          <div class="panel-title"><h3>R8.6 · Title Layout Studio</h3><span class="tiny">PREVIEW BEFORE COMMIT</span></div>
+          <div class="panel-title"><h3>R8.7 · Multi-Title Studio</h3><span class="tiny">PREVIEW BEFORE COMMIT</span></div>
           <p class="tip">Pick a look to fill the title style controls. Audition the fade without changing your cut. Add or Save commits one title edit.</p>
           <div id="title-deck-recipes" class="title-deck-recipes" role="group" aria-label="Title look recipes">
             <button type="button" data-title-recipe="cinema" aria-pressed="false">Cinema</button>
@@ -511,6 +511,25 @@
         <div class="title-actions"><button id="add-title" class="wide">+ Add Text Overlay</button><button id="cancel-title-edit" hidden>Cancel Edit</button></div>
         <p class="tip">Select Edit on a title to change it. Preview and WebM export use the same color, placement and fade timing.</p>
       </div>
+      <section id="title-batch-panel" class="title-batch-panel" aria-label="Multi-title editing">
+        <div class="title-batch-header">
+          <h3>R8.7 · Multi-Title Editing</h3>
+          <output id="title-batch-count" role="status" aria-live="polite">0 titles selected</output>
+        </div>
+        <div class="title-batch-actions">
+          <button type="button" id="title-batch-all">Select All T1</button>
+          <button type="button" id="title-batch-clear">Clear Selection</button>
+        </div>
+        <label for="title-batch-mode">Batch changes</label>
+        <select id="title-batch-mode" aria-label="Choose multi-title fields to apply">
+          <option value="transform">Position + scale only</option>
+          <option value="appearance">Color + font size only</option>
+          <option value="both">Position, scale, color + font size</option>
+        </select>
+        <output id="title-batch-preview" class="tiny" role="status" aria-live="polite">Select two or more T1 titles to review changes.</output>
+        <button type="button" id="title-batch-apply" class="primary" disabled>Apply to Selected Titles</button>
+        <p class="tip">Choose T1 checkboxes below. The current editor's position/scale and/or color/font-size category will be applied, but every title keeps its own text, timing, fades, and motion. One Apply = one undoable edit and ledger receipt.</p>
+      </section>
       <div id="title-list" class="title-list"></div>
       <hr>
       <div class="panel-title"><h2>Timeline Markers</h2><span id="marker-count" class="tiny">0 markers</span></div>
