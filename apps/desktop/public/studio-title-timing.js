@@ -22,11 +22,13 @@ function validRange(draft){
   return draft.end-draft.start;
 }
 function boundedFades(inside,outside,span){
-  // Floors keep rounded values within the title's actual duration budget.
-  const fadeIn=Math.floor(Math.min(span,Math.max(0,inside))*1000)/1000;
-  const fadeOut=Math.floor(Math.min(Math.max(0,span-fadeIn),
-    Math.max(0,outside))*1000)/1000;
-  return {fade_in:fadeIn,fade_out:fadeOut};
+  // Allocate integer milliseconds before dividing back to seconds. This
+  // avoids floating-point truncation of exact values such as 0.8s into
+  // 0.799s, and never spends more than the title's actual millisecond budget.
+  const budgetMs=Math.max(0,Math.floor((span+1e-9)*1000));
+  const inMs=Math.min(budgetMs,Math.max(0,Math.round(inside*1000)));
+  const outMs=Math.min(budgetMs-inMs,Math.max(0,Math.round(outside*1000)));
+  return {fade_in:inMs/1000,fade_out:outMs/1000};
 }
 export function titleRhythmFields(id,seconds){
   const rhythm=TITLE_RHYTHMS.find(r=>r.id===id);
