@@ -84,7 +84,7 @@ for(const bad of [
  JSON.stringify({...b,unsafe:true}),
  JSON.stringify({...b,styles:[...b.styles,{...b.styles[0]}]}),
  JSON.stringify({...b,styles:[b.styles[0],{
-   ...b.styles[1],id:'test_b',name:'New Name'}]}),
+   ...b.styles[1],id:'test_a',name:'New Name'}]}),
  JSON.stringify({...b,styles:[{id:'x',name:'Injected',
    look:{...detailed,onclick:'attack'}}]}),
  JSON.stringify({...b,styles:[{id:'x',name:'Injected',look:{title_scale:null}}]}),
