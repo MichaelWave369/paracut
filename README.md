@@ -1,5 +1,10 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.7 — Multi-Title Studio
+
+R8.7 adds an **atomic multi-select T1 styling workflow**: tick title checkboxes, Select All or Clear, stage source styling through the existing title editor, and apply only **transform** (X/Y + scale), **appearance** (color + Small/Medium/Large), or **both**. One click creates one ledger receipt and one Undo checkpoint, while every target retains its own text, timing, fades and motion. Existing Program, browser Canvas and FFmpeg ASS renderers consume the validated title fields without a new draft schema or video pipeline. [R8.7 guide](docs/STUDIO_R87.md).
+
+
 ## ◆ ParaCut Studio R8.6 — Align & Reuse
 
 R8.6 brings **nine-point title-safe alignment**, **six reusable layout recipes**, and a **session-only Copy/Paste Transform** workflow to the existing T1 Program placement/resize tools. Align and reuse exact custom X/Y plus scale without changing text, timing, motion, audio, export format, or the draft schema. Everything stays preview-only until the usual Add/Save Title receipt, and the existing browser Canvas/FFmpeg renderers honor the saved fields without further changes. [R8.6 guide](docs/STUDIO_R86.md).

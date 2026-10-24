@@ -571,3 +571,23 @@
 .title-layout-actions button{font-size:11px;padding:8px}
 .title-align-workbench button:focus-visible{outline:2px solid #caffed;outline-offset:2px}
 .title-align-workbench output{line-height:1.5}
+
+/* R8.7 local atomic T1 selection and style application. */
+.title-batch-panel{margin:12px 0;padding:12px;border:1px solid #507786;border-radius:10px;
+ background:#122632;display:grid;gap:9px}
+.title-batch-header{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.title-batch-header h3{margin:0;font-size:12px;color:#c8f3e3}
+.title-batch-header output{font-size:10px;color:#c8e5ed;font-variant-numeric:tabular-nums}
+.title-batch-actions{display:flex;gap:7px;flex-wrap:wrap}
+.title-batch-actions button{flex:1 1 44%;font-size:11px;padding:8px}
+.title-batch-panel label{font-size:11px;color:#b8d3e5}
+.title-batch-panel select{padding:9px;border:1px solid #46677d;border-radius:7px;
+ background:#10202c;color:#e7f2fb;width:100%}
+.title-batch-panel output{line-height:1.6;overflow-wrap:anywhere}
+.title-batch-panel .primary{font-size:12px}
+.title-batch-panel :is(button,select):focus-visible{outline:2px solid #b4f4e4;outline-offset:2px}
+.title-item.batch-selected{border-color:#86d4c5;background:#1c3c45}
+.title-item .title-batch-check{display:inline-flex;align-items:center;justify-content:center;
+ min-width:23px;padding:2px}
+.title-item .title-batch-check input{width:16px;height:16px;accent-color:#7de4cd;cursor:pointer}
+.title-item .title-batch-check input:focus-visible{outline:2px solid #fff;outline-offset:2px}
