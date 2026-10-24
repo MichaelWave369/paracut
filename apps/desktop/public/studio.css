@@ -455,3 +455,34 @@
  .keyframe-easing-controls{bottom:90px}
  .keyframe-precision-controls{bottom:7px}
 }
+
+/* R8.0 Creative Title Deck: lightweight, responsive editor-only audition. */
+.title-deck{display:grid;gap:8px;margin-bottom:14px;padding:12px;border:1px solid #426176;border-radius:10px;background:linear-gradient(145deg,#121d30,#171e31)}
+.title-deck .panel-title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.title-deck h3{margin:0;font-size:13px;color:#e7f8fa}
+.title-deck .tip{margin:0}
+.title-deck-recipes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.title-deck-recipes button{min-width:0;padding:9px 5px;border:1px solid #4b5e78;border-radius:7px;background:#1c2a40;color:#d6e9f5;font-size:11px}
+.title-deck-recipes button[aria-pressed="true"]{border-color:#89eddf;background:#24483e;color:#fff;box-shadow:inset 0 0 0 1px #4a9f94}
+.title-deck-recipes button:focus-visible,.title-deck-actions button:focus-visible{outline:2px solid #b3fff1;outline-offset:2px}
+.title-deck-stage{height:140px;position:relative;overflow:hidden;border:1px solid #506985;border-radius:9px;
+  background:linear-gradient(135deg,rgba(110,227,218,.08),rgba(78,104,176,.12)),
+  repeating-linear-gradient(90deg,transparent 0 40px,rgba(255,255,255,.025) 40px 41px),
+  linear-gradient(135deg,#0d1926,#203146)}
+.title-deck-text{position:absolute;left:7%;right:7%;color:#fff;text-shadow:0 2px 8px #000,0 0 12px #000;
+  text-align:center;font-size:18px;line-height:1.15;font-weight:800;overflow-wrap:anywhere;pointer-events:none}
+.title-deck-text[data-position="top"]{top:12%}
+.title-deck-text[data-position="middle"]{top:50%;transform:translateY(-50%)}
+.title-deck-text[data-position="bottom"]{bottom:11%}
+.title-deck-text[data-size="small"]{font-size:13px}
+.title-deck-text[data-size="medium"]{font-size:18px}
+.title-deck-text[data-size="large"]{font-size:24px}
+.title-deck-text[data-color="white"]{color:#fff}
+.title-deck-text[data-color="mint"]{color:#87f0df}
+.title-deck-text[data-color="gold"]{color:#ffdd8a}
+.title-deck-audition{display:grid;gap:4px;font-size:11px;color:#cfdfed;font-weight:700}
+.title-deck-audition input{width:100%;accent-color:#8ee5da}
+.title-deck-actions{display:flex;gap:9px;align-items:center;margin:9px 0}
+.title-deck-actions button{flex-shrink:0;padding:8px 10px}
+.title-deck-actions .tiny{line-height:1.4}
+@media(max-width:420px){.title-deck-recipes{grid-template-columns:repeat(2,minmax(0,1fr))}}

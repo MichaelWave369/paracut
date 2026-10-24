@@ -160,5 +160,5 @@ try{
  assert.equal(readFileSync(dest,'utf8'),'DO NOT OVERWRITE');
 }finally{rmSync(folder,{force:true,recursive:true});}
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
-assert.match(html,/R7\.(?:8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)/);
+assert.match(html,/R7\.(?:8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)|R8\.0 · CREATIVE TITLE DECK/);
 console.log('ParaCut R7.8 PASS: same-fit baseline, safe explicit mode, paired alternating A/B, decoded frame parity reporting, old projects and no-overwrite.');
