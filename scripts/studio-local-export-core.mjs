@@ -4,6 +4,7 @@ import { extname, resolve } from 'node:path';
 import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
 import {audioKeyframeFilter,overlayKeyframeFilter} from '../apps/desktop/public/studio-keyframes.js';
 import {validateBezierLookup} from '../apps/desktop/public/studio-keyframe-points.js';
+import {titleMotionPhases} from '../apps/desktop/public/studio-title-motion.js';
 import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 import { applyExportOptions } from './studio-r57-export-options.mjs';
 
@@ -31,10 +32,21 @@ export function buildAss(titles, length) {
     if(end<=t.start)continue;
     const position=positions[t.position??'bottom'],size=sizes[t.size??'medium'],color=colors[t.color??'white'];
     if(!position||!size||!color)throw Error('Invalid title styling.');
-    const fi=Math.min(t.fade_in??0,end-t.start),fo=Math.min(t.fade_out??0,end-t.start-fi);
-    const fixed='{\\an'+position+'\\fs'+size+'\\c&H'+color+'&\\fad('+Math.round(fi*1000)+','+Math.round(fo*1000)+')}';
     const escaped=t.text.replace(/[\r\n]/g,' ').replaceAll('\\','＼').replaceAll('{','｛').replaceAll('}','｝');
-    rows.push('Dialogue: 0,'+at(t.start)+','+at(end)+',Default,,0,0,0,,'+fixed+escaped);
+    const anchor={top:60,middle:360,bottom:660}[t.position??'bottom'];
+    for(const phase of titleMotionPhases(t,length)){
+      const fixed='\\an'+position+'\\fs'+size+'\\c&H'+color+'&';
+      const fades='\\fad('+Math.round(phase.fadeIn*1000)+','+
+        Math.round(phase.fadeOut*1000)+')';
+      const moving=phase.kind==='enter'||phase.kind==='exit';
+      const fromX=Math.round(640+phase.from.x),fromY=Math.round(anchor+phase.from.y);
+      const toX=Math.round(640+phase.to.x),toY=Math.round(anchor+phase.to.y);
+      const placement=phase.kind==='legacy'?'':moving
+        ?'\\move('+fromX+','+fromY+','+toX+','+toY+')'
+        :'\\pos(640,'+anchor+')';
+      rows.push('Dialogue: 0,'+at(phase.start)+','+at(phase.end)+
+        ',Default,,0,0,0,,{'+fixed+placement+fades+'}'+escaped);
+    }
   }
   return rows.join('\n')+'\n';
 }

@@ -10,6 +10,7 @@ import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
 import {navigateMarker,sortedMarkers} from './studio-markers.js';
 import {TITLE_RECIPES,titleRecipeFields,titlePlacementAtPlayhead,titleDeckSample,titleDeckReadout} from './studio-title-deck.js';
+import {titleMotionAt,titleMotionId,TITLE_MOTIONS} from './studio-title-motion.js';
 import {TITLE_RHYTHMS,TITLE_DURATION_CHOICES,titleRhythmFields,
   retimeTitleDraft,titleFadeFromPercent,titlePhaseMap,titleTimingReadout}
   from './studio-title-timing.js';
@@ -528,6 +529,9 @@ function showTitleAt(at) {
   node.textContent = title?.text || '';
   if (!title) return;
   const style = titleStyle(title);
+  const motion=titleMotionAt(title,at),rect=node.parentElement;
+  node.style.translate=(motion.x*(rect?.clientWidth||1280)/1280)+'px '+
+    (motion.y*(rect?.clientHeight||720)/720)+'px';
   node.dataset.position = style.position;
   node.dataset.size = style.size;
   node.dataset.color = style.color;
@@ -714,6 +718,7 @@ function loadTitleForEdit(title) {
   $('title-position').value = style.position;
   $('title-size').value = style.size;
   $('title-color').value = style.color;
+  $('title-motion').value = titleMotionId(title);
   $('title-fade-in').value = String(style.fade_in);
   $('title-fade-out').value = String(style.fade_out);
   $('add-title').textContent = 'Save Title Changes';
@@ -727,6 +732,7 @@ function resetTitleEditor() {
   $('title-position').value = 'bottom';
   $('title-size').value = 'medium';
   $('title-color').value = 'white';
+  $('title-motion').value='none';
   $('title-fade-in').value = '0';
   $('title-fade-out').value = '0';
   $('add-title').textContent = '+ Add Text Overlay';
@@ -831,6 +837,8 @@ function drawTitleOnCanvas(ctx, title, at) {
   const words = title.text.split(/\s+/);
   ctx.save();
   ctx.globalAlpha = opacity;
+  const motion=titleMotionAt(title,at);
+  ctx.translate(motion.x,motion.y);
   const size = fontSizes[style.size];
   ctx.font = 'bold ' + size + 'px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1530,7 +1538,7 @@ function titleDeckDraft(){
   return {text:$('title-text').value,
     start:Number($('title-start').value),end:Number($('title-end').value),
     position:$('title-position').value,size:$('title-size').value,
-    color:$('title-color').value,
+    color:$('title-color').value,motion:$('title-motion').value,
     fade_in:Number($('title-fade-in').value),fade_out:Number($('title-fade-out').value)};
 }
 function refreshTitleTiming(draft){
@@ -1584,11 +1592,17 @@ function refreshTitleDeck(){
     text.dataset.size=sample.size;
     text.dataset.color=sample.color;
     text.style.opacity=String(sample.opacity);
+    const offset=titleMotionAt(titleDeckDraft(),sample.seconds>=titleDeckDraft().end
+      ?titleDeckDraft().end-.001:sample.seconds);
+    const stage=$('title-deck-stage');
+    text.style.translate=(offset.x*(stage.clientWidth||1280)/1280)+'px '+
+      (offset.y*(stage.clientHeight||720)/720)+'px';
     readout.textContent=titleDeckReadout(sample);
     refreshTitleTiming(titleDeckDraft());
   }catch(e){
     text.textContent='Check title settings';
     text.style.opacity='0.35';
+    text.style.translate='0px 0px';
     readout.textContent=e.message+' · no project changes';
     $('title-timing-readout').textContent=e.message+' · no project changes';
     for(const id of ['title-timing-entry','title-timing-hold','title-timing-exit'])
@@ -1617,7 +1631,7 @@ for(const recipe of TITLE_RECIPES){
   });
 }
 for(const id of ['title-text','title-start','title-end',
-  'title-position','title-size','title-color','title-fade-in','title-fade-out']){
+  'title-position','title-size','title-color','title-motion','title-fade-in','title-fade-out']){
   $(id).addEventListener('input',()=>{selectedTitleRecipe=null;selectedTitleRhythm=null;refreshTitleDeck();});
   $(id).addEventListener('change',refreshTitleDeck);
 }
@@ -1700,6 +1714,7 @@ $('add-title').addEventListener('click', () => {
     text: $('title-text').value.trim(),
     start: Number($('title-start').value), end: Number($('title-end').value),
     position: $('title-position').value, size: $('title-size').value, color: $('title-color').value,
+    motion:$('title-motion').value,
     fade_in: Number($('title-fade-in').value), fade_out: Number($('title-fade-out').value)
   };
   const wasEditing = editingTitleId;
