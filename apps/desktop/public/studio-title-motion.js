@@ -12,7 +12,8 @@ const MOTION_DELTAS=Object.freeze({
 });
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 export function titleMotionId(title){
-  const id=title?.motion??'none';
+  // Only an absent legacy field defaults to Still. Explicit null is invalid.
+  const id=title?.motion===undefined?'none':title.motion;
   if(!TITLE_MOTIONS.includes(id))throw Error('Invalid title motion preset.');
   return id;
 }
