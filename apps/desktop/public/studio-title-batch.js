@@ -45,7 +45,7 @@ export function titleBatchPlan(titles,command){
       // Always discard stale XY/scale first, allowing copied Anchor layouts.
       delete changed.title_x;delete changed.title_y;delete changed.title_scale;
       Object.assign(changed,
-        ...(layout.placement?[titlePlacementFields(layout.placement)]:[{}]),
+        layout.placement?titlePlacementFields(layout.placement):{},
         titleScaleFields(layout.scale));
     }
     if(appearance)Object.assign(changed,appearance);
