@@ -119,7 +119,7 @@ assert.equal(importDraft(snapshot).titles.length,0);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.(?:5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE)/);
+assert.match(html,/R8\.(?:5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO)/);
 for(const id of ['title-resize-handle','title-safe-guides','title-scale',
  'title-scale-value','title-safe-toggle'])assert.ok(html.includes('id="'+id+'"'));
 assert.match(html,/aria-label="Title font scaling percent"/);
