@@ -57,6 +57,7 @@ export function acceptABReceipt(line,mode){
     record.mediaSeconds===0||record.encodeMs===0||
     !['filterGraphChars','customXSegments','optimizedPieces','previousFixedPieces']
       .every(k=>Number.isSafeInteger(record.graph[k])&&record.graph[k]>=0)||
+    record.graph.customXSegments<1||record.graph.optimizedPieces<1||
     typeof record.graph.maxProbeError!=='number'||
     !Number.isFinite(record.graph.maxProbeError)||
     record.graph.maxProbeError<0||record.graph.maxProbeError>1)
