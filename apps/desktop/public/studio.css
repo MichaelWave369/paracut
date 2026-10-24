@@ -486,3 +486,26 @@
 .title-deck-actions button{flex-shrink:0;padding:8px 10px}
 .title-deck-actions .tiny{line-height:1.4}
 @media(max-width:420px){.title-deck-recipes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Studio R8.1: staged entrance / hold / exit timeline, not an export effect. */
+.title-timing{display:grid;gap:8px;padding:10px;border:1px solid #3e536c;border-radius:9px;background:#111a2b}
+.title-timing h4{margin:2px 0;font-size:11px;color:#c1e1ee;font-weight:750;letter-spacing:.04em}
+.title-timing-rhythms,.title-timing-durations,.title-timing-frames{display:flex;flex-wrap:wrap;gap:5px}
+.title-timing-rhythms button,.title-timing-durations button,.title-timing-frames button{
+ border:1px solid #4f6582;background:#1d2b40;color:#dceefa;border-radius:6px;
+ font-size:11px;padding:8px 10px;min-height:33px;flex:1 1 auto}
+.title-timing-rhythms button[aria-pressed="true"],.title-timing-frames button[aria-pressed="true"]{
+ border-color:#84dcd4;background:#285047;color:#fff}
+.title-timing button:focus-visible{outline:2px solid #adffec;outline-offset:2px}
+.title-timing-sliders{display:grid;gap:6px}
+.title-timing-sliders label{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:8px;
+ color:#cfdfec;font-size:11px;font-weight:700}
+.title-timing-sliders label input{grid-column:1/-1;width:100%;accent-color:#83dfd4}
+.title-timing-phase{display:flex;height:16px;overflow:hidden;border:1px solid #64819d;border-radius:6px;background:#304258}
+.title-timing-phase span{min-width:0;transition:width .08s linear}
+.title-phase-entry{background:repeating-linear-gradient(115deg,#337b83 0 5px,#459c9f 5px 10px)}
+.title-phase-hold{background:#a1e8c6}
+.title-phase-exit{background:repeating-linear-gradient(65deg,#9175a9 0 5px,#b28cbd 5px 10px)}
+.title-timing-frames button{flex-basis:16%;padding:6px 2px}
+.title-timing .tip{margin:0}
+@media(prefers-reduced-motion:reduce){.title-timing-phase span{transition:none}}
