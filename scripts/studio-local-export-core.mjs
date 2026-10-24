@@ -5,6 +5,7 @@ import { colorFFmpegFilters } from '../apps/desktop/public/studio-color.js';
 import {audioKeyframeFilter,overlayKeyframeFilter} from '../apps/desktop/public/studio-keyframes.js';
 import {validateBezierLookup} from '../apps/desktop/public/studio-keyframe-points.js';
 import {titleMotionExportPhases} from '../apps/desktop/public/studio-title-motion.js';
+import {titlePlacement} from '../apps/desktop/public/studio-title-placement.js';
 import { planLayeredMp4 } from './studio-r56-layer-graph.mjs';
 import { applyExportOptions } from './studio-r57-export-options.mjs';
 
@@ -33,17 +34,19 @@ export function buildAss(titles, length) {
     const position=positions[t.position??'bottom'],size=sizes[t.size??'medium'],color=colors[t.color??'white'];
     if(!position||!size||!color)throw Error('Invalid title styling.');
     const escaped=t.text.replace(/[\r\n]/g,' ').replaceAll('\\','＼').replaceAll('{','｛').replaceAll('}','｝');
-    const anchor={top:60,middle:360,bottom:660}[t.position??'bottom'];
+    const absolute=titlePlacement(t);
+    const atXY=absolute||{x:640,y:{top:60,middle:360,bottom:660}[t.position??'bottom']};
     for(const phase of titleMotionExportPhases(t,length)){
-      const fixed='\\an'+position+'\\fs'+size+'\\c&H'+color+'&';
+      const fixed='\\an'+(absolute?5:position)+'\\fs'+size+'\\c&H'+color+'&';
       const fades='\\fad('+Math.round(phase.fadeIn*1000)+','+
         Math.round(phase.fadeOut*1000)+')';
       const moving=phase.kind==='enter'||phase.kind==='exit';
-      const fromX=Math.round(640+phase.from.x),fromY=Math.round(anchor+phase.from.y);
-      const toX=Math.round(640+phase.to.x),toY=Math.round(anchor+phase.to.y);
-      const placement=phase.kind==='legacy'?'':(moving||phase.kind==='eased-piece')
+      const fromX=Math.round(atXY.x+phase.from.x),fromY=Math.round(atXY.y+phase.from.y);
+      const toX=Math.round(atXY.x+phase.to.x),toY=Math.round(atXY.y+phase.to.y);
+      const placement=phase.kind==='legacy'?(absolute?'\\pos('+atXY.x+','+atXY.y+')':'')
+        :(moving||phase.kind==='eased-piece')
         ?'\\move('+fromX+','+fromY+','+toX+','+toY+')'
-        :'\\pos(640,'+anchor+')';
+        :'\\pos('+atXY.x+','+atXY.y+')';
       // Eased movement needs piecewise linear ASS events, but ordinary
       // fade presets remain the exact historical native \fad path.
       const opacityHex=value=>Math.round(255*(1-Math.max(0,Math.min(1,value))))
