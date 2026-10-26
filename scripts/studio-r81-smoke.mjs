@@ -125,7 +125,7 @@ assert.equal(titleStyle(state.titles[0]).color,'gold');
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.(?:1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY)/);
+assert.match(html,/R8\.(?:1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY|9 · REEL ORIGINALS)/);
 for(const rhythm of TITLE_RHYTHMS)
  assert.ok(html.includes('data-title-rhythm="'+rhythm.id+'"'));
 for(const seconds of TITLE_DURATION_CHOICES)

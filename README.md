@@ -1,5 +1,9 @@
 # ParaCut
 
+## ◆ ParaCut Studio R8.9 — REEL Originals Verified-Byte Intake
+
+R8.9 brings the actual **REEL → CineSwarm → ParaCut** editorial handoff into ParaCut's browser Studio. Under **Project Media → REEL Originals**, choose the existing first-shot master MP4 and its **unsigned** native CineSwarm evidence JSON, click **Inspect & hash MP4**, and only after an exact SHA-256 match separately click **Add exact master to V1**. ParaCut probes the real media file, stages its normal `asset.added`, `clip.appended` and muted-source-audio edits, and commits a real timeline clip with undo/redo and evidence-hash details in the native `paracut.studio.draft.v3` asset/receipt ledger. No media auto-load, uploads, local GPU calls, mock renders or rights/publishing authorization. [R8.9 guide](docs/STUDIO_R89.md).
+
 ## ◆ ParaCut Studio R8.8 — Title Style Library
 
 R8.8 lets you **save a reusable title look** (alignment/X-Y, scale, color, font size, movement/easing) into a browser-local library and preview it on another title or in another project. Up to 24 approved looks survive project switches on the same origin; explicit versioned **JSON export/import** provides a portable backup, with whole-file validation and confirmation before replacing local looks. Saving or previewing styles never changes project receipts until Add/Save Title. The existing Program, Canvas MP4/WebM, and FFmpeg ASS paths consume the same validated title fields. [R8.8 guide](docs/STUDIO_R88.md).

@@ -166,7 +166,7 @@ assert.ok(!exportDraft(second).includes('title.style.library'));
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.8 · TITLE STYLE LIBRARY/);
+assert.match(html,/R8\.8 · TITLE STYLE LIBRARY|9 · REEL ORIGINALS/);
 for(const id of ['title-style-library','title-style-save','title-style-name',
  'title-style-select','title-style-apply','title-style-delete','title-style-export',
  'title-style-import','title-style-import-file','title-library-count',

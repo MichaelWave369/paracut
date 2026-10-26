@@ -3,6 +3,7 @@ import { validateClipColor } from './studio-color.js';
 import {validateKeyframePair,clipKeyframeAt} from './studio-keyframes.js';
 import {pointsField,validateKeyframePoints} from './studio-keyframe-points.js';
 import { synchronizedRipplePlan } from './studio-ripple.js';
+import {validateReelAssetTag} from './studio-reel-import.js';
 import { validateMarker,markerFromInput,sortedMarkers,MARKER_LIMIT } from './studio-markers.js';
 // This is a browser draft format, NOT the canonical ParaCut project-core format.
 export const DRAFT_SCHEMA = 'paracut.studio.draft.v3';
@@ -338,7 +339,8 @@ export function change(state, command) {
     if (!a.asset_id || assets.some(item => item.asset_id === a.asset_id)) throw Error('Missing or duplicate media ID.');
     if (assets.length >= 200) throw Error('This project has reached its 200-file safety limit.');
     assets.push({ asset_id: a.asset_id, name: String(a.name).slice(0, 240), type: a.type,
-      size: a.size, lastModified: a.lastModified, duration: round(a.duration) });
+      size: a.size, lastModified: a.lastModified, duration: round(a.duration),
+      ...(a.reelEvidence===undefined?{}:{reelEvidence:validateReelAssetTag(a.reelEvidence)}) });
   } else if (type === 'clip.appended') {
     const asset = assets.find(item => item.asset_id === command.asset_id);
     if (!asset) throw Error('Media not found.');
@@ -649,6 +651,12 @@ export function change(state, command) {
       ...(type === 'clip.source.inserted'||type === 'clip.source.replaced' ?
         {source_in:command.start,source_out:command.end,at:command.at??null,source_edit:'video-1'} : {}),
       ...(type === 'clip.source-audio.muted' ? { muted: command.muted } : {}),
+      ...(type === 'asset.added' && command.asset?.reelEvidence ? {
+        reel_master_sha256:command.asset.reelEvidence.masterSha256,
+        reel_review_claim:command.asset.reelEvidence.reviewDecision,
+        reel_unsigned_source:true,
+        publicReleaseAuthorized:false,
+      } : {}),
       ...(type === 'clip.audio.updated' ? { volume: command.volume, fade_in: command.fade_in, fade_out: command.fade_out } : {}),
       ...(type === 'clip.color.updated' ? { color:copy(command.color) } : {}),
       ...(type === 'clip.keyframes.updated' ? {field:command.field,values:command.values===null?null:copy(command.values)} : {}),
@@ -707,6 +715,7 @@ export function validate(state) {
     if (!a || typeof a.asset_id !== 'string' || !a.asset_id || ids.has(a.asset_id)
         || typeof a.name !== 'string' || !finite(a.duration) || a.duration < 0.1 || a.duration > 86400
         || !finite(a.size) || a.size < 0 || !/^(audio|video)\//.test(a.type)) throw Error('Invalid media reference.');
+    if(a.reelEvidence!==undefined)validateReelAssetTag(a.reelEvidence);
     ids.add(a.asset_id);
   }
   const clipIds = new Set();

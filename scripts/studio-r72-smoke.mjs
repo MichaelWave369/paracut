@@ -165,6 +165,6 @@ assert.deepEqual(errors,[]);
 assert.equal(validate(s),true);
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R7\.(?:2 · 2D BÉZIER|3 · PRECISION & EXPORT|4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)|R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY)/);
+assert.match(html,/R7\.(?:2 · 2D BÉZIER|3 · PRECISION & EXPORT|4 · GRAPH & BENCHMARK|5 · EXPORT LAB|6 · ALPHA FASTPATHS|7 · BALANCED BÉZIER|8 · CONTROLLED A\/B|9 · EXPORT DIAGNOSTICS)|R8\.(?:0 · CREATIVE TITLE DECK|1 · TITLE TIMING LAB|2 · TITLE MOTION|3 · MOTION CURVES|4 · DIRECT TITLE PLACEMENT|5 · VISUAL TITLE TRANSFORMS|6 · ALIGN & REUSE|7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY|9 · REEL ORIGINALS)/);
 assert.match(css,/\.keyframe-bezier-handle/);
 console.log('ParaCut R7.2 PASS: 2D handle bounds/inversion, sample FFmpeg graph, old drafts, and pointer/keyboard receipts.');

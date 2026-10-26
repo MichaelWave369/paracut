@@ -606,3 +606,16 @@
 .title-style-library :is(button,select,input):focus-visible{outline:2px solid #a3f1da;outline-offset:2px}
 .title-style-library output{line-height:1.55;overflow-wrap:anywhere}
 .title-style-library output.library-error{color:#ffc7bd}
+
+
+/* R8.9 REEL / CineSwarm locally verified-byte import to the real Studio shelf. */
+.reel-import-panel{margin:10px 0 13px;border:1px solid #789e8f;background:linear-gradient(135deg,#18323b,#1b293c);border-radius:9px;padding:11px;color:#e7fff0}
+.reel-import-panel>summary{cursor:pointer;font-size:12px;font-weight:850;line-height:1.5;color:#d4ffad;letter-spacing:.02em}
+.reel-import-panel .tip{font-size:11px;line-height:1.6;color:#c6d9d5;margin:11px 0}
+.reel-import-panel>label{display:block;font-size:10px;font-weight:850;line-height:1.6;color:#d3fac3;margin:12px 0}
+.reel-import-panel input[type="file"]{display:block;max-width:100%;width:100%;color:#e7fff0;background:#142d37;border:1px solid #7ba08f;border-radius:6px;padding:9px;font-size:10px;margin-top:6px}
+.reel-import-panel button{display:block;margin:9px 0;width:100%;min-height:41px;background:#355d54;color:#eaffe9;border:1px solid #9dccad;border-radius:7px;font-size:11px;font-weight:850;cursor:pointer}
+.reel-import-panel button:disabled{opacity:.5;cursor:not-allowed}
+.reel-import-panel #reel-add-v1:not(:disabled){background:#c0ff9c;color:#152b26}
+.reel-import-panel #reel-import-status{padding:10px;border-radius:6px;border:1px solid #608f8a;background:#203b43;overflow-wrap:anywhere}
+.reel-import-panel input:focus-visible,.reel-import-panel button:focus-visible,.reel-import-panel>summary:focus-visible{outline:3px solid #ffe0a8;outline-offset:2px}
