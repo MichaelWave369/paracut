@@ -166,7 +166,7 @@ for(const bad of damaged.concat([
 const html=readFileSync(new URL('../apps/desktop/public/studio.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../apps/desktop/public/studio.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../apps/desktop/public/studio.css',import.meta.url),'utf8');
-assert.match(html,/R8\.(?:7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY)/);
+assert.match(html,/R8\.(?:7 · MULTI-TITLE STUDIO|8 · TITLE STYLE LIBRARY|9 · REEL ORIGINALS)/);
 for(const id of ['title-batch-panel','title-batch-count','title-batch-all',
  'title-batch-clear','title-batch-mode','title-batch-apply','title-batch-preview'])
  assert.ok(html.includes('id="'+id+'"'),id);
