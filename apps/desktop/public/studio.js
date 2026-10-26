@@ -1,6 +1,6 @@
 import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayCrossfadeAt, maxOverlayCrossfade, overlayOpacityAt, overlayMotionAt, isSourceAudioMuted, audioLevelAt, audioMixLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
-import {inspectReelMaster,REEL_MAX_JSON_BYTES,REEL_MAX_MASTER_BYTES} from './studio-reel-import.js';
+import {inspectReelMaster,verifyReelRelink,REEL_MAX_JSON_BYTES,REEL_MAX_MASTER_BYTES} from './studio-reel-import.js';
 import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
@@ -1413,6 +1413,10 @@ async function importVideos(files) {
       const existing = state.assets.find(a => a.name === file.name && a.type === file.type && a.size === file.size && a.lastModified === file.lastModified && !media.has(a.asset_id));
       if (existing) {
         if (Math.abs(existing.duration - seconds) > .5) { URL.revokeObjectURL(url); throw Error('Duration differs from the draft reference.'); }
+        if(existing.reelEvidence){
+          try{await verifyReelRelink(file,existing.reelEvidence);}
+          catch(error){URL.revokeObjectURL(url);throw error;}
+        }
         media.set(existing.asset_id, { file, url });
         status('Relinked ' + file.name);
       } else {
