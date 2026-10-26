@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {webcrypto} from 'node:crypto';
 import {
-  inspectReelMaster,validateReelAssetTag,
+  inspectReelMaster,verifyReelRelink,validateReelAssetTag,
   REEL_ASSET_TAG,REEL_EVIDENCE_SCHEMA,REEL_MAX_MASTER_BYTES,
 } from '../apps/desktop/public/studio-reel-import.js';
 import {
@@ -62,6 +62,7 @@ const inspected=await inspectReelMaster(testFile,json,webcrypto);
 assert.equal(inspected.hash,manifest.master.sha256);
 assert.equal(inspected.assetTag.masterSha256,manifest.master.sha256);
 assert.equal(inspected.assetTag.publicReleaseAuthorized,false);
+assert.equal(await verifyReelRelink(testFile,inspected.assetTag,webcrypto),true);
 assert.equal(inspected.publicationAuthorized,false);
 assert.equal(inspected.originVerified,false);
 assert.equal(inspected.mediaDecoded,false);
@@ -102,6 +103,10 @@ const wrong=structuredClone(manifest);
 wrong.master.sha256=await hash(noFtyp);
 wrong.master.sizeBytes=noFtyp.size;
 await assert.rejects(()=>inspectReelMaster(noFtyp,JSON.stringify(wrong),webcrypto),/ftyp/);
+await assert.rejects(()=>verifyReelRelink(noFtyp,inspected.assetTag,webcrypto),/ftyp/);
+const swapped=new Uint8Array(rawBytes);
+swapped[swapped.length-1]^=1;
+await assert.rejects(()=>verifyReelRelink(new Blob([swapped]),inspected.assetTag,webcrypto),/relink FAILED/);
 const huge=new Blob([new Uint8Array(20)]);
 Object.defineProperty(huge,'size',{value:REEL_MAX_MASTER_BYTES+1});
 await assert.rejects(()=>inspectReelMaster(huge,json,webcrypto),/256 MiB/);
@@ -139,6 +144,7 @@ for(const id of ['reel-intake-panel','reel-evidence-input','reel-master-input','
 assert.match(ui,/await inspectReelMaster\(file,await sidecar\.text\(\)\)/);
 assert.match(ui,/staged=change\(staged,\{type:'clip\.appended',asset_id\}\)/);
 assert.match(ui,/type:'clip\.source-audio\.muted'/);
+assert.match(ui,/await verifyReelRelink\(file,existing\.reelEvidence\)/);
 assert.match(html,/id="reel-add-v1"[^>]*disabled/);
 assert.doesNotMatch(ui,/fetch\(.+reel/i);
 console.log('ParaCut Studio R8.9 REEL native edit path PASS (selected MP4 bytes, denied publication, native V1, receipts, undo and draft).');
