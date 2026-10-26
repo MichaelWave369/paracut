@@ -136,3 +136,25 @@ export async function inspectReelMaster(file, source, cryptoImpl=globalThis.cryp
     assetTag:tag,
   };
 }
+
+/**
+ * Existing ParaCut drafts do not embed video files. On relink, recheck the
+ * ACTUAL selected MP4 bytes against the saved unsigned REEL asset hash.
+ * A matching filename, last-modified timestamp and size is never sufficient.
+ */
+export async function verifyReelRelink(file,tag,cryptoImpl=globalThis.crypto){
+  const evidence=validateReelAssetTag(tag);
+  if(!file||typeof file.arrayBuffer!=='function'||file.size<16||
+    file.size>REEL_MAX_MASTER_BYTES)
+    throw Error('REEL relink requires a bounded original MP4.');
+  if(!cryptoImpl?.subtle?.digest)
+    throw Error('Secure SHA-256 is required before restoring a REEL-linked source.');
+  const bytes=new Uint8Array(await file.slice(0,16).arrayBuffer());
+  if(String.fromCharCode(...bytes.slice(4,8))!=='ftyp')
+    throw Error('Selected REEL relink media has no MP4 ftyp signature.');
+  const digest=await cryptoImpl.subtle.digest('SHA-256',await file.arrayBuffer());
+  const current=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  if(current!==evidence.masterSha256)
+    throw Error('REEL relink FAILED: these media bytes do not match the saved original master hash.');
+  return true;
+}
