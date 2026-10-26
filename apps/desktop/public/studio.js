@@ -1,5 +1,6 @@
 import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayCrossfadeAt, maxOverlayCrossfade, overlayOpacityAt, overlayMotionAt, isSourceAudioMuted, audioLevelAt, audioMixLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
+import {inspectReelMaster,REEL_MAX_JSON_BYTES,REEL_MAX_MASTER_BYTES} from './studio-reel-import.js';
 import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
@@ -73,6 +74,14 @@ function placeOnLayer(command) {
     ? 'Snapped '+snapped.edge+' to '+fmt(snapped.anchor) : '';
 }
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
+let reelVerified = null;
+let reelSerial = 0;
+function invalidateReelVerification(message='Select both files, then verify again.') {
+  reelSerial++;
+  reelVerified=null;
+  $('reel-add-v1').disabled=true;
+  $('reel-import-status').textContent=message;
+}
 const video = $('preview-video');
 const sourceVideo=$('source-video');
 let sourceAssetId=null, sourceIn=0, sourceOut=0;
@@ -125,6 +134,7 @@ function download(name, blob) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 function clearMedia() {
+  invalidateReelVerification('Project changed. Select and recheck the REEL MP4 before importing.');
   sourceVideo.pause(); sourceVideo.removeAttribute('src');sourceVideo.load();
   sourceAssetId=null;sourceIn=0;sourceOut=0;
   for (const entry of media.values()) URL.revokeObjectURL(entry.url);
@@ -1421,6 +1431,99 @@ async function importVideos(files) {
     } catch (e) { status(file.name + ': ' + e.message, true); }
   }
 }
+
+/* REEL Originals: independent, opt-in verification and native timeline import.
+ * File bytes stay in the origin-scoped browser media map. The project draft
+ * stores only explicit unsigned hash provenance and a normal ParaCut receipt.
+ */
+for(const key of ['reel-evidence-input','reel-master-input']){
+  $(key).addEventListener('change',()=>invalidateReelVerification());
+}
+$('reel-verify-media').addEventListener('click',async()=>{
+  if(exporting)return status('Finish export before importing REEL media.',true);
+  const sidecar=$('reel-evidence-input').files?.[0];
+  const file=$('reel-master-input').files?.[0];
+  invalidateReelVerification('Inspecting user-selected MP4 locally…');
+  const serial=reelSerial;
+  if(!sidecar||!file){
+    $('reel-import-status').textContent='Choose both the CineSwarm JSON and actual master MP4.';
+    return;
+  }
+  if(sidecar.size>REEL_MAX_JSON_BYTES||file.size>REEL_MAX_MASTER_BYTES){
+    $('reel-import-status').textContent='REEL evidence or MP4 exceeds local 64 KiB / 256 MiB inspection limits.';
+    return;
+  }
+  $('reel-verify-media').disabled=true;
+  try{
+    const inspected=await inspectReelMaster(file,await sidecar.text());
+    if(serial!==reelSerial)return;
+    reelVerified={file,sidecar,inspected};
+    $('reel-add-v1').disabled=false;
+    $('reel-import-status').textContent='Selected MP4 SHA-256 MATCHED the unsigned local evidence. '+
+      'CineSwarm QC claim: '+inspected.reviewDecision+
+      '. Real origin, model operation, rights and release are NOT independently authenticated. '+
+      'A separate click will append it to V1.';
+    status('REEL Shot 001 bytes matched unsigned sidecar. Click Add to V1 to commit.');
+  }catch(e){
+    if(serial===reelSerial){
+      $('reel-import-status').textContent='REEL import DENIED: '+e.message;
+      status('REEL verification failed: '+e.message,true);
+    }
+  }finally{
+    $('reel-verify-media').disabled=false;
+  }
+});
+$('reel-add-v1').addEventListener('click',async()=>{
+  if(exporting)return status('Finish export before importing REEL media.',true);
+  const candidate=reelVerified;
+  if(!candidate)return status('Recheck both original files first.',true);
+  if($('reel-master-input').files?.[0]!==candidate.file||
+     $('reel-evidence-input').files?.[0]!==candidate.sidecar){
+    invalidateReelVerification('Your selection changed. Reverify the exact MP4 bytes.');
+    return;
+  }
+  const serial=reelSerial;
+  $('reel-add-v1').disabled=true;
+  let sourceUrl=null;
+  try{
+    const {url,seconds}=await probe(candidate.file);
+    sourceUrl=url;
+    if(serial!==reelSerial) {
+      URL.revokeObjectURL(url);
+      return;
+    }
+    if(Math.abs(seconds-candidate.inspected.claimedDuration)>1.5)
+      throw Error('Video duration differs from the unsigned CineSwarm master claim.');
+    const asset_id=uuid();
+    let staged=change(state,{type:'asset.added',asset:{
+      asset_id,name:candidate.file.name,
+      size:candidate.file.size,type:'video/mp4',
+      lastModified:candidate.file.lastModified??0,
+      duration:seconds,reelEvidence:candidate.inspected.assetTag,
+    }});
+    staged=change(staged,{type:'clip.appended',asset_id});
+    const newClip=staged.clips.at(-1);
+    staged=change(staged,{type:'clip.source-audio.muted',
+      clip_id:newClip.clip_id,muted:true});
+    stopPlayback();
+    state=staged;
+    media.set(asset_id,{file:candidate.file,url});
+    sourceUrl=null;
+    selectedId=newClip.clip_id;
+    playhead=newClip.timeline.start;
+    invalidateReelVerification('Imported the exact selected MP4 as a muted V1 source. Reverify before any second import.');
+    render();
+    void seekTo(playhead);
+    status('REEL P001-S01 added to native V1 timeline. Three ParaCut edit receipts; source audio muted. Save Draft separately.');
+  }catch(e){
+    if(sourceUrl)URL.revokeObjectURL(sourceUrl);
+    if(serial===reelSerial){
+      $('reel-import-status').textContent='Timeline import DENIED: '+e.message;
+      status('REEL timeline import failed: '+e.message,true);
+    }
+  }
+});
+
 video.addEventListener('timeupdate', () => {
   if (!playing) return;
   const clip = activeClip(state, playhead);
