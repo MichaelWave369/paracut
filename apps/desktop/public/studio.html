@@ -49,6 +49,20 @@
         <span class="plus">＋</span><strong>Import media</strong><span>Drop files or click to browse</span>
         <small>Video + audio files · V1/V2 + A1/A2</small>
       </div>
+      <details id="reel-intake-panel" class="reel-import-panel">
+        <summary>◆ REEL Originals · Verified-Byte Media Import</summary>
+        <p class="tip">Bring a real CineSwarm P001-S01 master MP4 and its separately exported unsigned evidence JSON. ParaCut checks the actual MP4 bytes before enabling a real V1 timeline import. No network calls, generation or publishing.</p>
+        <label>Evidence sidecar JSON
+          <input id="reel-evidence-input" type="file" accept=".json,application/json">
+        </label>
+        <label>Actual master MP4
+          <input id="reel-master-input" type="file" accept=".mp4,video/mp4">
+        </label>
+        <button id="reel-verify-media" type="button" class="wide">Inspect &amp; hash MP4</button>
+        <p id="reel-import-status" class="tip" role="status" aria-live="polite">Select both local files. Unsigned JSON is not proof of model execution or copyright clearance.</p>
+        <button id="reel-add-v1" type="button" class="wide" disabled>Add exact master to Video 1 timeline</button>
+        <p class="tip"><strong>Editing only.</strong> This is an actual clip import with an unsigned evidence tag in ParaCut's draft and edit receipts. It is not a signed CineSwarm receipt, final approval or REEL broadcast authorization. Synthetic source sound starts muted; use your own cleared soundtrack.</p>
+      </details>
       <div id="media-list" class="media-list" aria-live="polite"></div>
       <div class="layer-add-guide">Media + appends to V1/A1. Use the second button for V2/A2 at the current playhead.</div>
       <p class="tip">Media stays on your device. V2 overlays are placed above V1; A2 mixes with A1.</p>
