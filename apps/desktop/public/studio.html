@@ -63,6 +63,20 @@
         <button id="reel-add-v1" type="button" class="wide" disabled>Add exact master to Video 1 timeline</button>
         <p class="tip"><strong>Editing only.</strong> This is an actual clip import with an unsigned evidence tag in ParaCut's draft and edit receipts. It is not a signed CineSwarm receipt, final approval or REEL broadcast authorization. Synthetic source sound starts muted; use your own cleared soundtrack.</p>
       </details>
+      <details id="framefield-intake-panel" class="reel-import-panel">
+        <summary>◆ Framefield Studio · Verified WebM Intake</summary>
+        <p class="tip">Select a local Framefield WebM and matching unsigned hash receipt. No upload, source-rights clearance or publication authorization.</p>
+        <label>Framefield handoff JSON
+          <input id="framefield-evidence-input" type="file" accept=".json,application/json">
+        </label>
+        <label>Actual recorded WebM
+          <input id="framefield-webm-input" type="file" accept=".webm,video/webm">
+        </label>
+        <button id="framefield-verify-media" type="button" class="wide">Verify exact WebM bytes</button>
+        <p id="framefield-import-status" class="tip" role="status" aria-live="polite">Select both files, verify SHA-256, then add to the timeline.</p>
+        <button id="framefield-add-v1" type="button" class="wide" disabled>Add verified WebM to Video 1</button>
+        <p class="tip">Unsigned receipt only. The saved draft retains hash metadata but not media bytes. Relink requires the same bytes.</p>
+      </details>
       <div id="media-list" class="media-list" aria-live="polite"></div>
       <div class="layer-add-guide">Media + appends to V1/A1. Use the second button for V2/A2 at the current playhead.</div>
       <p class="tip">Media stays on your device. V2 overlays are placed above V1; A2 mixes with A1.</p>

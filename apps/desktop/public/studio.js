@@ -1,6 +1,7 @@
 import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, activeOverlayClip, activeAudio2Clip, overlayCrossfadeAt, maxOverlayCrossfade, overlayOpacityAt, overlayMotionAt, isSourceAudioMuted, audioLevelAt, audioMixLevelAt, visibleTitle, titleStyle, titleOpacityAt, crossfadeAt, maxCrossfade, snapLayerTime, exportDraft, importDraft } from './studio-core.js';
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import {inspectReelMaster,verifyReelRelink,REEL_MAX_JSON_BYTES,REEL_MAX_MASTER_BYTES} from './studio-reel-import.js';
+import {inspectFramefieldWebm,verifyFramefieldRelink,MAX_SIDECAR_BYTES,MAX_WEBM_BYTES} from './studio-framefield-import.js';
 import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
@@ -74,6 +75,12 @@ function placeOnLayer(command) {
     ? 'Snapped '+snapped.edge+' to '+fmt(snapped.anchor) : '';
 }
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
+let framefieldVerified=null,framefieldSerial=0;
+function invalidateFramefieldVerification(message='Select both files and verify again.') {
+  framefieldSerial++;framefieldVerified=null;
+  $('framefield-add-v1').disabled=true;
+  $('framefield-import-status').textContent=message;
+}
 let reelVerified = null;
 let reelSerial = 0;
 function invalidateReelVerification(message='Select both files, then verify again.') {
@@ -135,6 +142,7 @@ function download(name, blob) {
 }
 function clearMedia() {
   invalidateReelVerification('Project changed. Select and recheck the REEL MP4 before importing.');
+  invalidateFramefieldVerification('Project changed. Reverify Framefield WebM before importing.');
   sourceVideo.pause(); sourceVideo.removeAttribute('src');sourceVideo.load();
   sourceAssetId=null;sourceIn=0;sourceOut=0;
   for (const entry of media.values()) URL.revokeObjectURL(entry.url);
@@ -1417,6 +1425,10 @@ async function importVideos(files) {
           try{await verifyReelRelink(file,existing.reelEvidence);}
           catch(error){URL.revokeObjectURL(url);throw error;}
         }
+        if(existing.framefieldEvidence){
+          try{await verifyFramefieldRelink(file,existing.framefieldEvidence);}
+          catch(error){URL.revokeObjectURL(url);throw error;}
+        }
         media.set(existing.asset_id, { file, url });
         status('Relinked ' + file.name);
       } else {
@@ -1524,6 +1536,82 @@ $('reel-add-v1').addEventListener('click',async()=>{
     if(serial===reelSerial){
       $('reel-import-status').textContent='Timeline import DENIED: '+e.message;
       status('REEL timeline import failed: '+e.message,true);
+    }
+  }
+});
+
+/* Explicit, locally verified Framefield WebM -> V1 handoff. */
+for(const key of ['framefield-evidence-input','framefield-webm-input']){
+  $(key).addEventListener('change',()=>invalidateFramefieldVerification());
+}
+$('framefield-verify-media').addEventListener('click',async()=>{
+  if(exporting)return status('Finish export before importing Framefield media.',true);
+  const sidecar=$('framefield-evidence-input').files?.[0];
+  const file=$('framefield-webm-input').files?.[0];
+  invalidateFramefieldVerification('Inspecting exact WebM bytes locally…');
+  const serial=framefieldSerial;
+  if(!sidecar||!file){
+    $('framefield-import-status').textContent='Choose matching Framefield WebM and JSON.';
+    return;
+  }
+  if(sidecar.size>MAX_SIDECAR_BYTES||file.size>MAX_WEBM_BYTES){
+    $('framefield-import-status').textContent='Selected file exceeds size limit.';
+    return;
+  }
+  $('framefield-verify-media').disabled=true;
+  try{
+    const inspected=await inspectFramefieldWebm(file,await sidecar.text());
+    if(serial!==framefieldSerial)return;
+    framefieldVerified={file,sidecar,inspected};
+    $('framefield-add-v1').disabled=false;
+    $('framefield-import-status').textContent='SHA-256 MATCHED unsigned receipt. Origin and rights NOT verified. Click Add to V1 to commit.';
+    status('Framefield WebM byte identity confirmed.');
+  }catch(e){
+    if(serial===framefieldSerial){
+      $('framefield-import-status').textContent='Framefield verification REFUSED: '+e.message;
+      status('Framefield verification refused: '+e.message,true);
+    }
+  }finally{$('framefield-verify-media').disabled=false;}
+});
+$('framefield-add-v1').addEventListener('click',async()=>{
+  if(exporting)return status('Finish export before importing Framefield media.',true);
+  const candidate=framefieldVerified;
+  if(!candidate)return status('Verify both original files first.',true);
+  if($('framefield-webm-input').files?.[0]!==candidate.file||
+     $('framefield-evidence-input').files?.[0]!==candidate.sidecar){
+    invalidateFramefieldVerification('Selection changed. Verify again.');
+    return;
+  }
+  const serial=framefieldSerial;
+  $('framefield-add-v1').disabled=true;
+  let sourceUrl=null;
+  try{
+    await verifyFramefieldRelink(candidate.file,candidate.inspected.assetTag);
+    if(serial!==framefieldSerial)return;
+    const {url,seconds}=await probe(candidate.file);
+    sourceUrl=url;
+    if(serial!==framefieldSerial){URL.revokeObjectURL(url);return;}
+    const asset_id=uuid();
+    let staged=change(state,{type:'asset.added',asset:{
+      asset_id,name:candidate.file.name,size:candidate.file.size,
+      type:'video/webm',lastModified:candidate.file.lastModified??0,
+      duration:seconds,framefieldEvidence:candidate.inspected.assetTag,
+    }});
+    staged=change(staged,{type:'clip.appended',asset_id});
+    const clip=staged.clips.at(-1);
+    staged=change(staged,{type:'clip.source-audio.muted',
+      clip_id:clip.clip_id,muted:true});
+    stopPlayback();state=staged;
+    media.set(asset_id,{file:candidate.file,url});sourceUrl=null;
+    selectedId=clip.clip_id;playhead=clip.timeline.start;
+    invalidateFramefieldVerification('Verified WebM imported to V1. Reverify for another import.');
+    render();void seekTo(playhead);
+    status('Framefield WebM added to Video 1; source audio muted. Save Draft separately.');
+  }catch(e){
+    if(sourceUrl)URL.revokeObjectURL(sourceUrl);
+    if(serial===framefieldSerial){
+      $('framefield-import-status').textContent='Framefield timeline import REFUSED: '+e.message;
+      status('Framefield timeline import failed: '+e.message,true);
     }
   }
 });
