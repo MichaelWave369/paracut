@@ -2,6 +2,7 @@ import { newStudio, change, undo, redo, duration, activeClip, activeAudioClip, a
 import { extractWaveform, paintWaveform } from './studio-waveform.js';
 import {inspectReelMaster,verifyReelRelink,REEL_MAX_JSON_BYTES,REEL_MAX_MASTER_BYTES} from './studio-reel-import.js';
 import {inspectFramefieldWebm,verifyFramefieldRelink,MAX_SIDECAR_BYTES,MAX_WEBM_BYTES} from './studio-framefield-import.js';
+import {acceptFramefieldDrop} from './studio-framefield-drop.js';
 import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
@@ -76,6 +77,13 @@ function placeOnLayer(command) {
 }
 const media = new Map(); // asset_id -> {file, url}; NEVER stored in JSON or uploaded
 let framefieldVerified=null,framefieldSerial=0;
+let framefieldSelection={webm:null,sidecar:null};
+function showFramefieldSelection(){
+  const file=framefieldSelection.webm,receipt=framefieldSelection.sidecar;
+  $('framefield-drop-selected').textContent='WebM: '+(file?.name||'not selected')+
+    ' · Receipt: '+(receipt?.name||'not selected')+
+    (file&&receipt?' · Ready to verify.':' · Both files required.');
+}
 function invalidateFramefieldVerification(message='Select both files and verify again.') {
   framefieldSerial++;framefieldVerified=null;
   $('framefield-add-v1').disabled=true;
@@ -1540,14 +1548,53 @@ $('reel-add-v1').addEventListener('click',async()=>{
   }
 });
 
-/* Explicit, locally verified Framefield WebM -> V1 handoff. */
-for(const key of ['framefield-evidence-input','framefield-webm-input']){
-  $(key).addEventListener('change',()=>invalidateFramefieldVerification());
+/* Explicit, locally verified Framefield WebM -> V1 handoff. A drag/drop
+ * operation selects bytes but NEVER auto-verifies or auto-imports them. */
+for(const [key,kind] of [['framefield-evidence-input','sidecar'],['framefield-webm-input','webm']]){
+  $(key).addEventListener('change',event=>{
+    framefieldSelection={...framefieldSelection,[kind]:event.currentTarget.files?.[0]||null};
+    invalidateFramefieldVerification('Files selected. Click Verify exact WebM bytes.');
+    showFramefieldSelection();
+  });
 }
+const framefieldZone=$('framefield-drop-zone');
+for(const kind of ['dragenter','dragover']){
+  framefieldZone.addEventListener(kind,event=>{
+    event.preventDefault();event.stopPropagation();
+    framefieldZone.classList.add('drag');
+    if(event.dataTransfer)event.dataTransfer.dropEffect='copy';
+  });
+}
+framefieldZone.addEventListener('dragleave',event=>{
+  event.preventDefault();event.stopPropagation();
+  if(!framefieldZone.contains(event.relatedTarget))framefieldZone.classList.remove('drag');
+});
+framefieldZone.addEventListener('drop',event=>{
+  event.preventDefault();event.stopPropagation();
+  framefieldZone.classList.remove('drag');
+  if(exporting)return status('Finish export before selecting new media.',true);
+  try{
+    const next=acceptFramefieldDrop(framefieldSelection,[...(event.dataTransfer?.files||[])]);
+    framefieldSelection=next;
+    // Prevent stale filename displays from prior Choose File controls.
+    $('framefield-evidence-input').value='';
+    $('framefield-webm-input').value='';
+    invalidateFramefieldVerification('Files dropped. Click Verify exact WebM bytes; no media has been imported.');
+    showFramefieldSelection();
+  }catch(error){
+    framefieldSelection={webm:null,sidecar:null};
+    $('framefield-evidence-input').value='';
+    $('framefield-webm-input').value='';
+    invalidateFramefieldVerification('Drop refused: '+error.message);
+    showFramefieldSelection();
+    status('Framefield drop refused: '+error.message,true);
+  }
+});
+showFramefieldSelection();
 $('framefield-verify-media').addEventListener('click',async()=>{
   if(exporting)return status('Finish export before importing Framefield media.',true);
-  const sidecar=$('framefield-evidence-input').files?.[0];
-  const file=$('framefield-webm-input').files?.[0];
+  const sidecar=framefieldSelection.sidecar;
+  const file=framefieldSelection.webm;
   invalidateFramefieldVerification('Inspecting exact WebM bytes locally…');
   const serial=framefieldSerial;
   if(!sidecar||!file){
@@ -1577,8 +1624,8 @@ $('framefield-add-v1').addEventListener('click',async()=>{
   if(exporting)return status('Finish export before importing Framefield media.',true);
   const candidate=framefieldVerified;
   if(!candidate)return status('Verify both original files first.',true);
-  if($('framefield-webm-input').files?.[0]!==candidate.file||
-     $('framefield-evidence-input').files?.[0]!==candidate.sidecar){
+  if(framefieldSelection.webm!==candidate.file||
+     framefieldSelection.sidecar!==candidate.sidecar){
     invalidateFramefieldVerification('Selection changed. Verify again.');
     return;
   }

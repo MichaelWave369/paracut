@@ -65,7 +65,14 @@
       </details>
       <details id="framefield-intake-panel" class="reel-import-panel">
         <summary>◆ Framefield Studio · Verified WebM Intake</summary>
-        <p class="tip">Select a local Framefield WebM and matching unsigned hash receipt. No upload, source-rights clearance or publication authorization.</p>
+        <p class="tip">Drop both original files below, or choose them separately. Dropping only selects files; clicking Verify and then Add is always required. No upload, source-rights clearance or publication authorization.</p>
+        <div id="framefield-drop-zone" class="framefield-drop-zone" role="group"
+          aria-label="Drop original Framefield WebM and matching handoff JSON"
+          aria-describedby="framefield-drop-help">
+          <strong>Drop original WebM + its handoff JSON here</strong>
+          <span id="framefield-drop-help">You can drop both together or one at a time. Keyboard users: use the file inputs below.</span>
+        </div>
+        <p id="framefield-drop-selected" class="framefield-drop-selected" role="status" aria-live="polite">No files selected.</p>
         <label>Framefield handoff JSON
           <input id="framefield-evidence-input" type="file" accept=".json,application/json">
         </label>

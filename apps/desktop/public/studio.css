@@ -619,3 +619,14 @@
 .reel-import-panel #reel-add-v1:not(:disabled){background:#c0ff9c;color:#152b26}
 .reel-import-panel #reel-import-status{padding:10px;border-radius:6px;border:1px solid #608f8a;background:#203b43;overflow-wrap:anywhere}
 .reel-import-panel input:focus-visible,.reel-import-panel button:focus-visible,.reel-import-panel>summary:focus-visible{outline:3px solid #ffe0a8;outline-offset:2px}
+
+/* Framefield verified intake: explicit two-file drop target, not an auto-import. */
+#framefield-drop-zone{border:2px dashed #88b1a4;border-radius:9px;
+  padding:15px 10px;margin:10px 0 6px;display:flex;flex-direction:column;
+  gap:6px;background:#102e36;text-align:center}
+#framefield-drop-zone strong{font-size:12px;color:#d9fff0}
+#framefield-drop-zone span{font-size:10px;color:#c3d9d2;line-height:1.5}
+#framefield-drop-zone.drag{border-color:#d6ffa9;background:#295449}
+#framefield-drop-selected{font-size:10px;line-height:1.6;color:#d8f5e8;
+  overflow-wrap:anywhere;border:1px solid #50796f;border-radius:7px;
+  padding:8px;background:#193741}
