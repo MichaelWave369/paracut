@@ -6,7 +6,7 @@ import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './st
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
 import { workspacePreset,loadWorkspace,saveWorkspace,resizeWorkspace } from './studio-workspaces.js';
-import { clipColor, hasColorAdjustment, COLOR_DEFAULTS } from './studio-color.js';
+import { clipColor, hasColorAdjustment, COLOR_DEFAULTS, colorCSS } from './studio-color.js';
 import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } from './studio-color-workflow.js';
 import { synchronizedRipplePlan } from './studio-ripple.js';
 import { matchedSourceFrame, captureAttributes, attributePasteCommand } from './studio-attributes.js';
@@ -2652,6 +2652,21 @@ document.addEventListener('keydown', e => {
   else if (e.key.toLowerCase() === 's') $('split').click();
   else if (e.key === 'Delete' || e.key === 'Backspace') $('remove').click();
 });
+// Wait for a decodable first source frame before starting MediaRecorder.
+// Capturing before initial metadata/seek previously included a long startup gap.
+// This cannot force constant frame rate; browsers may still record VFR WebM.
+async function waitForFirstExportFrame(el) {
+  if(el.readyState>=2)return;
+  await new Promise((resolve,reject)=>{
+    const cleanup=()=>{clearTimeout(timer);el.removeEventListener('loadeddata',ready);el.removeEventListener('error',failed);};
+    const ready=()=>{cleanup();resolve();};
+    const failed=()=>{cleanup();reject(Error('First export frame failed to decode.'));};
+    const timer=setTimeout(()=>{cleanup();reject(Error('Timed out decoding the first export frame.'));},15000);
+    el.addEventListener('loadeddata',ready);
+    el.addEventListener('error',failed);
+    if(el.readyState>=2)ready();
+  });
+}
 async function renderVideo(format) {
   if (exporting) {
     if (activeExportFormat === format) {
@@ -2774,7 +2789,7 @@ async function renderVideo(format) {
       recorder.onstop=resolve;
       recorder.onerror=e=>reject(e.error || Error('MediaRecorder failed.'));
     });
-    recorder.start(1000);
+    // Recorder starts only after the first source is ready and painted.
     encoderVideo.muted = false;
     encoderIncoming.muted = false;
     encoderOverlay.muted=false;
@@ -2886,6 +2901,12 @@ async function renderVideo(format) {
       // start from a black frame while the next file is still loading.
       if (clip.transition_out_seconds > 0 && state.clips[index+1])
         await prepareIncoming(state.clips[index+1],state.clips[index+1].timeline.start);
+      if(index===0){
+        await waitForFirstExportFrame(encoderVideo);
+        if(cancelExport)throw Error('Export cancelled.');
+        paint(clip.timeline.start+skipped);
+        recorder.start(1000);
+      }
       await encoderVideo.play();
       await syncExportSoundtrack(clip.timeline.start+skipped);
       while (encoderVideo.currentTime < clip.source.end - .015 && !encoderVideo.ended) {
