@@ -1164,7 +1164,7 @@ function drawInspector() {
 for(const [property,field,allowed] of [
     ['opacity','opacity_keyframes',clip.track_id==='video-2'],
     ['volume','volume_keyframes',true]]){
-    $('keyframe-'+property+'-editor').hidden=!allowed;
+    $(property+'-keyframe-editor').hidden=!allowed;
     const points=keyframePointsFor(clip,field);
     const values={start:points[0].value,end:points.at(-1).value};
     for(const end of ['start','end'])
@@ -2739,7 +2739,6 @@ async function renderVideo(format) {
   stopPlayback();
   exporting=true; activeExportFormat=format; cancelExport=false;
   $(format === 'mp4' ? 'export-mp4' : 'export-webm').textContent='Cancel Export';
-  render();
   let recorder, ctx, stream, videoStream, videoSourceGain, incomingVideoGain, soundtrackGain, overlayGain, overlayIncomingGain, audio2Gain;
   let encoderAudio = document.createElement('audio');
   encoderVideo = document.createElement('video');
@@ -2753,6 +2752,9 @@ async function renderVideo(format) {
   const encoderAudio2=document.createElement('audio');
   const chunks=[];
   try {
+    // UI refresh must be inside the guarded export lifecycle. If a control
+    // regresses again, fail visibly and restore buttons via finally.
+    render();
     const canvas = document.createElement('canvas'); canvas.width=1280; canvas.height=720;
     const g = canvas.getContext('2d',{alpha:false}); if(!g) throw Error('Canvas unavailable.');
     const drawVideoFrame = (el, alpha, clip) => {
