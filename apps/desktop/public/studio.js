@@ -6,6 +6,7 @@ import {acceptFramefieldDrop} from './studio-framefield-drop.js';
 import { paintTrimWaveform, sourceTimeAtFraction, estimateTrackPeak } from './studio-audio-visual.js';
 import { createPreviewBusMeters, formatDbfs } from './studio-live-meters.js';
 import { findRecorderMime, recorderOutputFormat, checkExportContainer, expectedMime } from './studio-export-format.js';
+import {assessExportReadiness} from './studio-export-readiness.js';
 import { workspacePreset,loadWorkspace,saveWorkspace,resizeWorkspace } from './studio-workspaces.js';
 import { clipColor, hasColorAdjustment, COLOR_DEFAULTS, colorCSS } from './studio-color.js';
 import { colorLook, COLOR_LOOK_NAMES, previewColorFor, colorReceiptSummary } from './studio-color-workflow.js';
@@ -1255,7 +1256,26 @@ function drawMixer() {
   $('mixer-duck').checked=mix.duckA1;
   $('mixer-duck').disabled=exporting;
 }
+function refreshExportReadiness() {
+  const recordingReady = Boolean(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream);
+  const mp4Mime = recordingReady ? findRecorderMime('mp4') : null;
+  const webmMime = recordingReady ? findRecorderMime('webm') : null;
+  const result=assessExportReadiness(state,media,{recordingReady,mp4Mime,webmMime,
+    exporting,activeFormat:activeExportFormat});
+  $('export-mp4').disabled=result.mp4Disabled;
+  $('export-webm').disabled=result.webmDisabled;
+  $('export-mp4').title = result.mp4Disabled ? result.message :
+    'Export an actual MP4 container using this browser (beta)';
+  $('export-webm').title = result.webmDisabled ? result.message :
+    'Export a real WebM container using this browser (beta)';
+  $('export-readiness').textContent=result.message;
+  $('mp4-support').textContent = mp4Mime ? '' :
+    'MP4 unavailable here; WebM remains an option.';
+}
 function render() {
+  // Update export controls before complex inspectors/markers are painted.
+  // A later UI rendering exception must not leave known-good readiness stale.
+  refreshExportReadiness();
   $('project-name').value = state.name;
   updateToolUI();
   drawMixer();
@@ -1277,20 +1297,6 @@ function render() {
     $('ripple-delete').disabled=true;
     $('ripple-delete').title=e.message;
   }
-  const canExport = Boolean(state.clips.length) &&
-    [...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].every(c => media.has(c.asset_id));
-  const recordingReady = Boolean(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream);
-  const mp4Mime = recordingReady ? findRecorderMime('mp4') : null;
-  const webmMime = recordingReady ? findRecorderMime('webm') : null;
-  $('export-mp4').disabled = (exporting && activeExportFormat !== 'mp4') ||
-    (!exporting && (!canExport || !mp4Mime));
-  $('export-webm').disabled = (exporting && activeExportFormat !== 'webm') ||
-    (!exporting && (!canExport || !webmMime));
-  $('export-mp4').title = mp4Mime
-    ? 'Export an actual MP4 container using this browser (beta)'
-    : 'MP4 encoding is unavailable in this browser. Use WebM export.';
-  $('mp4-support').textContent = mp4Mime ? '' :
-    'MP4 unavailable here; WebM remains an option.';
   $('preview-label').textContent = selectedId ? 'Selected clip · ' + ([...state.clips, ...state.audioClips,...state.video2Clips,...state.audio2Clips].find(c=>c.clip_id===selectedId)?.clip_id?.slice(0,8) || '') : 'Program';
 }
 // Playback uses the video playhead as the master clock and keeps the
